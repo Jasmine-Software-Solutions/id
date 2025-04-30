@@ -65,12 +65,12 @@ dependencies {
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
 
-    implementation("gg.jte:jte:3.1.15")
+    implementation("gg.jte:jte:3.1.16")
     implementation("gg.jte:jte-watcher:3.1.15")
 
     implementation("gg.jte:jte-kotlin:3.1.15")
 
-    implementation("io.javalin:javalin:6.4.0")
+    implementation("io.javalin:javalin:6.6.0")
     implementation("io.javalin:javalin-rendering:6.4.0")
 
     implementation("org.slf4j:slf4j-simple:2.0.3")
@@ -84,7 +84,7 @@ dependencies {
     runtimeOnly("io.jsonwebtoken:jjwt-impl:0.11.5")
     runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.11.5")
 
-    implementation("mysql:mysql-connector-java:8.0.32")
+    implementation("com.mysql:mysql-connector-j:9.3.0")
     implementation("com.zaxxer:HikariCP:4.0.3")
 
     implementation("io.javalin.community.routing:routing-core:6.4.1-SNAPSHOT")
