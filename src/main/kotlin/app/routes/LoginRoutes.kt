@@ -17,6 +17,8 @@ import gg.jte.output.StringOutput
 import io.javalin.community.routing.annotations.Get
 import io.javalin.community.routing.annotations.Post
 import io.javalin.http.Context
+import io.javalin.http.Cookie
+import io.javalin.http.SameSite
 import io.javalin.http.UnauthorizedResponse
 import org.apache.commons.codec.binary.Base32
 import org.jetbrains.exposed.dao.load
@@ -189,7 +191,14 @@ object LoginRoutes {
                 "TERM Generated session (${session.id.value}) for account (${account.id.value})."
             )
 
-            ctx.cookie("session", sessionToken)
+            // Set the session token in a cookie, "session", as HttpOnly, Secure, and SameSite=Strict.
+            ctx.cookie(Cookie(
+                name = "session",
+                value = sessionToken,
+                isHttpOnly = true,
+                secure = true,
+                sameSite = SameSite.STRICT
+            ))
 
             // If the request was initiated by an OAuth2 Authorization request, we will
             // redirect the user to the OAuth2 Authorization endpoint; otherwise, we will
