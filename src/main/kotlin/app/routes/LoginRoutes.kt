@@ -2,7 +2,7 @@ package app.routes
 
 import app.Mail
 import app.etc.EncryptedParameter
-import app.etc.Token
+import app.etc.SecureToken
 import app.etc.exception.FormErrorException
 import app.etc.hxRedirect
 import app.etc.renderWithContext
@@ -169,7 +169,7 @@ object LoginRoutes {
                 LoginAuditTable.write(ctx, "FLOW Valid TOTP provided for account (${account.id.value}).")
             }
 
-            val sessionToken = Token()
+            val sessionToken = SecureToken()
 
             val session = Session.new {
                 this.createdAt = Instant.now()

@@ -1,6 +1,6 @@
 package app.sql.oauth2
 
-import app.etc.Token
+import app.etc.SecureToken
 import app.etc.transformInstant
 import app.etc.transformNullableInstant
 import app.sql.account.Session
@@ -74,7 +74,7 @@ class SessionAccessTokens(id: EntityID<UUID>) : UUIDEntity(id), OAuth2Authorized
             throw IllegalStateException("Refresh token is not active")
 
         lastRefreshed = Instant.now()
-        accessToken = Token()
+        accessToken = SecureToken()
     }
 
     override fun authorizedFor(scope: String, tenant: UUID?): Boolean {

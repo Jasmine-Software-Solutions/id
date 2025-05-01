@@ -110,13 +110,13 @@ object OAuth2AuthorizationRoute {
                 this.client = client
                 this.redirectUri = redirectUri
 
-                this.accessToken = Token()
-                this.refreshToken = Token()
+                this.accessToken = SecureToken()
+                this.refreshToken = SecureToken()
 
                 this.tenant = tenant
                 this.scope = scope
 
-                this.authorizationCode = Token()
+                this.authorizationCode = SecureToken()
                 this.authorizationCodeExpiration = Instant.now().plus(10, ChronoUnit.MINUTES)
             }
 

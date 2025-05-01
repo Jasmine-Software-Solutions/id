@@ -1,6 +1,6 @@
 package app.routes.oauth2
 
-import app.etc.Token
+import app.etc.SecureToken
 import app.routes.api.writeApiAudit
 import app.sql.audit.GrantAuditTable
 import app.sql.client.Client
@@ -137,7 +137,7 @@ object OAuth2TokenRoute {
                 throw BadRequestResponse("Refresh token expired")
             }
 
-            val newToken = Token()
+            val newToken = SecureToken()
             sessionAccessToken.lastRefreshed = Instant.now()
             sessionAccessToken.accessToken = newToken
 
@@ -195,7 +195,7 @@ object OAuth2TokenRoute {
 
             GrantAuditTable.write(ctx, "FLOW Client (${client.id.value}) secret verified.")
 
-            val accessToken = Token()
+            val accessToken = SecureToken()
 
             val scope = if (client.scope == null) requestedScope else {
                 val clientScopes = client.scope!!.split(" ")
