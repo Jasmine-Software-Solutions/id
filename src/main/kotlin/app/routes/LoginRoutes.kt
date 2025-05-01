@@ -28,6 +28,38 @@ import java.time.temporal.ChronoUnit
 import java.util.*
 
 object LoginRoutes {
+    /**
+     * Accept a login request, creates, and returns a new session.
+     * <br>
+     * Currently, supports:
+     * - Email (as a form parameter, "email")
+     * - Password (as a form parameter, "password")
+     * - TOTP (as a form parameter, "otp")
+     * <br>
+     * Furthermore, if passed as a form parameter, "tenant", the login will
+     * be matched against only accounts linked to the tenant. Otherwise, the
+     * login will match against all accounts.
+     * <br>
+     * If the email provided is not linked to the tenant, or if the password
+     * is incorrect, the login will fail using a generic error message.
+     * <br>
+     * Once the account is matched, if the account has TOTP enabled, the
+     * login will require a TOTP code to be provided. In this situation,
+     * the request will return a form to enter the TOTP code.
+     * <br>
+     * If the TOTP code is valid, or one is not required, a session will be
+     * created and the session token will be returned in a cookie, "session".
+     * <br>
+     * The flow, as implemented by login.kte, is as follows:
+     * 1. The user enters their email address and password and submits the form.
+     * 2. The server verifies the email and password and checks if the account is linked to the tenant.
+     * 3. If the account is linked to the tenant, the server checks if TOTP is enabled.
+     * 4. If TOTP is enabled, the server returns a form to enter the TOTP code.
+     * 5. The user enters the TOTP code and submits the form.
+     * 6. If the TOTP code is invalid, the server returns an error message.
+     * 7. If the TOTP code is valid, the server creates a session and returns the session token in a cookie.
+     * 8. The server redirects the user to the entrypoint.
+     */
     @Post("/login")
     fun login(ctx: Context) {
         fun renderGenericError(): Nothing {
@@ -56,14 +88,20 @@ object LoginRoutes {
                 renderGenericError()
             }
 
-            LoginAuditTable.write(ctx, "FLOW Attempting login with email (${formEmail}) to account ${account.id.value} (${account.firstName} ${account.lastName}).")
+            LoginAuditTable.write(
+                ctx,
+                "FLOW Attempting login with email (${formEmail}) to account ${account.id.value} (${account.firstName} ${account.lastName})."
+            )
 
             val linkedToTargetTenant = if (tenant == null) true else TenantAccountLinksTable.select {
                 TenantAccountLinksTable.tenant eq tenant and (TenantAccountLinksTable.account eq account.id)
             }.count() >= 1 || account.systemAdmin
 
             if (!linkedToTargetTenant) {
-                LoginAuditTable.write(ctx, "TERM Attempted to login to tenant (${tenant}), but no link found for account (${account.id.value}).")
+                LoginAuditTable.write(
+                    ctx,
+                    "TERM Attempted to login to tenant (${tenant}), but no link found for account (${account.id.value})."
+                )
                 renderGenericError()
             }
 
@@ -92,14 +130,21 @@ object LoginRoutes {
 
             LoginAuditTable.write(ctx, "FLOW Password verified for account (${account.id.value}).")
 
+            // If the account has a totp secret set, then it has TOTP enabled.
+            // In this situation, we will require the form parameter "otp" to be provided.
+            // If it is not provided, we will return a form to enter the TOTP code.
+            // If it is provided, we will verify the TOTP code and if it is valid, we will
+            // continue with the login process; otherwise, we will throw a detailed error.
             if (account.totpSecret != null) {
                 LoginAuditTable.write(ctx, "FLOW Account (${account.id.value}) has TOTP enabled.")
 
                 if (formOtp.isNullOrBlank()) {
                     LoginAuditTable.write(ctx, "TERM No TOTP provided for account (${account.id.value}).")
 
-                    ctx.renderWithContext("components/login/enter_otp.kte",
-                        "email" to formEmail, "password" to formPassword)
+                    ctx.renderWithContext(
+                        "components/login/enter_otp.kte",
+                        "email" to formEmail, "password" to formPassword
+                    )
                     return@transaction
                 }
 
@@ -139,9 +184,16 @@ object LoginRoutes {
             commit()
 
             LoginAuditTable.write(ctx, "FLOW Successful login for account (${account.id.value}).")
-            LoginAuditTable.write(ctx, "TERM Generated session (${session.id.value}) for account (${account.id.value}).")
+            LoginAuditTable.write(
+                ctx,
+                "TERM Generated session (${session.id.value}) for account (${account.id.value})."
+            )
 
             ctx.cookie("session", sessionToken)
+
+            // If the request was initiated by an OAuth2 Authorization request, we will
+            // redirect the user to the OAuth2 Authorization endpoint; otherwise, we will
+            // redirect the user to the entrypoint.
 
             val responseType = ctx.formParam("response_type")
             if (responseType == null) {
@@ -153,6 +205,11 @@ object LoginRoutes {
         }
     }
 
+    /**
+     * Returns the session object associated with the current request.
+     * If the session is not found or is invalid, an UnauthorizedResponse
+     * is thrown.
+     */
     fun Context.requireSession(): Session {
         val session = cookie("session") ?: throw UnauthorizedResponse()
 
@@ -175,6 +232,21 @@ object LoginRoutes {
         ctx.renderWithContext("pages/login.kte")
     }
 
+    /**
+     * Handles the password reset flow. The flow is as follows:
+     * 1. The user enters their email address and submits the form.
+     * 2. The server generates a reset code and sends it to the user's email address.
+     * 3. The user enters the reset code and submits the form.
+     * 4. The server verifies the reset code and prompts the user to enter a new password.
+     * 5. The user enters the new password and submits the form.
+     * 6. The server verifies the new password and updates the user's password in the database.
+     * 7. The server deletes the reset code from the database.
+     * 8. The server redirects the user to the login page.
+     *
+     * The flow is designed to be secure and prevent unauthorized access to the user's account.
+     * Furthermore, it is designed to hide whether an account is associated with the
+     * provided email address.
+     */
     @Suppress("unused")
     @Post("/forgot_password")
     fun forgotPassword(ctx: Context) {
@@ -193,13 +265,14 @@ object LoginRoutes {
         transaction {
             val account = Account.select(formEmail)
 
-            // If tenant is set and account exists, where the account is either linked to the tenant or is a system admin
+            // If tenant is set and account exists, whether the account
+            // is either linked to the tenant or is a system admin
             val linkedToTargetTenant = tenant == null || account == null || TenantAccountLinksTable.select {
                 TenantAccountLinksTable.tenant eq tenant and (TenantAccountLinksTable.account eq account.id)
             }.count() >= 1 || account.systemAdmin
 
             // If the account does not exist, or it is not linked, then deny any code
-            // effectively hiding whether the account exists or is linked
+            // to hide whether the account exists or is linked
             if (account == null || !linkedToTargetTenant) {
                 if (!formCode.isNullOrBlank()) throw FormErrorException(
                     summary = "Problem",
@@ -242,7 +315,11 @@ object LoginRoutes {
             )
 
             if (formPassword.isNullOrBlank()) {
-                ctx.renderWithContext("components/login/forgot_password/enter_password.kte", "email" to formEmail, "code" to formCode)
+                ctx.renderWithContext(
+                    "components/login/forgot_password/enter_password.kte",
+                    "email" to formEmail,
+                    "code" to formCode
+                )
                 return@transaction
             }
 
