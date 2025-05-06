@@ -15,7 +15,20 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import java.util.*
 
 val Context.tenantId: UUID?
-    get() = queryParam("tenant")?.let { UUID.fromString(it) }
+    get() {
+        val specifiedTenant = queryParam("tenant")?.let { UUID.fromString(it) }
+        if (specifiedTenant != null)
+            return specifiedTenant
+
+        val tokens = requireAuthorization()
+        if (tokens is SessionAccessTokens)
+            return tokens.tenant.id.value
+
+        if (tokens is MachineAccessTokens)
+            return tokens.tenant.id.value
+
+        return null
+    }
 
 fun Context.requireAdministratorAndScope(scope: String) {
     val tokens = requireAuthorization()
