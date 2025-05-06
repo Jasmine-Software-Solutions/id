@@ -34,6 +34,10 @@ object RestAccountRoutes {
             if (tokens.authorizedFor("id:created_at:read")) {
                 response["created_at"] = tokens.session.account.createdAt
             }
+
+            if (tokens.authorizedFor("id:system_admin:read")) {
+                response["system_admin"] = tokens.session.account.systemAdmin
+            }
         }
 
         ctx.json(response)
