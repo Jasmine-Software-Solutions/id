@@ -8,6 +8,7 @@ import app.routes.oauth2.OAuth2AuthorizationRoute
 import app.routes.LoginRoutes
 import app.routes.api.RestAccountRoutes
 import app.routes.api.RestAccountsRoutes
+import app.routes.api.RestTenantRoutes
 import app.routes.oauth2.OAuth2TokenRoute
 import app.sql.account.AccountsTable
 import app.sql.account.ForgotPasswordCodesTable
@@ -98,7 +99,9 @@ fun main() {
                 OAuth2TokenRoute,
 
                 RestAccountRoutes,
-                RestAccountsRoutes
+                RestAccountsRoutes,
+
+                RestTenantRoutes
             )
         }
 
