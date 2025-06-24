@@ -120,7 +120,7 @@ object OAuth2AuthorizationRoute {
                 this.authorizationCodeExpiration = Instant.now().plus(10, ChronoUnit.MINUTES)
             }
 
-            val clientCodeUri = "${redirectUri.uri}?code=${tokens.authorizationCode}${if (state != null) "&state=$state" else ""}"
+            val clientCodeUri = "${redirectUri.uri}?code=${tokens.authorizationCode}${if (state != null) "&state=$state" else ""}&tenant=${tenant.id.value}"
             ctx.hxRedirect(clientCodeUri)
         }
     }
