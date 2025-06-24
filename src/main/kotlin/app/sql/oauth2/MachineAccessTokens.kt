@@ -36,7 +36,7 @@ class MachineAccessTokens(id: EntityID<UUID>) : UUIDEntity(id), OAuth2Authorized
     var accessToken by MachineAccessTokensTable.accessToken
     var scope by MachineAccessTokensTable.scope
 
-    var tenant by Tenant referencedOn SessionAccessTokensTable.tenant
+    var tenant by Tenant referencedOn MachineAccessTokensTable.tenant
 
     override fun isAccessTokenActive(): Boolean {
         return issuedAt.isAfter(Instant.now()) && Instant.now().isBefore(expiresAt)
@@ -52,7 +52,7 @@ class MachineAccessTokens(id: EntityID<UUID>) : UUIDEntity(id), OAuth2Authorized
     }
 
     override fun equals(other: Any?): Boolean {
-        if (other !is SessionAccessTokens)
+        if (other !is MachineAccessTokens)
             return false
 
         return this.id.value == other.id.value

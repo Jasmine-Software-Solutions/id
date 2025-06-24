@@ -40,7 +40,10 @@ tasks.register<Copy>("copyResourcesToKotlinTest") {
 }
 
 tasks.build { dependsOn("copyResourcesToKotlinMain") }
-tasks.test { dependsOn("copyResourcesToKotlinTest") }
+tasks.test {
+    dependsOn("copyResourcesToKotlinMain")
+    dependsOn("copyResourcesToKotlinTest")
+}
 
 tasks.jar {
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
