@@ -118,7 +118,12 @@ fun main() {
     }
 
     app.error(HttpStatus.NOT_FOUND) { ctx -> ctx.renderWithContext("pages/status/4xx.kte") }
-    app.error(HttpStatus.BAD_REQUEST) { ctx -> ctx.renderWithContext("pages/status/4xx.kte") }
+    app.error(HttpStatus.BAD_REQUEST) { ctx ->
+        if (ctx.path().startsWith("/oauth2/") || ctx.path().startsWith("/api/"))
+            return@error
+
+        ctx.renderWithContext("pages/status/4xx.kte")
+    }
 
     app.exception(FormErrorException::class.java) { ex, ctx ->
         ctx.hxRetarget(ex.formErrorElement)
