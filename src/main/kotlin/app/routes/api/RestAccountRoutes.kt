@@ -18,11 +18,11 @@ object RestAccountRoutes {
         if (tokens !is SessionAccessTokens)
             throw ForbiddenResponse()
 
-        val response = mutableMapOf<String, Any>(
-            "id" to tokens.session.account.id
-        )
-
         transaction {
+            val response = mutableMapOf<String, Any>(
+                "id" to tokens.session.account.id.value
+            )
+
             if (tokens.authorizedFor("id:email:read"))
                 response["email"] = tokens.session.account.email
 
@@ -32,17 +32,17 @@ object RestAccountRoutes {
             }
 
             if (tokens.authorizedFor("id:created_at:read")) {
-                response["created_at"] = tokens.session.account.createdAt
+                response["created_at"] = tokens.session.account.createdAt.toEpochMilli()
             }
 
             if (tokens.authorizedFor("id:system_admin:read")) {
                 response["system_admin"] = tokens.session.account.systemAdmin
             }
+
+            ctx.json(response)
+
+            ctx.writeApiAudit("Account info requested; Returned: ${response.keys.joinToString(", ")}")
         }
-
-        ctx.json(response)
-
-        ctx.writeApiAudit("Account info requested; Returned: ${response.keys.joinToString(", ")}")
     }
 
     @Suppress("unused")

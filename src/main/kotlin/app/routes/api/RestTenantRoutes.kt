@@ -11,19 +11,19 @@ import org.jetbrains.exposed.sql.transactions.transaction
 object RestTenantRoutes {
     @Get
     fun info(ctx: Context) {
-        ctx.requireAdministratorAndScope("id:tenant:read")
-
-        val tenantId = ctx.tenantId
-            ?: throw NotFoundResponse("Tenant not found")
-
         transaction {
+            ctx.requireAdministratorAndScope("id:tenant:read")
+
+            val tenantId = ctx.tenantId
+                ?: throw NotFoundResponse("Tenant not found")
+
             val tenant = Tenant.findById(tenantId)
                 ?: throw NotFoundResponse("Tenant not found")
 
             val response = mapOf(
-                "id" to tenant.id,
+                "id" to tenant.id.value,
                 "name" to tenant.name,
-                "created_at" to tenant.createdAt
+                "created_at" to tenant.createdAt.toEpochMilli(),
             )
 
             ctx.writeApiAudit("Tenant info requested; Returned: ${response.keys.joinToString(", ")}")
