@@ -21,8 +21,6 @@ object MachineAccessTokensTable : UUIDTable("machine_access_tokens") {
 
     val accessToken = varchar("access_token", 64).uniqueIndex()
     val scope = varchar("scope", 256).nullable()
-
-    val tenant = reference("tenant", TenantsTable, onDelete = ReferenceOption.CASCADE)
 }
 
 class MachineAccessTokens(id: EntityID<UUID>) : UUIDEntity(id), OAuth2Authorized {
@@ -36,16 +34,11 @@ class MachineAccessTokens(id: EntityID<UUID>) : UUIDEntity(id), OAuth2Authorized
     var accessToken by MachineAccessTokensTable.accessToken
     var scope by MachineAccessTokensTable.scope
 
-    var tenant by Tenant referencedOn MachineAccessTokensTable.tenant
-
     override fun isAccessTokenActive(): Boolean {
-        return issuedAt.isAfter(Instant.now()) && Instant.now().isBefore(expiresAt)
+        return issuedAt.isBefore(Instant.now()) && Instant.now().isBefore(expiresAt)
     }
 
     override fun authorizedFor(scope: String, tenant: UUID?): Boolean {
-        if (tenant != null && this.tenant.id.value != tenant)
-            return false
-
         val scopes = this.scope?.split(" ") ?: return true
         val hasScope = scopes.contains(scope)
         return hasScope

@@ -24,9 +24,6 @@ val Context.tenantId: UUID?
         if (tokens is SessionAccessTokens)
             return tokens.tenant.id.value
 
-        if (tokens is MachineAccessTokens)
-            return tokens.tenant.id.value
-
         return null
     }
 
