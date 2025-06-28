@@ -14,6 +14,7 @@ import app.sql.account.AccountsTable
 import app.sql.account.ForgotPasswordCodesTable
 import app.sql.account.PasswordsTable
 import app.sql.account.SessionsTable
+import app.sql.audit.ClientAuditTable
 import app.sql.audit.GrantAuditTable
 import app.sql.audit.LoginAuditTable
 import app.sql.audit.SessionAuditTable
@@ -72,6 +73,7 @@ fun main() {
             LoginAuditTable,
             SessionAuditTable,
             GrantAuditTable,
+            ClientAuditTable,
 
             TenantsTable,
             TenantAccountLinksTable,
