@@ -101,7 +101,7 @@ object OAuth2TokenRoute {
                 mapOf(
                     "access_token" to sessionAccessToken.accessToken,
                     "refresh_token" to sessionAccessToken.refreshToken,
-                    "expires_in" to 3600,
+                    "expires_in" to 300,
                     "token_type" to "Bearer"
                 )
             )
@@ -150,7 +150,7 @@ object OAuth2TokenRoute {
                 mapOf(
                     "access_token" to newToken,
                     "expires_in" to (sessionAccessToken.session.expiresAt.toEpochMilli() - Instant.now().toEpochMilli())
-                        .coerceAtMost(3600),
+                        .coerceAtMost(300),
                     "token_type" to "Bearer"
                 )
             )
