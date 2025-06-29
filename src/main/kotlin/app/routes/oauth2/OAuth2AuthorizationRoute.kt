@@ -1,16 +1,21 @@
 package app.routes.oauth2
 
-import app.etc.*
+import app.etc.SecureToken
+import app.etc.hxRedirect
+import app.etc.hxRetarget
+import app.etc.renderWithContext
 import app.routes.LoginRoutes.requireSession
 import app.sql.client.Client
 import app.sql.oauth2.*
 import app.sql.tenant.Tenant
 import app.sql.tenant.TenantAccountLinksTable
 import app.sql.tenant.TenantsTable
+import com.fasterxml.jackson.annotation.JsonProperty
 import io.javalin.community.routing.annotations.Get
 import io.javalin.community.routing.annotations.Post
 import io.javalin.http.BadRequestResponse
 import io.javalin.http.Context
+import io.javalin.http.Cookie
 import io.javalin.http.UnauthorizedResponse
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -19,6 +24,31 @@ import java.time.temporal.ChronoUnit
 import java.util.*
 
 object OAuth2AuthorizationRoute {
+    class AuthorizeEndpointSharedParameters(
+        @JsonProperty("responseType") val responseType: String = "code",
+        @JsonProperty("clientId") val clientId: UUID,
+        @JsonProperty("redirectUri") val redirectUri: String,
+        @JsonProperty("scope") val scope: String?,
+        @JsonProperty("state") val state: String?,
+        @JsonProperty("tenant") val tenant: UUID?
+    )
+
+    fun Context.oauth2Request() =
+        cookie("oauth2_request")?.let {
+            jsonMapper().fromJsonString<AuthorizeEndpointSharedParameters>(
+                Base64.getDecoder().decode(it).decodeToString(),
+                AuthorizeEndpointSharedParameters::class.java)
+        }
+
+    fun Context.oauth2Request(parameters: AuthorizeEndpointSharedParameters) {
+        cookie(Cookie(
+            name = "oauth2_request",
+            value = Base64.getEncoder().encodeToString(jsonMapper().toJsonString(parameters,
+                AuthorizeEndpointSharedParameters::class.java).toByteArray()),
+            maxAge = 120
+        ))
+    }
+
     @Suppress("unused")
     @Get("/oauth2/authorize")
     fun authorize(ctx: Context) {
@@ -57,6 +87,15 @@ object OAuth2AuthorizationRoute {
         if (!isScopeSpecific(scope)) {
             throw BadRequestResponse("Invalid scope")
         }
+
+        ctx.oauth2Request(AuthorizeEndpointSharedParameters(
+            responseType = "code",
+            clientId = clientId,
+            redirectUri = redirectUri,
+            scope = scope,
+            state = state,
+            tenant = tenant
+        ))
 
         transaction {
             val client = Client.findById(clientId)
@@ -130,13 +169,10 @@ object OAuth2AuthorizationRoute {
     fun selectTenant(ctx: Context) {
         ctx.requireSession()
 
-        val responseType = ctx.formParam("response_type")
-        if (responseType == null) {
-            ctx.hxRedirect("/")
-            return
-        }
+        val tenant = runCatching { UUID.fromString(ctx.formParam("tenant")) }.getOrNull()
+            ?: throw BadRequestResponse("Invalid tenant")
 
-        ctx.redirectToOAuth2Authorize()
+        ctx.redirectToOAuth2Authorize(tenant)
     }
 
     fun Context.requireAuthorization(): OAuth2Authorized {
@@ -165,14 +201,16 @@ object OAuth2AuthorizationRoute {
         }
     }
 
-    fun Context.redirectToOAuth2Authorize() {
+    fun Context.redirectToOAuth2Authorize(tenant: UUID? = null) {
+        val request = oauth2Request()!!
+
         val queryParams = listOf(
-            "response_type" to formParam("response_type"),
-            "client_id" to formParam("client_id"),
-            "redirect_uri" to formParam("redirect_uri"),
-            "scope" to formParam("scope"),
-            "state" to formParam("state"),
-            "tenant" to formParam("tenant")
+            "response_type" to request.responseType,
+            "client_id" to request.clientId,
+            "redirect_uri" to request.redirectUri,
+            "scope" to request.scope,
+            "state" to request.state,
+            "tenant" to (tenant ?: request.tenant)
         ).filter { it.second != null }
 
         val oauth2AuthorizeUri = "/oauth2/authorize?${queryParams.joinToString("&") { "${it.first}=${it.second}" }}"

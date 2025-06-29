@@ -102,6 +102,8 @@ dependencies {
 
     testImplementation("org.xerial:sqlite-jdbc:3.49.1.0")
     testImplementation("com.microsoft.playwright:playwright:1.51.0")
+
+    implementation("com.fasterxml.jackson.core:jackson-annotations:2.18.3")
 }
 
 jte {

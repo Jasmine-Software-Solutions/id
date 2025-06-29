@@ -1,32 +1,4 @@
 @import app.Env
-@import app.sql.client.ClientRedirectUri
-@import io.javalin.http.Context
-@import java.util.*
-@import java.util.UUID
-
-@param ctx: Context
-
-!{
-    val tenant = ctx.queryParam("tenant")?.let { UUID.fromString(it) }
-    val responseType = ctx.queryParam("response_type")
-    val clientId = ctx.queryParam("client_id")?.let { UUID.fromString(it) }
-    val redirectUri = ctx.queryParam("redirect_uri")
-    val scope = ctx.queryParam("scope")
-    val state = ctx.queryParam("state")
- }
-
-!{
-    val parameters = mapOf(
-        "tenant" to tenant,
-        "response_type" to responseType,
-        "client_id" to clientId,
-        "redirect_uri" to redirectUri,
-        "scope" to scope,
-        "state" to state
-    ).filterValues { it != null }
-
-    val parametersAsJson = "{" + parameters.entries.joinToString(", ") { "\"${it.key}\": \"${it.value}\"" } + "}"
-}
 
 <head>
     @template.scripts.htmx()
@@ -42,7 +14,7 @@
             Jasmine Software Solutions
         </div>
         <div id="modal" class="w-full bg-white rounded-lg shadow dark:border md:mt-0 sm:max-w-md xl:p-0 dark:bg-gray-800 dark:border-gray-700">
-            <div class="p-6 space-y-4 md:space-y-6 sm:p-8" hx-vals="${parametersAsJson}">
+            <div class="p-6 space-y-4 md:space-y-6 sm:p-8">
                 <h1 class="text-xl font-bold leading-tight tracking-tight text-gray-900 md:text-2xl dark:text-white">
                     Sign in to your account
                 </h1>

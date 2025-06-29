@@ -6,6 +6,7 @@ import app.etc.SecureToken
 import app.etc.exception.FormErrorException
 import app.etc.hxRedirect
 import app.etc.renderWithContext
+import app.routes.oauth2.OAuth2AuthorizationRoute.oauth2Request
 import app.routes.oauth2.OAuth2AuthorizationRoute.redirectToOAuth2Authorize
 import app.sql.account.*
 import app.sql.audit.LoginAuditTable
@@ -203,9 +204,7 @@ object LoginRoutes {
             // If the request was initiated by an OAuth2 Authorization request, we will
             // redirect the user to the OAuth2 Authorization endpoint; otherwise, we will
             // redirect the user to the entrypoint.
-
-            val responseType = ctx.formParam("response_type")
-            if (responseType == null) {
+            if (ctx.oauth2Request() == null) {
                 ctx.hxRedirect("/")
                 return@transaction
             }
@@ -238,6 +237,8 @@ object LoginRoutes {
     @Get("/login")
     fun renderLogin(ctx: Context) {
         ctx.removeCookie("session")
+        ctx.removeCookie("oauth2_request")
+
         ctx.renderWithContext("pages/login.kte")
     }
 
