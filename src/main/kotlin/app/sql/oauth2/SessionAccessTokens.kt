@@ -1,5 +1,6 @@
 package app.sql.oauth2
 
+import app.Env
 import app.etc.SecureToken
 import app.etc.transformInstant
 import app.etc.transformNullableInstant
@@ -58,7 +59,7 @@ class SessionAccessTokens(id: EntityID<UUID>) : UUIDEntity(id), OAuth2Authorized
     var authorizationCodeExpiration by SessionAccessTokensTable.authorizationCodeExpiration.transformNullableInstant()
 
     override fun isAccessTokenActive(): Boolean {
-        return session.isValid() && lastRefreshed.toEpochMilli() > System.currentTimeMillis() - 5 * 60 * 1000
+        return session.isValid() && lastRefreshed.toEpochMilli() > System.currentTimeMillis() - Env.SESSION_ACCESS_TOKEN_LIFETIME * 1000
     }
 
     fun isRefreshTokenActive(): Boolean {

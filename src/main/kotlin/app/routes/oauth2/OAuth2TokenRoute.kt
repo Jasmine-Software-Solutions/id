@@ -1,5 +1,6 @@
 package app.routes.oauth2
 
+import app.Env
 import app.etc.SecureToken
 import app.routes.api.writeApiAudit
 import app.sql.audit.GrantAuditTable
@@ -99,10 +100,12 @@ object OAuth2TokenRoute {
 
             ctx.json(
                 mapOf(
+                    "token_type" to "Bearer",
                     "access_token" to sessionAccessToken.accessToken,
                     "refresh_token" to sessionAccessToken.refreshToken,
-                    "expires_in" to 300,
-                    "token_type" to "Bearer"
+                    "expires_in" to (sessionAccessToken.session.expiresAt.epochSecond - Instant.now().epochSecond)
+                        .coerceAtMost(Env.SESSION_ACCESS_TOKEN_LIFETIME),
+                    "refresh_token_expires_in" to sessionAccessToken.session.expiresAt.epochSecond - Instant.now().epochSecond,
                 )
             )
 
@@ -148,10 +151,11 @@ object OAuth2TokenRoute {
 
             ctx.json(
                 mapOf(
+                    "token_type" to "Bearer",
                     "access_token" to newToken,
-                    "expires_in" to (sessionAccessToken.session.expiresAt.toEpochMilli() - Instant.now().toEpochMilli())
-                        .coerceAtMost(300),
-                    "token_type" to "Bearer"
+                    "expires_in" to (sessionAccessToken.session.expiresAt.epochSecond - Instant.now().epochSecond)
+                        .coerceAtMost(Env.SESSION_ACCESS_TOKEN_LIFETIME),
+                    "refresh_token_expires_in" to sessionAccessToken.session.expiresAt.epochSecond - Instant.now().epochSecond
                 )
             )
 

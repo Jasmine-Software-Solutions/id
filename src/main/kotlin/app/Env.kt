@@ -44,6 +44,8 @@ object Env {
     val ENCRYPTED_PARAMETER_SECRET = dotenv["ENCRYPTED_PARAMETER_SECRET"] ?: ""
     val ENCRYPTED_PARAMETER_SALT = dotenv["ENCRYPTED_PARAMETER_SALT"] ?: ""
 
+    val SESSION_ACCESS_TOKEN_LIFETIME = dotenv["SESSION_ACCESS_TOKEN_LIFETIME"]?.toLongOrNull() ?: 300
+
     object Test {
         val URL = (dotenv["TEST_URL"] ?: "http://localhost:$PORT").let {
             if (it.endsWith("/")) it.substring(0, it.length - 1) else it

@@ -68,6 +68,12 @@ ID uses a `.env` file for configuration via [cdimascio/dotenv-kotlin](https://gi
 | `ENCRYPTED_PARAMETER_SECRET`| Secret for encrypting parameters   | `""`    |
 | `ENCRYPTED_PARAMETER_SALT`  | Salt for encrypting parameters     | `""`    |
 
+### Security Configuration
+
+| Variable                        | Description                                            | Default |
+|---------------------------------|--------------------------------------------------------|---------|
+| `SESSION_ACCESS_TOKEN_LIFETIME` | Maximum lifetime of a session access token, in seconds | `300`   |
+
 ### Testing
 
 | Variable         | Description                         | Default                      |
