@@ -111,7 +111,11 @@ fun main() {
             )
         }
 
-        config.staticFiles.add("/", Location.CLASSPATH)
+        config.staticFiles.add {
+            it.hostedPath = "/"
+            it.directory = "/public"
+            it.location = Location.CLASSPATH
+        }
 
         config.validation.register(UUID::class.java, UUID::fromString)
     }.start(Env.PORT)

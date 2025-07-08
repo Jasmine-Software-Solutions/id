@@ -7,54 +7,6 @@ plugins {
     id("com.github.johnrengelman.shadow") version "8.0.0"
 }
 
-tasks.register<Copy>("copyResourcesToKotlinMain") {
-    group = "build"
-    description = "Copies resources to /build/classes/kotlin/main"
-
-    val sourceDir = file("src/main/resources") // Update this path if your resources are located elsewhere
-    val targetDir = file("build/classes/kotlin/main")
-
-    from(sourceDir)
-    into(targetDir)
-    include("**/*") // Adjust as needed to specify which files to include
-
-    doLast {
-        println("Resources copied to $targetDir")
-    }
-}
-
-tasks.register<Copy>("copyResourcesToKotlinTest") {
-    group = "build"
-    description = "Copies resources to /build/classes/kotlin/test"
-
-    val sourceDir = file("src/main/resources")
-    val targetDir = file("build/classes/kotlin/test")
-
-    from(sourceDir)
-    into(targetDir)
-    include("**/*")
-
-    doLast {
-        println("Resources copied to $targetDir")
-    }
-}
-
-tasks.build { dependsOn("copyResourcesToKotlinMain") }
-tasks.test {
-    dependsOn("copyResourcesToKotlinMain")
-    dependsOn("copyResourcesToKotlinTest")
-}
-
-tasks.jar {
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-    dependsOn("copyResourcesToKotlinMain")
-}
-
-tasks.shadowJar {
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-    dependsOn("copyResourcesToKotlinMain")
-}
-
 group = "com.jasminesoftwaresolutions"
 version = "1.0.0-SNAPSHOT"
 
