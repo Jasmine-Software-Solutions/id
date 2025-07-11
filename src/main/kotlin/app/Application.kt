@@ -34,11 +34,13 @@ import io.javalin.community.routing.annotations.AnnotatedRouting
 import io.javalin.http.HttpStatus
 import io.javalin.http.staticfiles.Location
 import io.javalin.rendering.template.JavalinJte
+import org.jetbrains.exposed.exceptions.ExposedSQLException
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.DatabaseConfig
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.nio.file.Path
+import java.sql.SQLIntegrityConstraintViolationException
 import java.util.*
 
 val templateEngine: TemplateEngine = if (Env.HOT_RELOAD_JTE_TEMPLATES) {
@@ -121,8 +123,17 @@ fun main() {
     }.start(Env.PORT)
 
     app.before { ctx ->
-        if (ctx.cookie("session") != null)
-            transaction { SessionAuditTable.write(ctx, "Accessed path (${ctx.path()}).") }
+        if (ctx.cookie("session") != null) {
+            transaction {
+                try {
+                    SessionAuditTable.write(ctx, "Accessed path (${ctx.path()}).")
+                    commit()
+                } catch (e: ExposedSQLException) {
+                    if (e.cause is SQLIntegrityConstraintViolationException) return@transaction
+                    throw e
+                }
+            }
+        }
     }
 
     app.error(HttpStatus.NOT_FOUND) { ctx -> ctx.renderWithContext("pages/status/4xx.kte") }
