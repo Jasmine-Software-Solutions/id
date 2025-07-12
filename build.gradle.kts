@@ -66,7 +66,7 @@ jte {
 tasks.test {
     useJUnitPlatform()
 
-    environment("ENV_FILE_PATH", "test.env")
+    environment("ENV_FILE_PATH", ".env.test")
 }
 
 tasks.withType<Jar> {

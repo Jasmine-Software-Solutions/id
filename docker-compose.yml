@@ -1,0 +1,62 @@
+services:
+  id:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "80:${PORT}"
+    environment:
+      - PORT=${PORT}
+
+      - DATABASE_DRIVER=${DATABASE_DRIVER}
+      - DATABASE_URL=${DATABASE_URL}
+      - DATABASE_USERNAME=${DATABASE_USERNAME}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+      - DATABASE_POOL_SIZE=${DATABASE_POOL_SIZE}
+
+      - PASSWORD_SALT_LENGTH=${PASSWORD_SALT_LENGTH}
+      - PASSWORD_HASH_ITERATIONS=${PASSWORD_HASH_ITERATIONS}
+      - ARGON2_MEMORY=${ARGON2_MEMORY}
+      - ARGON2_PARALLELISM=${ARGON2_PARALLELISM}
+
+      - SMTP_ENABLED=${SMTP_ENABLED}
+      - SMTP_AUTH=${SMTP_AUTH}
+      - SMTP_STARTTLS_ENABLE=${SMTP_STARTTLS_ENABLE}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_SSL_TRUST=${SMTP_SSL_TRUST}
+
+      - SMTP_USERNAME=${SMTP_USERNAME}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - SMTP_EMAIL=${SMTP_EMAIL}
+
+      - SUPPORT_EMAIL=${SUPPORT_EMAIL}
+
+      - ENCRYPTED_PARAMETER_SECRET=${ENCRYPTED_PARAMETER_SECRET}
+      - ENCRYPTED_PARAMETER_SALT=${ENCRYPTED_PARAMETER_SALT}
+
+      - SESSION_ACCESS_TOKEN_LIFETIME=${SESSION_ACCESS_TOKEN_LIFETIME}
+    depends_on:
+      - db
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  db:
+    image: mysql:8.0
+    environment:
+      - MYSQL_ROOT_PASSWORD=root_password
+      - MYSQL_DATABASE=id
+      - MYSQL_USER=${DATABASE_USERNAME}
+      - MYSQL_PASSWORD=${DATABASE_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    restart: unless-stopped
+    command: --default-authentication-plugin=mysql_native_password
+
+volumes:
+  mysql_data: 

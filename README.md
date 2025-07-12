@@ -82,6 +82,31 @@ ID uses a `.env` file for configuration via [cdimascio/dotenv-kotlin](https://gi
 | `TEST_HEADLESS`   | Run browser tests headlessly        | `true`                       |
 | `LOGIN_TIMEOUT`   | Login timeout in ms                 | `1000.0`                     |
 
+## Docker Support
+
+**id** includes comprehensive Docker support for easy deployment and development.
+
+### Quick Start
+
+1. **Clone and navigate to the project:**
+   ```bash
+   clone https://github.com/Jasmine-Software-Solutions/id.git
+   cd id
+   ```
+
+2. **Create environment file:**
+   ```bash
+   touch .env
+   ```
+
+3. **Start with Docker Compose:**
+   ```bash
+   docker-compose up -d
+   ```
+
+4. **Access the application:**
+   - Web UI: http://localhost:80
+
 ## License
 
 © Jasmine Software Solutions, LLC. All rights reserved.

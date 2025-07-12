@@ -1,0 +1,49 @@
+# Git
+.git
+.gitignore
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Build artifacts
+build/
+.gradle/
+jte-classes/
+
+# Logs
+*.log
+logs/
+
+# Environment files (should be mounted or passed as env vars)
+.env
+.env.test
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# Test files
+src/test/
+
+# Documentation
+README.md
+*.md
+
+# Docker files (to avoid recursive copying)
+Dockerfile
+.dockerignore
+docker-compose*.yml 
