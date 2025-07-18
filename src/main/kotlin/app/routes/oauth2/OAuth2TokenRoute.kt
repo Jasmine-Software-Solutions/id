@@ -140,9 +140,13 @@ object OAuth2TokenRoute {
                 throw BadRequestResponse("Refresh token expired")
             }
 
-            val newToken = SecureToken()
+            val newAccessToken = SecureToken()
+            val newRefreshToken = SecureToken()
+
             sessionAccessToken.lastRefreshed = Instant.now()
-            sessionAccessToken.accessToken = newToken
+
+            sessionAccessToken.accessToken = newAccessToken
+            sessionAccessToken.refreshToken = newRefreshToken
 
             GrantAuditTable.write(
                 ctx,
@@ -152,7 +156,8 @@ object OAuth2TokenRoute {
             ctx.json(
                 mapOf(
                     "token_type" to "Bearer",
-                    "access_token" to newToken,
+                    "access_token" to newAccessToken,
+                    "refresh_token" to newRefreshToken,
                     "expires_in" to (sessionAccessToken.session.expiresAt.epochSecond - Instant.now().epochSecond)
                         .coerceAtMost(Env.SESSION_ACCESS_TOKEN_LIFETIME),
                     "refresh_token_expires_in" to sessionAccessToken.session.expiresAt.epochSecond - Instant.now().epochSecond
@@ -179,6 +184,9 @@ object OAuth2TokenRoute {
         val (clientId, clientSecret) = decodedCredentials.split(":", limit = 2)
             .takeIf { it.size == 2 }
             ?: throw BadRequestResponse("Invalid client credentials format")
+
+        if (runCatching { UUID.fromString(clientId) }.isFailure)
+            throw BadRequestResponse("Invalid client credentials format")
 
         val requestedScope = ctx.queryParam("scope")
 
