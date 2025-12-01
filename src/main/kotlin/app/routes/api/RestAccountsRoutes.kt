@@ -3,8 +3,10 @@ package app.routes.api
 import app.sql.account.Account
 import app.sql.account.AccountsTable
 import app.sql.tenant.TenantAccountLinksTable
+import com.fasterxml.jackson.annotation.JsonProperty
 import io.javalin.community.routing.annotations.Endpoints
 import io.javalin.community.routing.annotations.Get
+import io.javalin.http.BadRequestResponse
 import io.javalin.http.Context
 import io.javalin.http.NotFoundResponse
 import org.jetbrains.exposed.sql.*
@@ -19,11 +21,12 @@ import java.util.*
 @Endpoints("/api/v1/accounts")
 object RestAccountsRoutes {
     data class AccountDTO(
-        val id: UUID,
-        val email: String,
-        val firstName: String,
-        val lastName: String,
-        val createdAt: Instant
+        @JsonProperty("id") val id: UUID,
+        @JsonProperty("email") val email: String,
+        @JsonProperty("first_name") val firstName: String,
+        @JsonProperty("last_name") val lastName: String,
+        @JsonProperty("created_at") val createdAt: Long,
+        @JsonProperty("system_admin") val systemAdmin: Boolean,
     )
 
     @Get
@@ -83,7 +86,8 @@ object RestAccountsRoutes {
                     email = account.email,
                     firstName = account.firstName,
                     lastName = account.lastName,
-                    createdAt = account.createdAt
+                    createdAt = account.createdAt.toEpochMilli(),
+                    systemAdmin = account.systemAdmin,
                 )
             })
 

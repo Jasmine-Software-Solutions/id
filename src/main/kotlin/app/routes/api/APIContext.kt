@@ -30,11 +30,11 @@ val Context.tenantId: UUID?
 fun Context.requireAdministratorAndScope(scope: String) {
     val tokens = requireAuthorization()
 
-    if (!tokens.authorizedFor(scope, tenantId))
-        throw ForbiddenResponse()
-
     // Check resource owner's permissions
     transaction {
+        if (!tokens.authorizedFor(scope, tenantId))
+            throw ForbiddenResponse()
+
         // MachineAccessTokens are permitted to access all resources within scope
         // because they are not bound to a Resource Owner's permissions, but instead
         // to a Client's permissions.
