@@ -104,4 +104,32 @@ object RestAccountsRoutes {
             """.trimIndent())
         }
     }
+
+    @Get("/{id}")
+    fun info(ctx: Context) {
+        ctx.requireAdministratorAndScope("id:accounts:read")
+
+        val id = runCatching { UUID.fromString(ctx.pathParam("id")) }.getOrNull()
+            ?: throw BadRequestResponse()
+
+        transaction {
+            val account = AccountsTable.innerJoin(TenantAccountLinksTable)
+                .select { TenantAccountLinksTable.tenant eq ctx.tenantId and (AccountsTable.id eq id) }
+                .map { Account.wrapRow(it) }
+                .firstOrNull() ?: throw NotFoundResponse()
+
+            ctx.json(AccountDTO(
+                id = account.id.value,
+                email = account.email,
+                firstName = account.firstName,
+                lastName = account.lastName,
+                createdAt = account.createdAt.toEpochMilli(),
+                systemAdmin = account.systemAdmin,
+            ))
+
+            ctx.writeApiAudit("""
+                Info queried on account ${account.id.value}.
+            """.trimIndent())
+        }
+    }
 }
