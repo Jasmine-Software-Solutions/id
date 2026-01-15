@@ -2,7 +2,7 @@ FROM gradle:8.5-jdk17 AS builder
 
 WORKDIR /app
 
-COPY build.gradle.kts settings.gradle.kts gradle.properties ./
+COPY server/build.gradle.kts settings.gradle.kts gradle.properties ./
 COPY gradle/ gradle/
 COPY gradlew gradlew.bat ./
 
