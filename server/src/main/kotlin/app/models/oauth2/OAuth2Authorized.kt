@@ -1,4 +1,4 @@
-package app.sql.oauth2
+package app.models.oauth2
 
 import java.util.*
 

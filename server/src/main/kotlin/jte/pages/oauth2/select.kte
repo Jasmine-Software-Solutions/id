@@ -1,5 +1,5 @@
-@import app.sql.account.Account
-@import app.sql.tenant.Tenant
+@import app.models.account.Account
+@import app.models.tenant.Tenant
 
 @param account: Account
 @param tenants: List<Tenant>

@@ -1,4 +1,4 @@
-package app.sql.tenant
+package app.models.tenant
 
 import app.etc.transformInstant
 import org.jetbrains.exposed.dao.UUIDEntity

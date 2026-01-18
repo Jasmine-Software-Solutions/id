@@ -1,9 +1,9 @@
-package app.sql.audit
+package app.models.audit
 
 import app.routes.oauth2.OAuth2AuthorizationRoute.requireAuthorization
-import app.sql.account.SessionsTable
-import app.sql.oauth2.SessionAccessTokens
-import app.sql.oauth2.SessionAccessTokensTable
+import app.models.account.SessionsTable
+import app.models.oauth2.SessionAccessTokens
+import app.models.oauth2.SessionAccessTokensTable
 import io.javalin.http.Context
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.ReferenceOption

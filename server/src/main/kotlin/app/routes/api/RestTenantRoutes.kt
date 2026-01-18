@@ -1,6 +1,6 @@
 package app.routes.api
 
-import app.sql.tenant.Tenant
+import app.models.tenant.Tenant
 import io.javalin.community.routing.annotations.Endpoints
 import io.javalin.community.routing.annotations.Get
 import io.javalin.http.Context

@@ -1,10 +1,8 @@
-package app.sql.oauth2
+package app.models.oauth2
 
 import app.etc.transformInstant
-import app.sql.client.Client
-import app.sql.client.ClientsTable
-import app.sql.tenant.Tenant
-import app.sql.tenant.TenantsTable
+import app.models.client.Client
+import app.models.client.ClientsTable
 import org.jetbrains.exposed.dao.UUIDEntity
 import org.jetbrains.exposed.dao.UUIDEntityClass
 import org.jetbrains.exposed.dao.id.EntityID

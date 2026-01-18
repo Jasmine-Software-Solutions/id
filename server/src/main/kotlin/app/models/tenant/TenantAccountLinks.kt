@@ -1,6 +1,6 @@
-package app.sql.tenant
+package app.models.tenant
 
-import app.sql.account.AccountsTable
+import app.models.account.AccountsTable
 import org.jetbrains.exposed.sql.ReferenceOption
 import org.jetbrains.exposed.sql.Table
 import org.jetbrains.exposed.sql.select

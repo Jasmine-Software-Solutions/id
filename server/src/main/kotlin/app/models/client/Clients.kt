@@ -1,4 +1,4 @@
-package app.sql.client
+package app.models.client
 
 import app.etc.transformInstant
 import org.jetbrains.exposed.dao.UUIDEntity

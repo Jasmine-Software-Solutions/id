@@ -2,10 +2,10 @@ package app.routes.oauth2
 
 import app.Env
 import app.routes.oauth2.OAuth2AuthorizationRoute.requireAuthorization
-import app.sql.oauth2.MachineAccessTokens
-import app.sql.oauth2.MachineAccessTokensTable
-import app.sql.oauth2.SessionAccessTokens
-import app.sql.oauth2.SessionAccessTokensTable
+import app.models.oauth2.MachineAccessTokens
+import app.models.oauth2.MachineAccessTokensTable
+import app.models.oauth2.SessionAccessTokens
+import app.models.oauth2.SessionAccessTokensTable
 import io.javalin.community.routing.annotations.Post
 import io.javalin.http.BadRequestResponse
 import io.javalin.http.Context

@@ -1,4 +1,4 @@
-package app.sql.client
+package app.models.client
 
 import org.jetbrains.exposed.dao.UUIDEntity
 import org.jetbrains.exposed.dao.UUIDEntityClass

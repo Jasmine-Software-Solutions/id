@@ -1,8 +1,8 @@
 package app.routes.api
 
 import app.routes.oauth2.OAuth2AuthorizationRoute.requireAuthorization
-import app.sql.oauth2.SessionAccessTokens
-import app.sql.tenant.TenantAccountLinksTable
+import app.models.oauth2.SessionAccessTokens
+import app.models.tenant.TenantAccountLinksTable
 import io.javalin.community.routing.annotations.Endpoints
 import io.javalin.community.routing.annotations.Get
 import io.javalin.http.Context

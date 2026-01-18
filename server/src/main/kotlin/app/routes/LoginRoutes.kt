@@ -8,9 +8,9 @@ import app.etc.hxRedirect
 import app.etc.renderWithContext
 import app.routes.oauth2.OAuth2AuthorizationRoute.oauth2Request
 import app.routes.oauth2.OAuth2AuthorizationRoute.redirectToOAuth2Authorize
-import app.sql.account.*
-import app.sql.audit.LoginAuditTable
-import app.sql.tenant.TenantAccountLinksTable
+import app.models.account.*
+import app.models.audit.LoginAuditTable
+import app.models.tenant.TenantAccountLinksTable
 import app.templateEngine
 import de.mkammerer.argon2.Argon2Factory
 import dev.turingcomplete.kotlinonetimepassword.GoogleAuthenticator

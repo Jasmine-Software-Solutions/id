@@ -1,4 +1,4 @@
-package app.sql.audit
+package app.models.audit
 
 import io.javalin.http.Context
 import org.jetbrains.exposed.dao.id.IntIdTable

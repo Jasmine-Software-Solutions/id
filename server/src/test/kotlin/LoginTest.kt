@@ -1,10 +1,10 @@
 import app.Env
 import app.app
 import app.main
-import app.sql.account.Account
-import app.sql.account.Password
-import app.sql.account.SessionsTable
-import app.sql.audit.LoginAuditTable
+import app.models.account.Account
+import app.models.account.Password
+import app.models.account.SessionsTable
+import app.models.audit.LoginAuditTable
 import com.microsoft.playwright.Browser
 import com.microsoft.playwright.BrowserType
 import com.microsoft.playwright.Page

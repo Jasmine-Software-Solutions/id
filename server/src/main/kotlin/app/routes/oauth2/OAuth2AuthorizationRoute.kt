@@ -5,11 +5,11 @@ import app.etc.hxRedirect
 import app.etc.hxRetarget
 import app.etc.renderWithContext
 import app.routes.LoginRoutes.requireSession
-import app.sql.client.Client
-import app.sql.oauth2.*
-import app.sql.tenant.Tenant
-import app.sql.tenant.TenantAccountLinksTable
-import app.sql.tenant.TenantsTable
+import app.models.client.Client
+import app.models.oauth2.*
+import app.models.tenant.Tenant
+import app.models.tenant.TenantAccountLinksTable
+import app.models.tenant.TenantsTable
 import com.fasterxml.jackson.annotation.JsonProperty
 import io.javalin.community.routing.annotations.Get
 import io.javalin.community.routing.annotations.Post

@@ -1,4 +1,4 @@
-package app.sql.account
+package app.models.account
 
 import org.jetbrains.exposed.dao.id.IntIdTable
 import org.jetbrains.exposed.sql.ReferenceOption

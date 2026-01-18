@@ -1,4 +1,4 @@
-package app.sql.account
+package app.models.account
 
 import app.etc.transformInstant
 import app.etc.transformNullableInstant

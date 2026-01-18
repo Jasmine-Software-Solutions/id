@@ -1,17 +1,17 @@
-package app.sql.oauth2
+package app.models.oauth2
 
 import app.Env
 import app.etc.SecureToken
 import app.etc.transformInstant
 import app.etc.transformNullableInstant
-import app.sql.account.Session
-import app.sql.account.SessionsTable
-import app.sql.client.Client
-import app.sql.client.ClientRedirectUri
-import app.sql.client.ClientRedirectUrisTable
-import app.sql.client.ClientsTable
-import app.sql.tenant.Tenant
-import app.sql.tenant.TenantsTable
+import app.models.account.Session
+import app.models.account.SessionsTable
+import app.models.client.Client
+import app.models.client.ClientRedirectUri
+import app.models.client.ClientRedirectUrisTable
+import app.models.client.ClientsTable
+import app.models.tenant.Tenant
+import app.models.tenant.TenantsTable
 import org.jetbrains.exposed.dao.UUIDEntity
 import org.jetbrains.exposed.dao.UUIDEntityClass
 import org.jetbrains.exposed.dao.id.EntityID

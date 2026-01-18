@@ -1,8 +1,8 @@
 package app.routes.api
 
-import app.sql.account.Account
-import app.sql.account.AccountsTable
-import app.sql.tenant.TenantAccountLinksTable
+import app.models.account.Account
+import app.models.account.AccountsTable
+import app.models.tenant.TenantAccountLinksTable
 import com.fasterxml.jackson.annotation.JsonProperty
 import io.javalin.community.routing.annotations.Endpoints
 import io.javalin.community.routing.annotations.Get
