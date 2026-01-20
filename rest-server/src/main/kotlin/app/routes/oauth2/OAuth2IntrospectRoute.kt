@@ -1,11 +1,11 @@
 package app.routes.oauth2
 
 import app.Env
-import app.routes.oauth2.OAuth2AuthorizationRoute.requireAuthorization
 import app.models.oauth2.MachineAccessTokens
 import app.models.oauth2.MachineAccessTokensTable
 import app.models.oauth2.SessionAccessTokens
 import app.models.oauth2.SessionAccessTokensTable
+import app.routes.oauth2.OAuth2TokenRoute.requireAuthorization
 import io.javalin.community.routing.annotations.Post
 import io.javalin.http.BadRequestResponse
 import io.javalin.http.Context
@@ -15,7 +15,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 
 object OAuth2IntrospectRoute {
     @Suppress("unused")
-    @Post("/oauth2/introspect")
+    @Post("/api/v1/oauth2/introspect")
     fun introspect(ctx: Context) {
         val authenticatingToken = ctx.requireAuthorization()
 

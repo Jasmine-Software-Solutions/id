@@ -1,4 +1,4 @@
-package app.routes.api
+package app.routes
 
 import app.models.tenant.Tenant
 import io.javalin.community.routing.annotations.Endpoints

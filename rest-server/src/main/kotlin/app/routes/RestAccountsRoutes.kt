@@ -1,4 +1,4 @@
-package app.routes.api
+package app.routes
 
 import app.models.account.Account
 import app.models.account.AccountsTable

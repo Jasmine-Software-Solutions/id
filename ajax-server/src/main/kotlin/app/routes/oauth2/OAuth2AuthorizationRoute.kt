@@ -175,32 +175,6 @@ object OAuth2AuthorizationRoute {
         ctx.redirectToOAuth2Authorize(tenant)
     }
 
-    fun Context.requireAuthorization(): OAuth2Authorized {
-        if (attribute<OAuth2Authorized>("oauth2_authorization") != null)
-            return attribute("oauth2_authorization")!!
-
-        val token = this.header("Authorization")
-            ?: throw UnauthorizedResponse("Missing Authorization header")
-
-        val accessToken = token.substringAfter("Bearer ").takeIf { it.isNotBlank() }
-            ?: throw UnauthorizedResponse("Invalid Authorization header format")
-
-        return transaction {
-            val sessionAccessTokens = SessionAccessTokens.find { SessionAccessTokensTable.accessToken eq accessToken }.firstOrNull()
-            val machineAccessTokens = MachineAccessTokens.find { MachineAccessTokensTable.accessToken eq accessToken }.firstOrNull()
-
-            val tokens = sessionAccessTokens ?: machineAccessTokens
-                ?: throw UnauthorizedResponse("Invalid access token")
-
-            if (!tokens.isAccessTokenActive())
-                throw UnauthorizedResponse("Access token has expired")
-
-            attribute("oauth2_authorization", tokens)
-
-            return@transaction tokens
-        }
-    }
-
     fun Context.redirectToOAuth2Authorize(tenant: UUID? = null) {
         val request = oauth2Request()!!
 

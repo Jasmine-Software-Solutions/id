@@ -2,14 +2,16 @@ package app.routes.oauth2
 
 import app.Env
 import app.etc.SecureToken
-import app.routes.api.writeApiAudit
+import app.etc.write
 import app.models.audit.GrantAuditTable
 import app.models.client.Client
 import app.models.client.ClientsTable
 import app.models.oauth2.MachineAccessTokens
 import app.models.oauth2.MachineAccessTokensTable
+import app.models.oauth2.OAuth2Authorized
 import app.models.oauth2.SessionAccessTokens
 import app.models.oauth2.SessionAccessTokensTable
+import app.routes.writeApiAudit
 import io.javalin.community.routing.annotations.Get
 import io.javalin.http.BadRequestResponse
 import io.javalin.http.Context
@@ -21,7 +23,7 @@ import java.util.*
 
 object OAuth2TokenRoute {
     @Suppress("unused")
-    @Get("/oauth2/token")
+    @Get("/api/v1/oauth2/token")
     fun token(ctx: Context) {
         val grantType = ctx.queryParam("grant_type")
             ?: throw BadRequestResponse("Missing grant_type")
@@ -237,6 +239,32 @@ object OAuth2TokenRoute {
             )
 
             GrantAuditTable.write(ctx, "TERM Generated machine access token for client (${client.id.value}).")
+        }
+    }
+
+    fun Context.requireAuthorization(): OAuth2Authorized {
+        if (attribute<OAuth2Authorized>("oauth2_authorization") != null)
+            return attribute("oauth2_authorization")!!
+
+        val token = this.header("Authorization")
+            ?: throw UnauthorizedResponse("Missing Authorization header")
+
+        val accessToken = token.substringAfter("Bearer ").takeIf { it.isNotBlank() }
+            ?: throw UnauthorizedResponse("Invalid Authorization header format")
+
+        return transaction {
+            val sessionAccessTokens = SessionAccessTokens.find { SessionAccessTokensTable.accessToken eq accessToken }.firstOrNull()
+            val machineAccessTokens = MachineAccessTokens.find { MachineAccessTokensTable.accessToken eq accessToken }.firstOrNull()
+
+            val tokens = sessionAccessTokens ?: machineAccessTokens
+            ?: throw UnauthorizedResponse("Invalid access token")
+
+            if (!tokens.isAccessTokenActive())
+                throw UnauthorizedResponse("Access token has expired")
+
+            attribute("oauth2_authorization", tokens)
+
+            return@transaction tokens
         }
     }
 }

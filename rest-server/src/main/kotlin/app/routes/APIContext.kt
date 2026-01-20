@@ -1,11 +1,12 @@
-package app.routes.api
+package app.routes
 
-import app.routes.oauth2.OAuth2AuthorizationRoute.requireAuthorization
+import app.etc.write
 import app.models.audit.ClientAuditTable
 import app.models.audit.SessionAuditTable
 import app.models.oauth2.MachineAccessTokens
 import app.models.oauth2.SessionAccessTokens
 import app.models.tenant.TenantAccountLinksTable
+import app.routes.oauth2.OAuth2TokenRoute.requireAuthorization
 import io.javalin.http.Context
 import io.javalin.http.ForbiddenResponse
 import io.javalin.http.UnauthorizedResponse

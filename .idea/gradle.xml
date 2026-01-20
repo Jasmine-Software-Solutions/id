@@ -9,6 +9,8 @@
         <option name="modules">
           <set>
             <option value="$PROJECT_DIR$" />
+            <option value="$PROJECT_DIR$/ajax-server" />
+            <option value="$PROJECT_DIR$/rest-server" />
             <option value="$PROJECT_DIR$/server" />
           </set>
         </option>

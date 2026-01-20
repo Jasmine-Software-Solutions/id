@@ -104,59 +104,8 @@ class OAuth2Test {
     }
 
     @Test
-    fun `authorize endpoint returns error for missing parameters`() {
-        val url = "${Env.Test.URL}/oauth2/authorize"
-        val request = HttpRequest.newBuilder()
-            .uri(URI.create(url))
-            .GET()
-            .build()
-        val response = client.send(request, HttpResponse.BodyHandlers.ofString())
-        assertEquals(400, response.statusCode())
-    }
-
-    @Test
-    fun `authorize endpoint returns error for invalid client_id`() {
-        val url = "${Env.Test.URL}/oauth2/authorize?response_type=code&client_id=${UUID.randomUUID()}&redirect_uri=http://localhost/callback"
-        val request = HttpRequest.newBuilder()
-            .uri(URI.create(url))
-            .GET()
-            .build()
-        val response = client.send(request, HttpResponse.BodyHandlers.ofString())
-        assertEquals(400, response.statusCode())
-    }
-
-    @Test
-    fun `authorize endpoint returns error for invalid redirect_uri`() {
-        val url = "${Env.Test.URL}/oauth2/authorize?response_type=code&client_id=${testClient.id.value}&redirect_uri=http://invalid/callback"
-        val request = HttpRequest.newBuilder()
-            .uri(URI.create(url))
-            .GET()
-            .build()
-        val response = client.send(request, HttpResponse.BodyHandlers.ofString())
-        assertEquals(400, response.statusCode())
-    }
-
-    @Test
-    fun `authorize endpoint returns redirect with code for valid request`() {
-        val url = "${Env.Test.URL}/oauth2/authorize?response_type=code&client_id=${testClient.id.value}&redirect_uri=${testRedirectUri.uri}&scope=openid&tenant=${testTenant.id.value}"
-        val cookie = "session=${testSession.token}"
-        val request = HttpRequest.newBuilder()
-            .uri(URI.create(url))
-            .header("Cookie", cookie)
-            .GET()
-            .build()
-        val response = client.send(request, HttpResponse.BodyHandlers.ofString())
-        // Should redirect (302 or 303) to the redirect_uri with code
-        assertTrue(response.statusCode() in 300..399)
-        val location = response.headers().firstValue("Location")
-        assertTrue(location.isPresent)
-        assertTrue(location.get().contains("code="))
-        assertTrue(location.get().contains("tenant=${testTenant.id.value}"))
-    }
-
-    @Test
     fun `token endpoint returns error for missing grant_type`() {
-        val url = "${Env.Test.URL}/oauth2/token"
+        val url = "${Env.Test.URL}/api/v1/oauth2/token"
         val request = HttpRequest.newBuilder()
             .uri(URI.create(url))
             .GET()
@@ -167,7 +116,7 @@ class OAuth2Test {
 
     @Test
     fun `token endpoint returns error for invalid grant_type`() {
-        val url = "${Env.Test.URL}/oauth2/token?grant_type=invalid"
+        val url = "${Env.Test.URL}/api/v1/oauth2/token?grant_type=invalid"
         val request = HttpRequest.newBuilder()
             .uri(URI.create(url))
             .GET()
@@ -178,7 +127,7 @@ class OAuth2Test {
 
     @Test
     fun `token endpoint returns error for missing code in authorization_code grant`() {
-        val url = "${Env.Test.URL}/oauth2/token?grant_type=authorization_code"
+        val url = "${Env.Test.URL}/api/v1/oauth2/token?grant_type=authorization_code"
         val request = HttpRequest.newBuilder()
             .uri(URI.create(url))
             .GET()
@@ -189,7 +138,7 @@ class OAuth2Test {
 
     @Test
     fun `token endpoint returns error for invalid code in authorization_code grant`() {
-        val url = "${Env.Test.URL}/oauth2/token?grant_type=authorization_code&code=invalid&client_id=${testClient.id.value}&redirect_uri=${testRedirectUri.uri}"
+        val url = "${Env.Test.URL}/api/v1/oauth2/token?grant_type=authorization_code&code=invalid&client_id=${testClient.id.value}&redirect_uri=${testRedirectUri.uri}"
         val request = HttpRequest.newBuilder()
             .uri(URI.create(url))
             .GET()
@@ -227,7 +176,7 @@ class OAuth2Test {
             }
         }
 
-        val tokenUrl = "${Env.Test.URL}/oauth2/token?grant_type=authorization_code&code=${tokens.authorizationCode}&client_id=${testClient.id.value}&redirect_uri=${testRedirectUri.uri}"
+        val tokenUrl = "${Env.Test.URL}/api/v1/oauth2/token?grant_type=authorization_code&code=${tokens.authorizationCode}&client_id=${testClient.id.value}&redirect_uri=${testRedirectUri.uri}"
         val tokenRequest = HttpRequest.newBuilder()
             .uri(URI.create(tokenUrl))
             .header("Authorization", "Bearer ${mat.accessToken}")
@@ -241,7 +190,7 @@ class OAuth2Test {
 
     @Test
     fun `token endpoint returns error for invalid refresh_token`() {
-        val url = "${Env.Test.URL}/oauth2/token?grant_type=refresh_token&refresh_token=invalid"
+        val url = "${Env.Test.URL}/api/v1/oauth2/token?grant_type=refresh_token&refresh_token=invalid"
         val request = HttpRequest.newBuilder()
             .uri(URI.create(url))
             .GET()
@@ -280,7 +229,7 @@ class OAuth2Test {
             }
         }
 
-        val refreshUrl = "${Env.Test.URL}/oauth2/token?grant_type=refresh_token&refresh_token=${tokens.refreshToken}"
+        val refreshUrl = "${Env.Test.URL}/api/v1/oauth2/token?grant_type=refresh_token&refresh_token=${tokens.refreshToken}"
         val refreshRequest = HttpRequest.newBuilder()
             .uri(URI.create(refreshUrl))
             .header("Authorization", "Bearer ${mat.accessToken}")
@@ -294,7 +243,7 @@ class OAuth2Test {
 
     @Test
     fun `token endpoint returns error for missing Authorization header in client_credentials grant`() {
-        val url = "${Env.Test.URL}/oauth2/token?grant_type=client_credentials"
+        val url = "${Env.Test.URL}/api/v1/oauth2/token?grant_type=client_credentials"
         val request = HttpRequest.newBuilder()
             .uri(URI.create(url))
             .GET()
@@ -305,7 +254,7 @@ class OAuth2Test {
 
     @Test
     fun `token endpoint returns error for invalid client credentials`() {
-        val url = "${Env.Test.URL}/oauth2/token?grant_type=client_credentials"
+        val url = "${Env.Test.URL}/api/v1/oauth2/token?grant_type=client_credentials"
         val invalidCreds = Base64.getEncoder().encodeToString("invalid:invalid".toByteArray())
         val request = HttpRequest.newBuilder()
             .uri(URI.create(url))
@@ -324,7 +273,7 @@ class OAuth2Test {
             testClient.secret = "testsecret"
         }
 
-        val url = "${Env.Test.URL}/oauth2/token?grant_type=client_credentials"
+        val url = "${Env.Test.URL}/api/v1/oauth2/token?grant_type=client_credentials"
         val creds = Base64.getEncoder().encodeToString("${testClient.id.value}:testsecret".toByteArray())
         val request = HttpRequest.newBuilder()
             .uri(URI.create(url))
