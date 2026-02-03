@@ -138,9 +138,20 @@ class OAuth2Test {
 
     @Test
     fun `token endpoint returns error for invalid code in authorization_code grant`() {
+        val mat = transaction {
+            MachineAccessTokens.new {
+                this.client = testClient
+                this.issuedAt = Instant.now()
+                this.expiresAt = Instant.now().plus(1, ChronoUnit.DAYS)
+                this.accessToken = SecureToken()
+                this.scope = null
+            }
+        }
+
         val url = "${Env.Test.URL}/api/v1/oauth2/token?grant_type=authorization_code&code=invalid&client_id=${testClient.id.value}&redirect_uri=${testRedirectUri.uri}"
         val request = HttpRequest.newBuilder()
             .uri(URI.create(url))
+            .header("Authorization", "Bearer ${mat.accessToken}")
             .GET()
             .build()
         val response = client.send(request, HttpResponse.BodyHandlers.ofString())
