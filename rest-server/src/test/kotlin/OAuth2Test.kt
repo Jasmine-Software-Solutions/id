@@ -1,16 +1,15 @@
 import app.Env
-import app.app
-import app.etc.SecureToken
-import app.main
-import app.models.account.Account
-import app.models.account.Password
-import app.models.account.Session
-import app.models.client.Client
-import app.models.client.ClientRedirectUri
-import app.models.oauth2.MachineAccessTokens
-import app.models.oauth2.SessionAccessTokens
-import app.models.tenant.Tenant
-import app.models.tenant.TenantAccountLinksTable
+import app.RestApplication
+import app.infrastructure.etc.SecureToken
+import app.infrastructure.models.account.Account
+import app.infrastructure.models.account.Session
+import app.infrastructure.models.client.Client
+import app.infrastructure.models.client.ClientRedirectUri
+import app.infrastructure.models.oauth2.MachineAccessToken
+import app.infrastructure.models.oauth2.SessionAccessToken
+import app.infrastructure.models.tenant.Tenant
+import app.infrastructure.models.tenant.TenantAccountLinksTable
+import app.infrastructure.password.AccountPasswordUpdater
 import org.jetbrains.exposed.sql.insertIgnore
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.AfterAll
@@ -29,6 +28,8 @@ import java.util.*
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class OAuth2Test {
+    private lateinit var application: RestApplication
+
     private lateinit var client: HttpClient
     private lateinit var testAccount: Account
     private lateinit var testPassword: String
@@ -39,7 +40,9 @@ class OAuth2Test {
 
     @BeforeAll
     fun setup() {
-        main()
+        application = RestApplication()
+        application.start()
+
         client = HttpClient.newHttpClient()
         transaction {
             // Create tenant
@@ -66,7 +69,7 @@ class OAuth2Test {
             }
             // Set password
             testPassword = "password:oauth2user@test"
-            Password.new(testAccount, testPassword)
+            AccountPasswordUpdater().update(testAccount, testPassword)
             // Create OAuth2 client
             testClient = Client.new {
                 createdAt = Instant.now()
@@ -100,7 +103,7 @@ class OAuth2Test {
 
     @AfterAll
     fun teardown() {
-        app.stop()
+        application.stop()
     }
 
     @Test
@@ -139,7 +142,7 @@ class OAuth2Test {
     @Test
     fun `token endpoint returns error for invalid code in authorization_code grant`() {
         val mat = transaction {
-            MachineAccessTokens.new {
+            MachineAccessToken.new {
                 this.client = testClient
                 this.issuedAt = Instant.now()
                 this.expiresAt = Instant.now().plus(1, ChronoUnit.DAYS)
@@ -161,7 +164,7 @@ class OAuth2Test {
     @Test
     fun `token endpoint returns tokens for valid authorization_code grant`() {
         val tokens = transaction {
-            SessionAccessTokens.new {
+            SessionAccessToken.new {
                 this.session = testSession
                 this.client = testClient
                 this.redirectUri = testRedirectUri
@@ -178,7 +181,7 @@ class OAuth2Test {
         }
 
         val mat = transaction {
-            MachineAccessTokens.new {
+            MachineAccessToken.new {
                 this.client = testClient
                 this.issuedAt = Instant.now()
                 this.expiresAt = Instant.now().plus(1, ChronoUnit.DAYS)
@@ -213,7 +216,7 @@ class OAuth2Test {
     @Test
     fun `token endpoint returns new tokens for valid refresh_token`() {
         val tokens = transaction {
-            SessionAccessTokens.new {
+            SessionAccessToken.new {
                 this.session = testSession
                 this.client = testClient
                 this.redirectUri = testRedirectUri
@@ -231,7 +234,7 @@ class OAuth2Test {
         }
 
         val mat = transaction {
-            MachineAccessTokens.new {
+            MachineAccessToken.new {
                 this.client = testClient
                 this.issuedAt = Instant.now()
                 this.expiresAt = Instant.now().plus(1, ChronoUnit.DAYS)

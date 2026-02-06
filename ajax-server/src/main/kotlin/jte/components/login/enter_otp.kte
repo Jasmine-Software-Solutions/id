@@ -1,4 +1,4 @@
-@import app.etc.EncryptedParameter
+@import app.infrastructure.etc.EncryptedParameter
 
 @param email: String
 @param password: String

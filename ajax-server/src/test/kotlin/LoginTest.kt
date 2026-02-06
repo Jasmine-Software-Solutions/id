@@ -1,10 +1,9 @@
+import app.AjaxApplication
 import app.Env
-import app.app
-import app.main
-import app.models.account.Account
-import app.models.account.Password
-import app.models.account.SessionsTable
-import app.models.audit.LoginAuditTable
+import app.infrastructure.models.account.Account
+import app.infrastructure.models.account.SessionsTable
+import app.infrastructure.models.audit.LoginAuditTable
+import app.infrastructure.password.AccountPasswordUpdater
 import com.microsoft.playwright.Browser
 import com.microsoft.playwright.BrowserType
 import com.microsoft.playwright.Page
@@ -21,12 +20,14 @@ import java.time.Instant
 
 class LoginTest {
     companion object {
+        private lateinit var application: AjaxApplication
         private lateinit var browser: Browser
 
         @BeforeAll
         @JvmStatic
         fun setup() {
-            main()
+            application = AjaxApplication()
+            application.start()
 
             // Create an account with a password
             transaction {
@@ -39,7 +40,7 @@ class LoginTest {
                     this.totpSecret = null
                 }
 
-                Password.new(account, "password:passwordUser@LoginTest")
+                AccountPasswordUpdater().update(account, "password:passwordUser@LoginTest")
             }
 
             // Create an account with a TOTP secret
@@ -53,7 +54,7 @@ class LoginTest {
                     this.totpSecret = "totpSecret"
                 }
 
-                Password.new(account, "password:totpUser@LoginTest")
+                AccountPasswordUpdater().update(account, "password:totpUser@LoginTest")
             }
 
             // Create a Chromium browser with the necessary configuration
@@ -74,7 +75,7 @@ class LoginTest {
                 }
             }
 
-            app.stop()
+            application.stop()
             browser.close()
         }
     }

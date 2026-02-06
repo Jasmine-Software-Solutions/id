@@ -1,16 +1,12 @@
+import app.AjaxApplication
 import app.Env
-import app.app
-import app.etc.SecureToken
-import app.main
-import app.models.account.Account
-import app.models.account.Password
-import app.models.account.Session
-import app.models.client.Client
-import app.models.client.ClientRedirectUri
-import app.models.oauth2.MachineAccessTokens
-import app.models.oauth2.SessionAccessTokens
-import app.models.tenant.Tenant
-import app.models.tenant.TenantAccountLinksTable
+import app.infrastructure.models.account.Account
+import app.infrastructure.models.account.Session
+import app.infrastructure.models.client.Client
+import app.infrastructure.models.client.ClientRedirectUri
+import app.infrastructure.models.tenant.Tenant
+import app.infrastructure.models.tenant.TenantAccountLinksTable
+import app.infrastructure.password.AccountPasswordUpdater
 import org.jetbrains.exposed.sql.insertIgnore
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.AfterAll
@@ -24,11 +20,12 @@ import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.time.Instant
-import java.time.temporal.ChronoUnit
 import java.util.*
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class OAuth2Test {
+    private lateinit var application: AjaxApplication
+
     private lateinit var client: HttpClient
     private lateinit var testAccount: Account
     private lateinit var testPassword: String
@@ -39,7 +36,9 @@ class OAuth2Test {
 
     @BeforeAll
     fun setup() {
-        main()
+        application = AjaxApplication()
+        application.start()
+
         client = HttpClient.newHttpClient()
         transaction {
             // Create tenant
@@ -66,7 +65,7 @@ class OAuth2Test {
             }
             // Set password
             testPassword = "password:oauth2user@test"
-            Password.new(testAccount, testPassword)
+            AccountPasswordUpdater().update(testAccount, testPassword)
             // Create OAuth2 client
             testClient = Client.new {
                 createdAt = Instant.now()
@@ -100,7 +99,7 @@ class OAuth2Test {
 
     @AfterAll
     fun teardown() {
-        app.stop()
+        application.stop()
     }
 
     @Test

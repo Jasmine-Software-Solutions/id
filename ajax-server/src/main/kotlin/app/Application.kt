@@ -1,26 +1,33 @@
 package app
 
-import app.etc.exception.FormErrorException
-import app.etc.hxReswap
-import app.etc.hxRetarget
-import app.etc.renderWithContext
-import app.etc.write
-import app.routes.oauth2.OAuth2AuthorizationRoute
-import app.routes.LoginRoutes
-import app.models.account.AccountsTable
-import app.models.account.ForgotPasswordCodesTable
-import app.models.account.PasswordsTable
-import app.models.account.SessionsTable
-import app.models.audit.ClientAuditTable
-import app.models.audit.GrantAuditTable
-import app.models.audit.LoginAuditTable
-import app.models.audit.SessionAuditTable
-import app.models.client.ClientRedirectUrisTable
-import app.models.client.ClientsTable
-import app.models.oauth2.MachineAccessTokensTable
-import app.models.oauth2.SessionAccessTokensTable
-import app.models.tenant.TenantAccountLinksTable
-import app.models.tenant.TenantsTable
+import app.application.ForgotPasswordService
+import app.application.LoginService
+import app.application.oauth2.OAuth2AuthorizeService
+import app.controllers.ForgotPasswordController
+import app.controllers.LoginController
+import app.controllers.oauth2.OAuth2Controller
+import app.infrastructure.ExposedLoginAuditLogger
+import app.infrastructure.ForgotPasswordEmailSender
+import app.infrastructure.etc.exception.FormErrorException
+import app.infrastructure.etc.hxReswap
+import app.infrastructure.etc.hxRetarget
+import app.infrastructure.etc.renderWithContext
+import app.infrastructure.etc.write
+import app.infrastructure.models.account.AccountsTable
+import app.infrastructure.models.account.ForgotPasswordCodesTable
+import app.infrastructure.models.account.PasswordsTable
+import app.infrastructure.models.account.SessionsTable
+import app.infrastructure.models.audit.ClientAuditTable
+import app.infrastructure.models.audit.GrantAuditTable
+import app.infrastructure.models.audit.LoginAuditTable
+import app.infrastructure.models.audit.SessionAuditTable
+import app.infrastructure.models.client.ClientRedirectUrisTable
+import app.infrastructure.models.client.ClientsTable
+import app.infrastructure.models.oauth2.MachineAccessTokensTable
+import app.infrastructure.models.oauth2.SessionAccessTokensTable
+import app.infrastructure.models.tenant.TenantAccountLinksTable
+import app.infrastructure.models.tenant.TenantsTable
+import app.infrastructure.password.AccountPasswordUpdater
 import com.zaxxer.hikari.HikariDataSource
 import gg.jte.ContentType
 import gg.jte.TemplateEngine
@@ -39,104 +46,149 @@ import java.nio.file.Path
 import java.sql.SQLIntegrityConstraintViolationException
 import java.util.*
 
-val templateEngine: TemplateEngine = if (Env.HOT_RELOAD_JTE_TEMPLATES) {
-    val codeResolver = DirectoryCodeResolver(Path.of("src", "main", "kotlin", "jte"))
-    TemplateEngine.create(codeResolver, ContentType.Html)
-} else TemplateEngine.createPrecompiled(Path.of("jte-classes"), ContentType.Html)
+class AjaxApplication {
+    private val templateEngine = if (Env.HOT_RELOAD_JTE_TEMPLATES) {
+        val codeResolver = DirectoryCodeResolver(Path.of("src", "main", "kotlin", "jte"))
+        TemplateEngine.create(codeResolver, ContentType.Html)
+    } else TemplateEngine.createPrecompiled(Path.of("jte-classes"), ContentType.Html)
 
-lateinit var database: Database
-lateinit var app: Javalin
+    private val database: Database
+    private val app: Javalin
 
-fun main() {
-    val dataSource = HikariDataSource().apply {
-        maximumPoolSize = Env.DATABASE_POOL_SIZE
-        driverClassName = Env.DATABASE_DRIVER
-        jdbcUrl = Env.DATABASE_URL
-        username = Env.DATABASE_USERNAME
-        password = Env.DATABASE_PASSWORD
-        isAutoCommit = false
+    init {
+        val dataSource = createDataSource()
+        database = connectDatabase(dataSource)
+        createTables()
+
+        val javalin = createApp()
+        registerMiddleware(javalin)
+        registerErrorHandlers(javalin)
+
+        app = javalin
     }
 
-    database = Database.connect(dataSource, databaseConfig = DatabaseConfig {
-        keepLoadedReferencesOutOfTransaction = true
-    })
-
-    transaction {
-        SchemaUtils.createMissingTablesAndColumns(
-            AccountsTable,
-            PasswordsTable,
-            SessionsTable,
-
-            ForgotPasswordCodesTable,
-
-            LoginAuditTable,
-            SessionAuditTable,
-            GrantAuditTable,
-            ClientAuditTable,
-
-            TenantsTable,
-            TenantAccountLinksTable,
-
-            ClientsTable,
-            ClientRedirectUrisTable,
-
-            SessionAccessTokensTable,
-            MachineAccessTokensTable
-        )
+    fun start() {
+        app.start(Env.PORT)
     }
 
-    app = Javalin.create { config ->
-        config.fileRenderer(JavalinJte(templateEngine))
+    fun stop() {
+        app.stop()
+    }
 
-        config.bundledPlugins.enableCors { cors ->
-            cors.addRule {
-                it.anyHost()
-            }
+    private fun createDataSource(): HikariDataSource =
+        HikariDataSource().apply {
+            maximumPoolSize = Env.DATABASE_POOL_SIZE
+            driverClassName = Env.DATABASE_DRIVER
+            jdbcUrl = Env.DATABASE_URL
+            username = Env.DATABASE_USERNAME
+            password = Env.DATABASE_PASSWORD
+            isAutoCommit = false
         }
 
-        config.router.mount(AnnotatedRouting) { routing ->
-            routing.registerEndpoints(
-                LoginRoutes,
+    private fun connectDatabase(dataSource: HikariDataSource): Database =
+        Database.connect(dataSource, databaseConfig = DatabaseConfig {
+            keepLoadedReferencesOutOfTransaction = true
+        })
 
-                OAuth2AuthorizationRoute
+    private fun createTables() {
+        transaction {
+            SchemaUtils.createMissingTablesAndColumns(
+                AccountsTable,
+                PasswordsTable,
+                SessionsTable,
+
+                ForgotPasswordCodesTable,
+
+                LoginAuditTable,
+                SessionAuditTable,
+                GrantAuditTable,
+                ClientAuditTable,
+
+                TenantsTable,
+                TenantAccountLinksTable,
+
+                ClientsTable,
+                ClientRedirectUrisTable,
+
+                SessionAccessTokensTable,
+                MachineAccessTokensTable
             )
         }
+    }
 
-        config.staticFiles.add {
-            it.hostedPath = "/"
-            it.directory = "/public"
-            it.location = Location.CLASSPATH
+    private fun createApp(): Javalin =
+        Javalin.create { config ->
+            config.fileRenderer(JavalinJte(templateEngine))
+
+            config.bundledPlugins.enableCors { cors ->
+                cors.addRule {
+                    it.anyHost()
+                }
+            }
+
+            config.router.mount(AnnotatedRouting) { routing ->
+                val loginAuditLogger = ExposedLoginAuditLogger()
+                val loginHandler = LoginService(loginAuditLogger)
+                val forgotPasswordEmailSender = ForgotPasswordEmailSender(templateEngine)
+                val accountPasswordUpdater = AccountPasswordUpdater()
+                val forgotPasswordHandler = ForgotPasswordService(forgotPasswordEmailSender, accountPasswordUpdater)
+                val oauth2AuthorizeHandler = OAuth2AuthorizeService()
+
+                val loginController = LoginController(loginHandler)
+                val forgotPasswordController = ForgotPasswordController(forgotPasswordHandler)
+                val oauth2Controller = OAuth2Controller(oauth2AuthorizeHandler)
+
+                routing.registerEndpoints(
+                    loginController,
+                    forgotPasswordController,
+                    oauth2Controller
+                )
+            }
+
+            config.staticFiles.add {
+                it.hostedPath = "/"
+                it.directory = "/public"
+                it.location = Location.CLASSPATH
+            }
+
+            config.validation.register(UUID::class.java, UUID::fromString)
         }
 
-        config.validation.register(UUID::class.java, UUID::fromString)
-    }.start(Env.PORT)
-
-    app.before { ctx ->
-        if (ctx.cookie("session") != null) {
-            transaction {
-                try {
-                    SessionAuditTable.write(ctx, "Accessed path (${ctx.path()}).")
-                    commit()
-                } catch (e: ExposedSQLException) {
-                    if (e.cause is SQLIntegrityConstraintViolationException) return@transaction
-                    throw e
+    private fun registerMiddleware(app: Javalin) {
+        app.before { ctx ->
+            if (ctx.cookie("session") != null) {
+                transaction {
+                    try {
+                        SessionAuditTable.write(ctx, "Accessed path (${ctx.path()}).")
+                        commit()
+                    } catch (e: ExposedSQLException) {
+                        if (e.cause is SQLIntegrityConstraintViolationException) return@transaction
+                        throw e
+                    }
                 }
             }
         }
     }
 
-    app.error(HttpStatus.NOT_FOUND) { ctx -> ctx.renderWithContext("pages/status/4xx.kte") }
-    app.error(HttpStatus.BAD_REQUEST) { ctx ->
-        if (ctx.path().startsWith("/oauth2/") || ctx.path().startsWith("/api/"))
-            return@error
+    private fun registerErrorHandlers(app: Javalin) {
+        app.error(HttpStatus.NOT_FOUND) { ctx -> ctx.renderWithContext("pages/status/4xx.kte") }
+        app.error(HttpStatus.BAD_REQUEST) { ctx ->
+            if (ctx.path().startsWith("/oauth2/") || ctx.path().startsWith("/api/"))
+                return@error
 
-        ctx.renderWithContext("pages/status/4xx.kte")
+            ctx.renderWithContext("pages/status/4xx.kte")
+        }
+
+        app.exception(FormErrorException::class.java) { ex, ctx ->
+            ctx.hxRetarget(ex.formErrorElement)
+            ctx.hxReswap("innerHTML transition:true")
+
+            ctx.renderWithContext("components/alert.kte", "summary" to ex.summary, "detail" to ex.detail)
+        }
     }
+}
 
-    app.exception(FormErrorException::class.java) { ex, ctx ->
-        ctx.hxRetarget(ex.formErrorElement)
-        ctx.hxReswap("innerHTML transition:true")
-
-        ctx.renderWithContext("components/alert.kte", "summary" to ex.summary, "detail" to ex.detail)
-    }
+fun main() {
+    val application = AjaxApplication()
+    application.start()
 }

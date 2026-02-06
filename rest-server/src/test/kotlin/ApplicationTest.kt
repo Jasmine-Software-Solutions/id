@@ -1,16 +1,15 @@
-import app.app
-import app.main
-import app.models.account.AccountsTable
-import app.models.account.ForgotPasswordCodesTable
-import app.models.account.SessionsTable
-import app.models.audit.LoginAuditTable
-import app.models.audit.SessionAuditTable
-import app.models.client.ClientRedirectUrisTable
-import app.models.client.ClientsTable
-import app.models.oauth2.MachineAccessTokensTable
-import app.models.oauth2.SessionAccessTokensTable
-import app.models.tenant.TenantAccountLinksTable
-import app.models.tenant.TenantsTable
+import app.RestApplication
+import app.infrastructure.models.account.AccountsTable
+import app.infrastructure.models.account.ForgotPasswordCodesTable
+import app.infrastructure.models.account.SessionsTable
+import app.infrastructure.models.audit.LoginAuditTable
+import app.infrastructure.models.audit.SessionAuditTable
+import app.infrastructure.models.client.ClientRedirectUrisTable
+import app.infrastructure.models.client.ClientsTable
+import app.infrastructure.models.oauth2.MachineAccessTokensTable
+import app.infrastructure.models.oauth2.SessionAccessTokensTable
+import app.infrastructure.models.tenant.TenantAccountLinksTable
+import app.infrastructure.models.tenant.TenantsTable
 import org.jetbrains.exposed.sql.exists
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.AfterAll
@@ -20,16 +19,19 @@ import org.junit.jupiter.api.Test
 
 class ApplicationTest {
     companion object {
+        lateinit var application: RestApplication
+
         @BeforeAll
         @JvmStatic
         fun setup() {
-            main()
+            application = RestApplication()
+            application.start()
         }
 
         @AfterAll
         @JvmStatic
         fun teardown() {
-            app.stop()
+            application.stop()
         }
     }
 
