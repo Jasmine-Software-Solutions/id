@@ -24,8 +24,7 @@ data class LoginCommand(
     val tenantId: UUID?,
     val otp: String?,
     val ipAddress: String,
-    val userAgent: String,
-    val encryptedPasswordForRetry: String? = null
+    val userAgent: String
 )
 
 interface LoginHandler {
@@ -33,9 +32,9 @@ interface LoginHandler {
 }
 
 sealed class LoginResult {
-    data class RequiresOtp(val email: String, val passwordFormValue: String) : LoginResult()
     data class Success(val sessionToken: String) : LoginResult()
 
+    object RequiresOtp : LoginResult()
     object InvalidCredentials : LoginResult()
     object InvalidOtp : LoginResult()
 }
@@ -100,10 +99,7 @@ class LoginService(
 
             if (command.otp.isNullOrBlank()) {
                 auditLogger.log(command.ipAddress, "TERM No TOTP provided for account (${account.id.value}).")
-                return@transaction LoginResult.RequiresOtp(
-                    email = command.email,
-                    passwordFormValue = command.encryptedPasswordForRetry ?: ""
-                )
+                return@transaction LoginResult.RequiresOtp
             }
 
             val totpSecret = Base32().encode(account.totpSecret!!.toByteArray())

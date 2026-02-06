@@ -5,7 +5,6 @@ import app.application.LoginHandler
 import app.application.LoginResult
 import app.controllers.oauth2.OAuth2Controller.Companion.oauth2Request
 import app.controllers.oauth2.OAuth2Controller.Companion.redirectToOAuth2Authorize
-import app.infrastructure.etc.EncryptedParameter
 import app.infrastructure.etc.exception.FormErrorException
 import app.infrastructure.etc.hxRedirect
 import app.infrastructure.etc.renderWithContext
@@ -25,7 +24,7 @@ class LoginController(
         val tenant = ctx.formParam("tenant")?.let { UUID.fromString(it) }
 
         val formEmail = ctx.formParam("email")
-        val formPassword = ctx.formParam("password")?.let(EncryptedParameter::decrypt)
+        val formPassword = ctx.formParam("password")
         val formOtp = ctx.formParam("otp")?.replace("-", "")
 
         if (setOf(formEmail, formPassword).any { it.isNullOrBlank() }) throw FormErrorException(
@@ -39,8 +38,7 @@ class LoginController(
             tenantId = tenant,
             otp = formOtp,
             ipAddress = ctx.ip(),
-            userAgent = ctx.header("User-Agent") ?: "Unknown",
-            encryptedPasswordForRetry = ctx.formParam("password")
+            userAgent = ctx.header("User-Agent") ?: "Unknown"
         )
 
         when (val result = loginHandler.execute(command)) {
@@ -60,9 +58,7 @@ class LoginController(
             }
             is LoginResult.RequiresOtp -> {
                 ctx.renderWithContext(
-                    "components/login/enter_otp.kte",
-                    "email" to result.email,
-                    "password" to result.passwordFormValue
+                    "components/login/enter_otp.kte"
                 )
             }
             is LoginResult.InvalidCredentials -> throw FormErrorException(
