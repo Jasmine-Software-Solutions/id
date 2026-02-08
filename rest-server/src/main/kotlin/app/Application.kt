@@ -14,10 +14,7 @@ import app.controllers.RestAccountsController
 import app.controllers.RestTenantController
 import app.controllers.oauth2.OAuth2IntrospectController
 import app.controllers.oauth2.OAuth2TokenController
-import app.infrastructure.models.account.AccountsTable
-import app.infrastructure.models.account.ForgotPasswordCodesTable
-import app.infrastructure.models.account.PasswordsTable
-import app.infrastructure.models.account.SessionsTable
+import app.infrastructure.models.account.*
 import app.infrastructure.models.audit.ClientAuditTable
 import app.infrastructure.models.audit.GrantAuditTable
 import app.infrastructure.models.audit.LoginAuditTable
@@ -79,6 +76,9 @@ class RestApplication {
                 AccountsTable,
                 PasswordsTable,
                 SessionsTable,
+
+                TOTPConfigurationTable,
+                TOTPUsageTable,
 
                 ForgotPasswordCodesTable,
 

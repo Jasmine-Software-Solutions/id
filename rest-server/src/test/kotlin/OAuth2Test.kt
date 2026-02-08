@@ -1,5 +1,6 @@
 import app.Env
 import app.RestApplication
+import app.infrastructure.account.AccountPasswordUpdater
 import app.infrastructure.etc.SecureToken
 import app.infrastructure.models.account.Account
 import app.infrastructure.models.account.Session
@@ -9,7 +10,6 @@ import app.infrastructure.models.oauth2.MachineAccessToken
 import app.infrastructure.models.oauth2.SessionAccessToken
 import app.infrastructure.models.tenant.Tenant
 import app.infrastructure.models.tenant.TenantAccountLinksTable
-import app.infrastructure.password.AccountPasswordUpdater
 import org.jetbrains.exposed.sql.insertIgnore
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.AfterAll
@@ -59,7 +59,6 @@ class OAuth2Test {
                 firstName = "OAuth2"
                 lastName = "User"
                 systemAdmin = true
-                totpSecret = null
             }
             // Link account to tenant
             TenantAccountLinksTable.insertIgnore {

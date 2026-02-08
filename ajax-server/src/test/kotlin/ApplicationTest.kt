@@ -1,7 +1,5 @@
 import app.AjaxApplication
-import app.infrastructure.models.account.AccountsTable
-import app.infrastructure.models.account.ForgotPasswordCodesTable
-import app.infrastructure.models.account.SessionsTable
+import app.infrastructure.models.account.*
 import app.infrastructure.models.audit.LoginAuditTable
 import app.infrastructure.models.audit.SessionAuditTable
 import app.infrastructure.models.client.ClientRedirectUrisTable
@@ -46,6 +44,8 @@ class ApplicationTest {
             assertTrue(ClientRedirectUrisTable.exists())
             assertTrue(AccountsTable.exists())
             assertTrue(SessionsTable.exists())
+            assertTrue(TOTPConfigurationTable.exists())
+            assertTrue(TOTPUsageTable.exists())
             assertTrue(ForgotPasswordCodesTable.exists())
             assertTrue(LoginAuditTable.exists())
             assertTrue(SessionAuditTable.exists())

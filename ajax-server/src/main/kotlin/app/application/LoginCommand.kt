@@ -1,5 +1,6 @@
 package app.application
 
+import app.infrastructure.account.AccountTOTPEngine
 import app.infrastructure.etc.SecureToken
 import app.infrastructure.models.account.Account
 import app.infrastructure.models.account.Password
@@ -7,8 +8,6 @@ import app.infrastructure.models.account.PasswordsTable
 import app.infrastructure.models.account.Session
 import app.infrastructure.models.tenant.TenantAccountLinksTable
 import de.mkammerer.argon2.Argon2Factory
-import dev.turingcomplete.kotlinonetimepassword.GoogleAuthenticator
-import org.apache.commons.codec.binary.Base32
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
@@ -94,7 +93,7 @@ class LoginService(
 
         auditLogger.log(command.ipAddress, "FLOW Password verified for account (${account.id.value}).")
 
-        if (account.totpSecret != null) {
+        if (account.totpConfiguration != null) {
             auditLogger.log(command.ipAddress, "FLOW Account (${account.id.value}) has TOTP enabled.")
 
             if (command.otp.isNullOrBlank()) {
@@ -102,14 +101,8 @@ class LoginService(
                 return@transaction LoginResult.RequiresOtp
             }
 
-            val totpSecret = Base32().encode(account.totpSecret!!.toByteArray())
-            val totp = setOf(
-                GoogleAuthenticator(totpSecret).generate(Date.from(Instant.now().minus(10, ChronoUnit.SECONDS))),
-                GoogleAuthenticator(totpSecret).generate(),
-                GoogleAuthenticator(totpSecret).generate(Date.from(Instant.now().plus(10, ChronoUnit.SECONDS))),
-            )
-
-            if (command.otp !in totp) {
+            val valid = AccountTOTPEngine.consume(account, command.otp)
+            if (!valid) {
                 auditLogger.log(command.ipAddress, "TERM Invalid TOTP provided for account (${account.id.value}).")
                 return@transaction LoginResult.InvalidOtp
             }

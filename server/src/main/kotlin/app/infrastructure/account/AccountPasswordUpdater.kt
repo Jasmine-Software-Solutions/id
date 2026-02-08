@@ -1,4 +1,4 @@
-package app.infrastructure.password
+package app.infrastructure.account
 
 import app.Env
 import app.application.password.IAccountPasswordUpdater

@@ -1,15 +1,14 @@
 import app.AjaxApplication
 import app.Env
+import app.infrastructure.account.AccountPasswordUpdater
+import app.infrastructure.account.AccountTOTPEngine
 import app.infrastructure.models.account.Account
 import app.infrastructure.models.account.SessionsTable
 import app.infrastructure.models.audit.LoginAuditTable
-import app.infrastructure.password.AccountPasswordUpdater
 import com.microsoft.playwright.Browser
 import com.microsoft.playwright.BrowserType
 import com.microsoft.playwright.Page
 import com.microsoft.playwright.Playwright
-import dev.turingcomplete.kotlinonetimepassword.GoogleAuthenticator
-import org.apache.commons.codec.binary.Base32
 import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -22,6 +21,8 @@ class LoginTest {
     companion object {
         private lateinit var application: AjaxApplication
         private lateinit var browser: Browser
+
+        private lateinit var accountWithTotp: Account
 
         @BeforeAll
         @JvmStatic
@@ -37,7 +38,6 @@ class LoginTest {
                     this.firstName = "Test"
                     this.lastName = "User"
                     this.systemAdmin = false
-                    this.totpSecret = null
                 }
 
                 AccountPasswordUpdater().update(account, "password:passwordUser@LoginTest")
@@ -51,10 +51,12 @@ class LoginTest {
                     this.firstName = "Test"
                     this.lastName = "User"
                     this.systemAdmin = false
-                    this.totpSecret = "totpSecret"
                 }
 
+                AccountTOTPEngine.create(account)
+
                 AccountPasswordUpdater().update(account, "password:totpUser@LoginTest")
+                accountWithTotp = account
             }
 
             // Create a Chromium browser with the necessary configuration
@@ -165,10 +167,7 @@ class LoginTest {
         page.waitForSelector("button[type=\"submit\"]")
         page.click("button[type=\"submit\"]")
 
-        val totp = "totpSecret".let {
-            val totpSecret = Base32().encode(it.toByteArray())
-            GoogleAuthenticator(totpSecret).generate()
-        }
+        val totp = AccountTOTPEngine.generate(accountWithTotp)
 
         page.waitForSelector("#otp", Page.WaitForSelectorOptions().setTimeout(Env.Test.LOGIN_TIMEOUT))
         page.fill("#otp", totp)

@@ -17,8 +17,6 @@ object AccountsTable : UUIDTable("accounts") {
     val lastName = varchar("last_name", 40)
 
     val systemAdmin = bool("system_admin").default(false)
-
-    val totpSecret = varchar("totp_secret", 10).nullable()
 }
 
 class Account(id: EntityID<UUID>) : UUIDEntity(id) {
@@ -38,7 +36,7 @@ class Account(id: EntityID<UUID>) : UUIDEntity(id) {
 
     var systemAdmin by AccountsTable.systemAdmin
 
-    var totpSecret by AccountsTable.totpSecret
+    val totpConfiguration by TOTPConfiguration optionalBackReferencedOn TOTPConfigurationTable.account
 
     override fun equals(other: Any?): Boolean {
         if (other !is Account)

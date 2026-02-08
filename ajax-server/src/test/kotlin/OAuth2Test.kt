@@ -1,12 +1,12 @@
 import app.AjaxApplication
 import app.Env
+import app.infrastructure.account.AccountPasswordUpdater
 import app.infrastructure.models.account.Account
 import app.infrastructure.models.account.Session
 import app.infrastructure.models.client.Client
 import app.infrastructure.models.client.ClientRedirectUri
 import app.infrastructure.models.tenant.Tenant
 import app.infrastructure.models.tenant.TenantAccountLinksTable
-import app.infrastructure.password.AccountPasswordUpdater
 import org.jetbrains.exposed.sql.insertIgnore
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.junit.jupiter.api.AfterAll
@@ -55,7 +55,6 @@ class OAuth2Test {
                 firstName = "OAuth2"
                 lastName = "User"
                 systemAdmin = true
-                totpSecret = null
             }
             // Link account to tenant
             TenantAccountLinksTable.insertIgnore {

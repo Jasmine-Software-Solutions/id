@@ -8,15 +8,13 @@ import app.controllers.LoginController
 import app.controllers.oauth2.OAuth2Controller
 import app.infrastructure.ExposedLoginAuditLogger
 import app.infrastructure.ForgotPasswordEmailSender
+import app.infrastructure.account.AccountPasswordUpdater
 import app.infrastructure.etc.exception.FormErrorException
 import app.infrastructure.etc.hxReswap
 import app.infrastructure.etc.hxRetarget
 import app.infrastructure.etc.renderWithContext
 import app.infrastructure.etc.write
-import app.infrastructure.models.account.AccountsTable
-import app.infrastructure.models.account.ForgotPasswordCodesTable
-import app.infrastructure.models.account.PasswordsTable
-import app.infrastructure.models.account.SessionsTable
+import app.infrastructure.models.account.*
 import app.infrastructure.models.audit.ClientAuditTable
 import app.infrastructure.models.audit.GrantAuditTable
 import app.infrastructure.models.audit.LoginAuditTable
@@ -27,7 +25,6 @@ import app.infrastructure.models.oauth2.MachineAccessTokensTable
 import app.infrastructure.models.oauth2.SessionAccessTokensTable
 import app.infrastructure.models.tenant.TenantAccountLinksTable
 import app.infrastructure.models.tenant.TenantsTable
-import app.infrastructure.password.AccountPasswordUpdater
 import com.zaxxer.hikari.HikariDataSource
 import gg.jte.ContentType
 import gg.jte.TemplateEngine
@@ -96,6 +93,9 @@ class AjaxApplication {
                 AccountsTable,
                 PasswordsTable,
                 SessionsTable,
+
+                TOTPConfigurationTable,
+                TOTPUsageTable,
 
                 ForgotPasswordCodesTable,
 
