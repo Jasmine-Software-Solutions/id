@@ -46,6 +46,8 @@ object Env {
 
     val SESSION_ACCESS_TOKEN_LIFETIME = dotenv["SESSION_ACCESS_TOKEN_LIFETIME"]?.toLongOrNull() ?: 300
 
+    val EXTERNAL_BASE_URL = dotenv["EXTERNAL_BASE_URL"] ?: "http://localhost:$PORT"
+
     object Test {
         val URL = (dotenv["TEST_URL"] ?: "http://localhost:$PORT").let {
             if (it.endsWith("/")) it.substring(0, it.length - 1) else it

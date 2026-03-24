@@ -2,12 +2,15 @@ package app
 
 import app.application.ForgotPasswordService
 import app.application.LoginService
+import app.application.MagicLinkService
 import app.application.oauth2.OAuth2AuthorizeService
 import app.controllers.ForgotPasswordController
 import app.controllers.LoginController
+import app.controllers.MagicLinkController
 import app.controllers.oauth2.OAuth2Controller
 import app.infrastructure.ExposedLoginAuditLogger
 import app.infrastructure.ForgotPasswordEmailSender
+import app.infrastructure.MailMagicLinkIssuer
 import app.infrastructure.account.AccountPasswordUpdater
 import app.infrastructure.etc.exception.FormErrorException
 import app.infrastructure.etc.hxReswap
@@ -94,6 +97,9 @@ class AjaxApplication {
                 PasswordsTable,
                 SessionsTable,
 
+                MagicLinksTable,
+                MagicLinkDecisionsTable,
+
                 TOTPConfigurationTable,
                 TOTPUsageTable,
 
@@ -128,18 +134,22 @@ class AjaxApplication {
 
             config.router.mount(AnnotatedRouting) { routing ->
                 val loginAuditLogger = ExposedLoginAuditLogger()
-                val loginHandler = LoginService(loginAuditLogger)
+                val loginMagicLinkIssuer = MailMagicLinkIssuer(templateEngine)
+                val loginHandler = LoginService(loginAuditLogger, loginMagicLinkIssuer)
+                val magicLinkHandler = MagicLinkService()
                 val forgotPasswordEmailSender = ForgotPasswordEmailSender(templateEngine)
                 val accountPasswordUpdater = AccountPasswordUpdater()
                 val forgotPasswordHandler = ForgotPasswordService(forgotPasswordEmailSender, accountPasswordUpdater)
                 val oauth2AuthorizeHandler = OAuth2AuthorizeService()
 
                 val loginController = LoginController(loginHandler)
+                val magicLinkController = MagicLinkController(magicLinkHandler)
                 val forgotPasswordController = ForgotPasswordController(forgotPasswordHandler)
                 val oauth2Controller = OAuth2Controller(oauth2AuthorizeHandler)
 
                 routing.registerEndpoints(
                     loginController,
+                    magicLinkController,
                     forgotPasswordController,
                     oauth2Controller
                 )

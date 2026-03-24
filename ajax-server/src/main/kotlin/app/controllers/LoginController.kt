@@ -2,12 +2,14 @@ package app.controllers
 
 import app.application.LoginCommand
 import app.application.LoginHandler
+import app.application.LoginMethod
 import app.application.LoginResult
 import app.controllers.oauth2.OAuth2Controller.Companion.oauth2Request
 import app.controllers.oauth2.OAuth2Controller.Companion.redirectToOAuth2Authorize
 import app.infrastructure.etc.exception.FormErrorException
 import app.infrastructure.etc.hxRedirect
 import app.infrastructure.etc.renderWithContext
+import app.infrastructure.etc.toUUIDOrNull
 import io.javalin.community.routing.annotations.Get
 import io.javalin.community.routing.annotations.Post
 import io.javalin.http.Context
@@ -18,7 +20,6 @@ import java.util.*
 class LoginController(
     private val loginHandler: LoginHandler
 ) {
-
     @Post("/login")
     fun login(ctx: Context) {
         val tenant = ctx.formParam("tenant")?.let { UUID.fromString(it) }
@@ -27,14 +28,22 @@ class LoginController(
         val formPassword = ctx.formParam("password")
         val formOtp = ctx.formParam("otp")?.replace("-", "")
 
-        if (setOf(formEmail, formPassword).any { it.isNullOrBlank() }) throw FormErrorException(
+        val formMagicLinkId = ctx.formParam("magic_link_id")?.toUUIDOrNull()
+        val formMagicLinkToken = ctx.formParam("magic_link_token")?.toCharArray()
+
+        if (formEmail.isNullOrBlank()) throw FormErrorException(
             summary = "Problem",
             detail = "You are missing required fields."
         )
 
+        val method = if (formMagicLinkId != null)
+            LoginMethod.MagicLink(formMagicLinkId, formMagicLinkToken)
+        else if (formPassword != null) LoginMethod.Password(formPassword.toCharArray())
+        else LoginMethod.MagicLink(null, null)
+
         val command = LoginCommand(
-            email = formEmail!!,
-            password = formPassword!!.toCharArray(),
+            email = formEmail,
+            method = method,
             tenantId = tenant,
             otp = formOtp,
             ipAddress = ctx.ip(),
@@ -69,6 +78,18 @@ class LoginController(
                 summary = "Problem",
                 detail = "Invalid verification code."
             )
+            is LoginResult.MagicLinkIssued -> {
+                ctx.renderWithContext(
+                    "components/login/magic_link/issued.kte",
+                    "email" to command.email,
+                    "magicLinkId" to result.magicLink.id.value,
+                    "magicLinkToken" to result.magicLinkAcceptanceToken
+                )
+            }
+            is LoginResult.MagicLinkPending -> {
+                ctx.result("")
+                ctx.status(204)
+            }
         }
     }
 
@@ -78,6 +99,12 @@ class LoginController(
         ctx.removeCookie("session")
         ctx.removeCookie("oauth2_request")
 
-        ctx.renderWithContext("pages/login.kte")
+        val email = ctx.queryParam("email")?.ifBlank { null }
+        val usingPassword = ctx.queryParam("password")?.equals("true") ?: false
+
+        ctx.renderWithContext("pages/login.kte",
+            "email" to email,
+            "usingPassword" to usingPassword
+        )
     }
 }

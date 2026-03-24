@@ -1,7 +1,5 @@
-import kotlin.io.path.Path
-
 plugins {
-    kotlin("jvm") version "1.9.23"
+    kotlin("jvm")
 
     id("com.github.johnrengelman.shadow") version "8.0.0"
 }

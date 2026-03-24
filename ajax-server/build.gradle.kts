@@ -1,7 +1,7 @@
 import kotlin.io.path.Path
 
 plugins {
-    kotlin("jvm") version "1.9.23"
+    kotlin("jvm")
     id("gg.jte.gradle") version "3.1.15"
 
     id("com.github.johnrengelman.shadow") version "8.0.0"
