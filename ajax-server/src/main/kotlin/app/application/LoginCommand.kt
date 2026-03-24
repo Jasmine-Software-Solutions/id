@@ -176,6 +176,11 @@ class LoginService(
             this.ipAddress = command.ipAddress
         }
 
+        if (command.method is LoginMethod.MagicLink && command.method.id != null) {
+            AccountMagicLinkEngine.consume(command.method.id)
+            auditLogger.log(command.ipAddress, "FLOW Magic link consumed for account (${account.id.value}).")
+        }
+
         commit()
 
         auditLogger.log(command.ipAddress, "FLOW Successful login for account (${account.id.value}).")

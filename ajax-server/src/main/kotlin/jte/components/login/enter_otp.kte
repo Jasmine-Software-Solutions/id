@@ -14,6 +14,8 @@
             <div class="hidden">
                 <input type="hidden" name="email" id="email" hx-preserve>
                 <input type="hidden" name="password" id="password" hx-preserve>
+                <input type="hidden" name="magic_link_id" id="magic_link_id" hx-preserve>
+                <input type="hidden" name="magic_link_token" id="magic_link_token" hx-preserve>
             </div>
 
             <div>

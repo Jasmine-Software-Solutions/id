@@ -19,11 +19,11 @@
             Be sure to check your spam folder.
         </p>
 
-        <form class="space-y-4 md:space-y-6" hx-post="/login" hx-swap="none" hx-trigger="every 2s">
+        <form class="space-y-4 md:space-y-6" hx-post="/login" hx-target="#modal" hx-swap="outerHTML" hx-trigger="every 2s">
             <!--suppress HtmlFormInputWithoutLabel -->
-            <input class="hidden" id="email" name="email" value="${email}"/>
-            <input class="hidden" id="magic_link_id" name="magic_link_id" value="${magicLinkId.toString()}"/>
-            <input class="hidden" id="magic_link_token" name="magic_link_token" value="${magicLinkToken}"/>
+            <input class="hidden" id="email" name="email" value="${email}" />
+            <input class="hidden" id="magic_link_id" name="magic_link_id" value="${magicLinkId.toString()}" />
+            <input class="hidden" id="magic_link_token" name="magic_link_token" value="${magicLinkToken}" />
         </form>
 
         <p class="text-sm font-light text-gray-500 dark:text-gray-400">

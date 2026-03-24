@@ -8,6 +8,7 @@ import app.controllers.oauth2.OAuth2Controller.Companion.oauth2Request
 import app.controllers.oauth2.OAuth2Controller.Companion.redirectToOAuth2Authorize
 import app.infrastructure.etc.exception.FormErrorException
 import app.infrastructure.etc.hxRedirect
+import app.infrastructure.etc.hxReswap
 import app.infrastructure.etc.renderWithContext
 import app.infrastructure.etc.toUUIDOrNull
 import io.javalin.community.routing.annotations.Get
@@ -87,6 +88,7 @@ class LoginController(
                 )
             }
             is LoginResult.MagicLinkPending -> {
+                ctx.hxReswap("none")
                 ctx.result("")
                 ctx.status(204)
             }

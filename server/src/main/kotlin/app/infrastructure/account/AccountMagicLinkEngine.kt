@@ -70,8 +70,6 @@ object AccountMagicLinkEngine {
             ?.takeIf { it.decision?.consumed == false }
             ?: return@transaction false
 
-        val decision = link.decision!!
-
         val argon2 = Argon2Factory.create()
         val isToken = try {
             argon2.verify(link.acceptanceTokenHash, acceptanceTokenArray)
@@ -79,9 +77,10 @@ object AccountMagicLinkEngine {
             argon2.wipeArray(acceptanceTokenArray)
         }
 
-        if (isToken)
-            decision.consumed = true
-
         return@transaction isToken
+    }
+
+    fun consume(id: UUID) = transaction {
+        MagicLink.findById(id)?.decision?.consumed = true
     }
 }
