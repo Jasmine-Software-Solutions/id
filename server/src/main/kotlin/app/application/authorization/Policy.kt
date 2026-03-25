@@ -31,7 +31,11 @@ interface Policy<AccessToken> {
      */
     data class IsAdministrator(val tenant: UUID? = null) : Policy<AccessToken> {
         override fun evaluate(token: AccessToken): PolicyResult<AccessToken> {
-            if (token is MachineAccessToken) return PolicyResult.Pass(this, token)
+            if (token is MachineAccessToken) {
+                if (tenant == null || token.tenant.id.value == tenant)
+                    return PolicyResult.Pass(this, token)
+                return PolicyResult.Fail()
+            }
             if (token !is SessionAccessToken) return PolicyResult.Fail()
 
             val account = token.session.account

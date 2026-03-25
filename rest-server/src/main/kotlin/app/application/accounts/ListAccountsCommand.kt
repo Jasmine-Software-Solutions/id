@@ -5,6 +5,7 @@ import app.application.authorization.Policy
 import app.application.authorization.PolicyResult
 import app.infrastructure.models.account.Account
 import app.infrastructure.models.account.AccountsTable
+import app.infrastructure.models.oauth2.MachineAccessToken
 import app.infrastructure.models.oauth2.SessionAccessToken
 import app.infrastructure.models.tenant.Tenant
 import app.infrastructure.models.tenant.TenantAccountLinksTable
@@ -63,6 +64,8 @@ class ListAccountsService() : ListAccountsHandler {
         )
 
         if (policyResult !is PolicyResult.Pass)
+            return@transaction ListAccountsResult.Forbidden
+        if (command.tenantId == null && policyResult.token is MachineAccessToken)
             return@transaction ListAccountsResult.Forbidden
 
         val tenant = command.tenantId?.let(Tenant::findById)

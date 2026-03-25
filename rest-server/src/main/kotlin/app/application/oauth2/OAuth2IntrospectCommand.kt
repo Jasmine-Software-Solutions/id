@@ -25,6 +25,7 @@ sealed class OAuth2IntrospectResult {
         @get:JsonProperty("active") val active: Boolean,
         @get:JsonProperty("scope") val scope: String? = null,
         @get:JsonProperty("client_id") val clientId: UUID? = null,
+        @get:JsonProperty("tenant_id") val tenantId: UUID? = null,
         @get:JsonProperty("exp") val expiresAt: Long? = null,
         @get:JsonProperty("iat") val issuedAt: Long? = null
     ) : OAuth2IntrospectResult()
@@ -70,6 +71,7 @@ class OAuth2IntrospectService : OAuth2IntrospectHandler {
                     tokens.principal().isAccessTokenActive(),
                     tokens.scope,
                     tokens.client.id.value,
+                    tokens.tenant.id.value,
                     tokens.expiresAt.epochSecond,
                     tokens.issuedAt.epochSecond
                 )
@@ -82,6 +84,7 @@ class OAuth2IntrospectService : OAuth2IntrospectHandler {
                         tokens.principal().isRefreshTokenActive(),
                         tokens.scope,
                         tokens.client.id.value,
+                        tokens.tenant.id.value,
                         tokens.session.expiresAt.epochSecond,
                         tokens.issuedAt.epochSecond
                     )
@@ -90,6 +93,7 @@ class OAuth2IntrospectService : OAuth2IntrospectHandler {
                     tokens.principal().isAccessTokenActive(),
                     tokens.scope,
                     tokens.client.id.value,
+                    tokens.tenant.id.value,
                     (tokens.lastRefreshed.epochSecond + Env.SESSION_ACCESS_TOKEN_LIFETIME)
                         .coerceAtMost(tokens.session.expiresAt.epochSecond),
                     tokens.issuedAt.epochSecond,

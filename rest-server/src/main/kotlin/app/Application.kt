@@ -4,6 +4,9 @@ import app.application.account.GetAccountInfoService
 import app.application.account.GetAccountLinksService
 import app.application.accounts.GetAccountService
 import app.application.accounts.ListAccountsService
+import app.application.client.DeleteClientEntitlementService
+import app.application.client.ListClientEntitlementsService
+import app.application.client.UpsertClientEntitlementService
 import app.application.oauth2.OAuth2AuthorizationCodeTokenService
 import app.application.oauth2.OAuth2ClientCredentialsTokenService
 import app.application.oauth2.OAuth2IntrospectService
@@ -11,6 +14,7 @@ import app.application.oauth2.OAuth2RefreshTokenService
 import app.application.tenant.GetTenantInfoService
 import app.controllers.RestAccountController
 import app.controllers.RestAccountsController
+import app.controllers.RestClientEntitlementsController
 import app.controllers.RestTenantController
 import app.controllers.oauth2.OAuth2IntrospectController
 import app.controllers.oauth2.OAuth2TokenController
@@ -20,6 +24,7 @@ import app.infrastructure.models.audit.GrantAuditTable
 import app.infrastructure.models.audit.LoginAuditTable
 import app.infrastructure.models.audit.SessionAuditTable
 import app.infrastructure.models.client.ClientRedirectUrisTable
+import app.infrastructure.models.client.ClientTenantEntitlementsTable
 import app.infrastructure.models.client.ClientsTable
 import app.infrastructure.models.oauth2.MachineAccessTokensTable
 import app.infrastructure.models.oauth2.SessionAccessTokensTable
@@ -92,6 +97,7 @@ class RestApplication {
 
                 ClientsTable,
                 ClientRedirectUrisTable,
+                ClientTenantEntitlementsTable,
 
                 SessionAccessTokensTable,
                 MachineAccessTokensTable
@@ -113,6 +119,9 @@ class RestApplication {
                 val listAccounts = ListAccountsService()
                 val getAccount = GetAccountService()
                 val getTenantInfo = GetTenantInfoService()
+                val listClientEntitlements = ListClientEntitlementsService()
+                val upsertClientEntitlement = UpsertClientEntitlementService()
+                val deleteClientEntitlement = DeleteClientEntitlementService()
                 val authorizationCodeToken = OAuth2AuthorizationCodeTokenService()
                 val refreshTokenService = OAuth2RefreshTokenService()
                 val clientCredentialsToken = OAuth2ClientCredentialsTokenService()
@@ -121,6 +130,11 @@ class RestApplication {
                 val restAccountController = RestAccountController(getAccountInfo, getAccountLinks)
                 val restAccountsController = RestAccountsController(listAccounts, getAccount)
                 val restTenantController = RestTenantController(getTenantInfo)
+                val restClientEntitlementsController = RestClientEntitlementsController(
+                    listClientEntitlements,
+                    upsertClientEntitlement,
+                    deleteClientEntitlement
+                )
                 val oauth2TokenController = OAuth2TokenController(
                     authorizationCodeToken,
                     refreshTokenService,
@@ -134,6 +148,7 @@ class RestApplication {
 
                     restAccountController,
                     restAccountsController,
+                    restClientEntitlementsController,
 
                     restTenantController,
                 )

@@ -34,16 +34,27 @@ class OAuth2TokenController(
         val clientId = runCatching { UUID.fromString(clientIdParam) }.getOrNull()
             ?: throw BadRequestResponse("Invalid client_id")
 
-        val clientCredentialsTokenParam = if (ctx.header("Authorization")?.startsWith("Bearer ") == true)
-            ctx.header("Authorization")!!.substringAfter("Bearer ").trim()
-        else null
+        val clientSecretParam = if (ctx.header("Authorization")?.startsWith("Basic ") == true) {
+            val base64Credentials = ctx.header("Authorization")!!.substringAfter("Basic ").trim()
+            val decodedCredentials = runCatching { String(Base64.getDecoder().decode(base64Credentials)) }.getOrNull()
+                ?: throw BadRequestResponse("Invalid client credentials format")
+            val parts = decodedCredentials.split(":", limit = 2)
+            if (parts.size != 2) throw BadRequestResponse("Invalid client credentials format")
+
+            val basicClientId = runCatching { UUID.fromString(parts[0]) }.getOrNull()
+                ?: throw BadRequestResponse("Invalid client credentials format")
+            if (basicClientId != clientId)
+                throw BadRequestResponse("client_id does not match Authorization header")
+
+            parts[1]
+        } else null
 
         when (val result = authorizationCodeToken.execute(
             OAuth2AuthorizationCodeTokenCommand(
                 code = code,
                 redirectUri = redirectUri,
                 clientId = clientId,
-                clientCredentialsToken = clientCredentialsTokenParam,
+                clientSecret = clientSecretParam,
             )
         )) {
             is OAuth2AuthorizationCodeTokenResult.Success -> ctx.json(result)
@@ -81,18 +92,23 @@ class OAuth2TokenController(
         val clientId = runCatching { UUID.fromString(parts[0]) }.getOrNull()
             ?: throw BadRequestResponse("Invalid client credentials format")
         val clientSecret = parts[1]
+        val tenant = runCatching { UUID.fromString(ctx.queryParam("tenant")) }.getOrNull()
+            ?: throw BadRequestResponse("Missing or invalid tenant")
         val requestedScope = ctx.queryParam("scope")
 
         when (val result = clientCredentialsToken.execute(
             OAuth2ClientCredentialsTokenCommand(
                 clientId = clientId,
                 clientSecret = clientSecret,
+                tenantId = tenant,
                 requestedScope = requestedScope,
             )
         )) {
             is OAuth2ClientCredentialsTokenResult.Success -> ctx.json(result)
             is OAuth2ClientCredentialsTokenResult.InvalidClient -> throw BadRequestResponse("Invalid client ID")
             is OAuth2ClientCredentialsTokenResult.InvalidSecret -> throw BadRequestResponse("Invalid client secret")
+            is OAuth2ClientCredentialsTokenResult.InvalidTenant -> throw BadRequestResponse("Invalid tenant")
+            is OAuth2ClientCredentialsTokenResult.TenantNotEntitled -> throw BadRequestResponse("Client is not entitled for tenant")
         }
     }
 }

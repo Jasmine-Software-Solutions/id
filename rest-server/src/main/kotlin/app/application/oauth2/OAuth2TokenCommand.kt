@@ -3,15 +3,18 @@ package app.application.oauth2
 import app.Env
 import app.infrastructure.etc.SecureToken
 import app.infrastructure.models.client.Client
+import app.infrastructure.models.client.ClientTenantEntitlement
+import app.infrastructure.models.client.ClientTenantEntitlementsTable
 import app.infrastructure.models.client.ClientsTable
 import app.infrastructure.models.oauth2.MachineAccessToken
-import app.infrastructure.models.oauth2.MachineAccessTokensTable
 import app.infrastructure.models.oauth2.SessionAccessToken
 import app.infrastructure.models.oauth2.SessionAccessTokensTable
+import app.infrastructure.models.tenant.Tenant
 import com.fasterxml.jackson.annotation.JsonProperty
+import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.time.Instant
-import java.time.temporal.ChronoUnit
 import java.util.*
 
 // ----- Authorization code grant -----
@@ -20,7 +23,7 @@ data class OAuth2AuthorizationCodeTokenCommand(
     val code: String,
     val redirectUri: String,
     val clientId: UUID,
-    val clientCredentialsToken: String? = null,
+    val clientSecret: String? = null,
 )
 
 interface OAuth2AuthorizationCodeTokenHandler {
@@ -48,13 +51,9 @@ class OAuth2AuthorizationCodeTokenService : OAuth2AuthorizationCodeTokenHandler 
             ?: return@transaction OAuth2AuthorizationCodeTokenResult.InvalidClient
 
         if (client.confidential) {
-            val clientToken = command.clientCredentialsToken
+            val clientSecret = command.clientSecret
                 ?: return@transaction OAuth2AuthorizationCodeTokenResult.Unauthorized
-            val machineTokens = MachineAccessToken.find {
-                MachineAccessTokensTable.accessToken eq clientToken
-            }.firstOrNull() ?: return@transaction OAuth2AuthorizationCodeTokenResult.Unauthorized
-
-            if (!machineTokens.principal().isAccessTokenActive())
+            if (client.secret != clientSecret)
                 return@transaction OAuth2AuthorizationCodeTokenResult.Unauthorized
         }
 
@@ -138,6 +137,7 @@ class OAuth2RefreshTokenService : OAuth2RefreshTokenHandler {
 data class OAuth2ClientCredentialsTokenCommand(
     val clientId: UUID,
     val clientSecret: String,
+    val tenantId: UUID,
     val requestedScope: String?,
 )
 
@@ -149,11 +149,14 @@ sealed class OAuth2ClientCredentialsTokenResult {
     data class Success(
         @get:JsonProperty("access_token") val accessToken: String,
         @get:JsonProperty("expires_in") val expiresIn: Long,
+        @get:JsonProperty("tenant") val tenantId: UUID,
         @get:JsonProperty("scope") val scope: String?,
     ) : OAuth2ClientCredentialsTokenResult()
 
     object InvalidClient : OAuth2ClientCredentialsTokenResult()
     object InvalidSecret : OAuth2ClientCredentialsTokenResult()
+    object InvalidTenant : OAuth2ClientCredentialsTokenResult()
+    object TenantNotEntitled : OAuth2ClientCredentialsTokenResult()
 }
 
 class OAuth2ClientCredentialsTokenService : OAuth2ClientCredentialsTokenHandler {
@@ -164,26 +167,56 @@ class OAuth2ClientCredentialsTokenService : OAuth2ClientCredentialsTokenHandler 
         if (client.secret != command.clientSecret)
             return@transaction OAuth2ClientCredentialsTokenResult.InvalidSecret
 
-        val scope = if (client.scope == null) command.requestedScope else {
-            val clientScopes = client.scope!!.split(" ")
-            val requestedScopes = command.requestedScope?.split(" ") ?: clientScopes
-            val validScopes = requestedScopes.filter { it in clientScopes }
-            if (validScopes.isNotEmpty()) validScopes.joinToString(" ") else null
+        val tenant = Tenant.findById(command.tenantId)
+            ?: return@transaction OAuth2ClientCredentialsTokenResult.InvalidTenant
+
+        // Wildcard tenant entitlement is represented by tenant = null.
+        val matchingEntitlements = ClientTenantEntitlement.find {
+            ClientTenantEntitlementsTable.client eq client.id and
+                ((ClientTenantEntitlementsTable.tenant eq tenant.id) or ClientTenantEntitlementsTable.tenant.isNull())
+        }.toList()
+
+        if (matchingEntitlements.isEmpty())
+            return@transaction OAuth2ClientCredentialsTokenResult.TenantNotEntitled
+
+        val requestedScopes = command.requestedScope?.split(" ")?.filter { it.isNotBlank() }?.toSet()
+        val globalScopes = client.scope?.split(" ")?.filter { it.isNotBlank() }?.toSet()
+        // Wildcard scope entitlement is represented by scope = null.
+        val hasWildcardScope = matchingEntitlements.any { it.scope == null }
+        val tenantScopes = if (hasWildcardScope) {
+            null
+        } else {
+            matchingEntitlements
+                .flatMap { it.scope?.split(" ") ?: emptyList() }
+                .filter { it.isNotBlank() }
+                .toSet()
+        }
+
+        val effectiveScopeSet = listOfNotNull(requestedScopes, globalScopes, tenantScopes)
+            .reduceOrNull { acc, scopes -> acc intersect scopes }
+        val scope = effectiveScopeSet?.takeIf { it.isNotEmpty() }?.joinToString(" ")
+
+        val hasAnyConstraint = requestedScopes != null || globalScopes != null || !hasWildcardScope
+        if (hasAnyConstraint && scope == null) {
+            return@transaction OAuth2ClientCredentialsTokenResult.TenantNotEntitled
         }
 
         val accessToken = SecureToken()
+        val expiresIn = Env.MACHINE_ACCESS_TOKEN_LIFETIME.coerceAtLeast(1)
 
         MachineAccessToken.new {
             this.client = client
+            this.tenant = tenant
             this.issuedAt = Instant.now()
-            this.expiresAt = Instant.now().plus(1, ChronoUnit.DAYS)
+            this.expiresAt = Instant.now().plusSeconds(expiresIn)
             this.accessToken = accessToken
             this.scope = scope
         }
 
         OAuth2ClientCredentialsTokenResult.Success(
             accessToken = accessToken,
-            expiresIn = 86400,
+            expiresIn = expiresIn,
+            tenantId = tenant.id.value,
             scope = scope,
         )
     }

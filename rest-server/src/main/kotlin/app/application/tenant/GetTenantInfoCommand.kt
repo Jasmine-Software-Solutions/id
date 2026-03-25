@@ -3,6 +3,7 @@ package app.application.tenant
 import app.application.authorization.APIAuthorizationEngine
 import app.application.authorization.Policy
 import app.application.authorization.PolicyResult
+import app.infrastructure.models.oauth2.MachineAccessToken
 import app.infrastructure.models.oauth2.SessionAccessToken
 import app.infrastructure.models.tenant.Tenant
 import com.fasterxml.jackson.annotation.JsonProperty
@@ -39,6 +40,8 @@ class GetTenantInfoService() : GetTenantInfoHandler {
         )
 
         if (policyResult !is PolicyResult.Pass) return@transaction GetTenantInfoResult.Forbidden
+        if (command.tenantId == null && policyResult.token is MachineAccessToken)
+            return@transaction GetTenantInfoResult.Forbidden
 
         val tenant = command.tenantId?.let(Tenant::findById)
             ?: (policyResult.token as? SessionAccessToken)?.tenant

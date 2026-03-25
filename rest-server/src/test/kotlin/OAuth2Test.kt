@@ -6,6 +6,7 @@ import app.infrastructure.models.account.Account
 import app.infrastructure.models.account.Session
 import app.infrastructure.models.client.Client
 import app.infrastructure.models.client.ClientRedirectUri
+import app.infrastructure.models.client.ClientTenantEntitlement
 import app.infrastructure.models.oauth2.MachineAccessToken
 import app.infrastructure.models.oauth2.SessionAccessToken
 import app.infrastructure.models.tenant.Tenant
@@ -140,20 +141,9 @@ class OAuth2Test {
 
     @Test
     fun `token endpoint returns error for invalid code in authorization_code grant`() {
-        val mat = transaction {
-            MachineAccessToken.new {
-                this.client = testClient
-                this.issuedAt = Instant.now()
-                this.expiresAt = Instant.now().plus(1, ChronoUnit.DAYS)
-                this.accessToken = SecureToken()
-                this.scope = null
-            }
-        }
-
         val url = "${Env.Test.URL}/api/v1/oauth2/token?grant_type=authorization_code&code=invalid&client_id=${testClient.id.value}&redirect_uri=${testRedirectUri.uri}"
         val request = HttpRequest.newBuilder()
             .uri(URI.create(url))
-            .header("Authorization", "Bearer ${mat.accessToken}")
             .GET()
             .build()
         val response = client.send(request, HttpResponse.BodyHandlers.ofString())
@@ -179,26 +169,57 @@ class OAuth2Test {
             }
         }
 
-        val mat = transaction {
-            MachineAccessToken.new {
-                this.client = testClient
-                this.issuedAt = Instant.now()
-                this.expiresAt = Instant.now().plus(1, ChronoUnit.DAYS)
-                this.accessToken = SecureToken()
-                this.scope = null
-            }
-        }
-
         val tokenUrl = "${Env.Test.URL}/api/v1/oauth2/token?grant_type=authorization_code&code=${tokens.authorizationCode}&client_id=${testClient.id.value}&redirect_uri=${testRedirectUri.uri}"
         val tokenRequest = HttpRequest.newBuilder()
             .uri(URI.create(tokenUrl))
-            .header("Authorization", "Bearer ${mat.accessToken}")
             .GET()
             .build()
         val tokenResponse = client.send(tokenRequest, HttpResponse.BodyHandlers.ofString())
         assertEquals(200, tokenResponse.statusCode())
         assertTrue(tokenResponse.body().contains("access_token"))
         assertTrue(tokenResponse.body().contains("refresh_token"))
+    }
+
+    @Test
+    fun `token endpoint requires client secret for confidential authorization_code exchange`() {
+        transaction {
+            testClient.confidential = true
+            testClient.secret = "testsecret"
+        }
+
+        val tokens = transaction {
+            SessionAccessToken.new {
+                this.session = testSession
+                this.client = testClient
+                this.redirectUri = testRedirectUri
+
+                this.accessToken = SecureToken()
+                this.refreshToken = SecureToken()
+
+                this.tenant = testTenant
+                this.scope = null
+
+                this.authorizationCode = SecureToken()
+                this.authorizationCodeExpiration = Instant.now().plus(10, ChronoUnit.MINUTES)
+            }
+        }
+
+        val tokenUrl = "${Env.Test.URL}/api/v1/oauth2/token?grant_type=authorization_code&code=${tokens.authorizationCode}&client_id=${testClient.id.value}&redirect_uri=${testRedirectUri.uri}"
+        val tokenRequest = HttpRequest.newBuilder()
+            .uri(URI.create(tokenUrl))
+            .GET()
+            .build()
+        val tokenResponse = client.send(tokenRequest, HttpResponse.BodyHandlers.ofString())
+        assertEquals(401, tokenResponse.statusCode())
+
+        val creds = Base64.getEncoder().encodeToString("${testClient.id.value}:testsecret".toByteArray())
+        val authorizedRequest = HttpRequest.newBuilder()
+            .uri(URI.create(tokenUrl))
+            .header("Authorization", "Basic $creds")
+            .GET()
+            .build()
+        val authorizedResponse = client.send(authorizedRequest, HttpResponse.BodyHandlers.ofString())
+        assertEquals(200, authorizedResponse.statusCode())
     }
 
     @Test
@@ -235,8 +256,9 @@ class OAuth2Test {
         val mat = transaction {
             MachineAccessToken.new {
                 this.client = testClient
+                this.tenant = testTenant
                 this.issuedAt = Instant.now()
-                this.expiresAt = Instant.now().plus(1, ChronoUnit.DAYS)
+                this.expiresAt = Instant.now().plusSeconds(300)
                 this.accessToken = SecureToken()
                 this.scope = null
             }
@@ -256,7 +278,7 @@ class OAuth2Test {
 
     @Test
     fun `token endpoint returns error for missing Authorization header in client_credentials grant`() {
-        val url = "${Env.Test.URL}/api/v1/oauth2/token?grant_type=client_credentials"
+        val url = "${Env.Test.URL}/api/v1/oauth2/token?grant_type=client_credentials&tenant=${testTenant.id.value}"
         val request = HttpRequest.newBuilder()
             .uri(URI.create(url))
             .GET()
@@ -267,7 +289,7 @@ class OAuth2Test {
 
     @Test
     fun `token endpoint returns error for invalid client credentials`() {
-        val url = "${Env.Test.URL}/api/v1/oauth2/token?grant_type=client_credentials"
+        val url = "${Env.Test.URL}/api/v1/oauth2/token?grant_type=client_credentials&tenant=${testTenant.id.value}"
         val invalidCreds = Base64.getEncoder().encodeToString("invalid:invalid".toByteArray())
         val request = HttpRequest.newBuilder()
             .uri(URI.create(url))
@@ -284,9 +306,15 @@ class OAuth2Test {
         transaction {
             testClient.confidential = true
             testClient.secret = "testsecret"
+            ClientTenantEntitlement.new {
+                client = testClient
+                tenant = testTenant
+                tenantKey = testTenant.id.value.toString()
+                scope = "openid profile"
+            }
         }
 
-        val url = "${Env.Test.URL}/api/v1/oauth2/token?grant_type=client_credentials"
+        val url = "${Env.Test.URL}/api/v1/oauth2/token?grant_type=client_credentials&tenant=${testTenant.id.value}"
         val creds = Base64.getEncoder().encodeToString("${testClient.id.value}:testsecret".toByteArray())
         val request = HttpRequest.newBuilder()
             .uri(URI.create(url))
@@ -297,4 +325,32 @@ class OAuth2Test {
         assertEquals(200, response.statusCode())
         assertTrue(response.body().contains("access_token"))
     }
-} 
+
+    @Test
+    fun `token endpoint allows wildcard entitlement for any tenant scope`() {
+        transaction {
+            testClient.confidential = true
+            testClient.secret = "testsecret"
+            testClient.scope = null
+
+            ClientTenantEntitlement.new {
+                client = testClient
+                tenant = null
+                tenantKey = "*"
+                scope = null
+            }
+        }
+
+        val url = "${Env.Test.URL}/api/v1/oauth2/token?grant_type=client_credentials&tenant=${testTenant.id.value}&scope=id:tenant:read"
+        val creds = Base64.getEncoder().encodeToString("${testClient.id.value}:testsecret".toByteArray())
+        val request = HttpRequest.newBuilder()
+            .uri(URI.create(url))
+            .header("Authorization", "Basic $creds")
+            .GET()
+            .build()
+        val response = client.send(request, HttpResponse.BodyHandlers.ofString())
+        assertEquals(200, response.statusCode())
+        assertTrue(response.body().contains("\"tenant\":\"${testTenant.id.value}\""))
+        assertTrue(response.body().contains("\"scope\":\"id:tenant:read\""))
+    }
+}

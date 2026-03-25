@@ -45,6 +45,7 @@ object Env {
     val ENCRYPTED_PARAMETER_SALT = dotenv["ENCRYPTED_PARAMETER_SALT"] ?: ""
 
     val SESSION_ACCESS_TOKEN_LIFETIME = dotenv["SESSION_ACCESS_TOKEN_LIFETIME"]?.toLongOrNull() ?: 300
+    val MACHINE_ACCESS_TOKEN_LIFETIME = dotenv["MACHINE_ACCESS_TOKEN_LIFETIME"]?.toLongOrNull() ?: 300
 
     val EXTERNAL_BASE_URL = dotenv["EXTERNAL_BASE_URL"] ?: "http://localhost:$PORT"
 

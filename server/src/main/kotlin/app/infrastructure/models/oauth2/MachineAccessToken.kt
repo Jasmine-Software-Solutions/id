@@ -3,6 +3,8 @@ package app.infrastructure.models.oauth2
 import app.infrastructure.etc.transformInstant
 import app.infrastructure.models.client.Client
 import app.infrastructure.models.client.ClientsTable
+import app.infrastructure.models.tenant.Tenant
+import app.infrastructure.models.tenant.TenantsTable
 import org.jetbrains.exposed.dao.UUIDEntity
 import org.jetbrains.exposed.dao.UUIDEntityClass
 import org.jetbrains.exposed.dao.id.EntityID
@@ -12,6 +14,7 @@ import java.util.*
 
 object MachineAccessTokensTable : UUIDTable("machine_access_tokens") {
     val client = reference("client", ClientsTable, onDelete = ReferenceOption.CASCADE)
+    val tenant = reference("tenant", TenantsTable, onDelete = ReferenceOption.CASCADE)
 
     val issuedAt = long("issued_at").clientDefault { System.currentTimeMillis() }
     val expiresAt = long("expires_at")
@@ -24,6 +27,7 @@ class MachineAccessToken(id: EntityID<UUID>) : UUIDEntity(id), AccessToken {
     companion object : UUIDEntityClass<MachineAccessToken>(MachineAccessTokensTable)
 
     var client by Client referencedOn MachineAccessTokensTable.client
+    var tenant by Tenant referencedOn MachineAccessTokensTable.tenant
 
     var issuedAt by MachineAccessTokensTable.issuedAt.transformInstant()
     var expiresAt by MachineAccessTokensTable.expiresAt.transformInstant()

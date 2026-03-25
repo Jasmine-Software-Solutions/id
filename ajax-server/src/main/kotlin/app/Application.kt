@@ -23,6 +23,7 @@ import app.infrastructure.models.audit.GrantAuditTable
 import app.infrastructure.models.audit.LoginAuditTable
 import app.infrastructure.models.audit.SessionAuditTable
 import app.infrastructure.models.client.ClientRedirectUrisTable
+import app.infrastructure.models.client.ClientTenantEntitlementsTable
 import app.infrastructure.models.client.ClientsTable
 import app.infrastructure.models.oauth2.MachineAccessTokensTable
 import app.infrastructure.models.oauth2.SessionAccessTokensTable
@@ -115,6 +116,7 @@ class AjaxApplication {
 
                 ClientsTable,
                 ClientRedirectUrisTable,
+                ClientTenantEntitlementsTable,
 
                 SessionAccessTokensTable,
                 MachineAccessTokensTable

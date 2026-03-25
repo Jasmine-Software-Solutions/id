@@ -5,6 +5,7 @@ import app.application.authorization.Policy
 import app.application.authorization.PolicyResult
 import app.infrastructure.models.account.Account
 import app.infrastructure.models.account.AccountsTable
+import app.infrastructure.models.oauth2.MachineAccessToken
 import app.infrastructure.models.oauth2.SessionAccessToken
 import app.infrastructure.models.tenant.Tenant
 import app.infrastructure.models.tenant.TenantAccountLinksTable
@@ -42,6 +43,8 @@ class GetAccountService() : GetAccountHandler {
         )
 
         if (policyResult !is PolicyResult.Pass)
+            return@transaction GetAccountResult.Forbidden
+        if (command.tenantId == null && policyResult.token is MachineAccessToken)
             return@transaction GetAccountResult.Forbidden
 
         val tenant = command.tenantId?.let(Tenant::findById)
