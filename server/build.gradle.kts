@@ -29,6 +29,7 @@ dependencies {
     runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.11.5")
 
     api("com.mysql:mysql-connector-j:9.3.0")
+    api("org.postgresql:postgresql:42.7.4")
     api("com.zaxxer:HikariCP:4.0.3")
 
     api("de.mkammerer:argon2-jvm:2.12")

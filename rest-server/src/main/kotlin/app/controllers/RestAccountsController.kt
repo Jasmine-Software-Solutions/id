@@ -2,21 +2,23 @@ package app.controllers
 
 import app.application.accounts.*
 import app.infrastructure.etc.toUUIDOrNull
-import io.javalin.community.routing.annotations.Endpoints
-import io.javalin.community.routing.annotations.Get
+import io.javalin.community.routing.annotations.*
 import io.javalin.community.routing.annotations.Header
-import io.javalin.community.routing.annotations.Param
-import io.javalin.http.Context
-import io.javalin.http.ForbiddenResponse
-import io.javalin.http.NotFoundResponse
+import io.javalin.http.*
 import java.time.Instant
 import java.util.*
 
 @Endpoints("/api/v1/accounts")
 class RestAccountsController(
     private val listAccountsHandler: ListAccountsHandler,
-    private val getAccountHandler: GetAccountHandler
+    private val getAccountHandler: GetAccountHandler,
+    private val createAccountHandler: CreateAccountHandler,
 ) {
+    data class CreateAccountPayload(
+        @get:com.fasterxml.jackson.annotation.JsonProperty("email") val email: String?,
+        @get:com.fasterxml.jackson.annotation.JsonProperty("first_name") val firstName: String?,
+        @get:com.fasterxml.jackson.annotation.JsonProperty("last_name") val lastName: String?,
+    )
 
     @Get
     fun list(ctx: Context, @Header("Authorization") authorization: String?) {
@@ -51,6 +53,30 @@ class RestAccountsController(
 
             is GetAccountResult.NotFound -> throw NotFoundResponse()
             is GetAccountResult.Forbidden -> throw ForbiddenResponse()
+        }
+    }
+
+    @Post
+    fun create(ctx: Context, @Header("Authorization") authorization: String?) {
+        val payload = runCatching { ctx.bodyAsClass(CreateAccountPayload::class.java) }.getOrNull()
+            ?: throw BadRequestResponse("Invalid payload")
+
+        val email = payload.email?.trim().takeUnless { it.isNullOrBlank() }
+            ?: throw BadRequestResponse("Missing email")
+        val firstName = payload.firstName?.trim().takeUnless { it.isNullOrBlank() }
+            ?: throw BadRequestResponse("Missing first_name")
+        val lastName = payload.lastName?.trim().takeUnless { it.isNullOrBlank() }
+            ?: throw BadRequestResponse("Missing last_name")
+
+        when (val result = createAccountHandler.execute(CreateAccountCommand(
+            authorization = authorization,
+            email = email,
+            firstName = firstName,
+            lastName = lastName,
+        ))) {
+            is CreateAccountResult.Success -> ctx.status(201).json(result.account)
+            is CreateAccountResult.Forbidden -> throw ForbiddenResponse()
+            is CreateAccountResult.EmailAlreadyExists -> throw ConflictResponse("Email already exists")
         }
     }
 }

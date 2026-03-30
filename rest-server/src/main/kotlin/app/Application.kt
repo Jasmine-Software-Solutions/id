@@ -2,6 +2,7 @@ package app
 
 import app.application.account.GetAccountInfoService
 import app.application.account.GetAccountLinksService
+import app.application.accounts.CreateAccountService
 import app.application.accounts.GetAccountService
 import app.application.accounts.ListAccountsService
 import app.application.client.DeleteClientEntitlementService
@@ -118,6 +119,7 @@ class RestApplication {
                 val getAccountLinks = GetAccountLinksService()
                 val listAccounts = ListAccountsService()
                 val getAccount = GetAccountService()
+                val createAccount = CreateAccountService()
                 val getTenantInfo = GetTenantInfoService()
                 val listClientEntitlements = ListClientEntitlementsService()
                 val upsertClientEntitlement = UpsertClientEntitlementService()
@@ -128,7 +130,7 @@ class RestApplication {
                 val introspectService = OAuth2IntrospectService()
 
                 val restAccountController = RestAccountController(getAccountInfo, getAccountLinks)
-                val restAccountsController = RestAccountsController(listAccounts, getAccount)
+                val restAccountsController = RestAccountsController(listAccounts, getAccount, createAccount)
                 val restTenantController = RestTenantController(getTenantInfo)
                 val restClientEntitlementsController = RestClientEntitlementsController(
                     listClientEntitlements,

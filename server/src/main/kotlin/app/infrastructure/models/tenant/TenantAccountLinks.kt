@@ -13,10 +13,6 @@ object TenantAccountLinksTable : Table("tenant_account_links") {
 
     override val primaryKey = PrimaryKey(tenant, account)
 
-    init {
-        uniqueIndex(tenant, administrator)
-    }
-
     @Suppress("unused")
     fun selectByTenant(tenantId: UUID) = TenantAccountLinksTable.select { tenant eq tenantId }
 
