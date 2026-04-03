@@ -9,7 +9,7 @@ import org.jetbrains.exposed.sql.ReferenceOption
 import java.util.*
 
 object PasswordsTable : UUIDTable("passwords") {
-    val createdAt = long("created_at")
+    val createdAt = long("created_at").clientDefault { System.currentTimeMillis() }
 
     val account = reference("account_id", AccountsTable, onDelete = ReferenceOption.CASCADE)
     val passwordHash = text("argon2_password_hash")

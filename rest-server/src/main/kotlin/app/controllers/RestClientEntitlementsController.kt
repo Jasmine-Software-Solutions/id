@@ -2,6 +2,7 @@ package app.controllers
 
 import app.application.client.*
 import app.infrastructure.etc.toUUIDOrNull
+import com.fasterxml.jackson.annotation.JsonProperty
 import io.javalin.community.routing.annotations.*
 import io.javalin.http.BadRequestResponse
 import io.javalin.http.Context
@@ -16,9 +17,9 @@ class RestClientEntitlementsController(
     private val deleteHandler: DeleteClientEntitlementHandler,
 ) {
     data class UpsertRequest(
-        @get:com.fasterxml.jackson.annotation.JsonProperty("client_id") val clientId: UUID?,
-        @get:com.fasterxml.jackson.annotation.JsonProperty("tenant") val tenantId: UUID?,
-        @get:com.fasterxml.jackson.annotation.JsonProperty("scope") val scope: String?,
+        @get:JsonProperty("client_id") val clientId: UUID?,
+        @get:JsonProperty("tenant") val tenantId: UUID?,
+        @get:JsonProperty("scope") val scope: String?,
     )
 
     @Get

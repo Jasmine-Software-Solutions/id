@@ -10,8 +10,8 @@ import org.jetbrains.exposed.sql.ReferenceOption
 import java.util.*
 
 object SessionsTable : UUIDTable("sessions") {
-    val createdAt = long("created_at")
-    val accessedAt = long("accessed_at")
+    val createdAt = long("created_at").clientDefault { System.currentTimeMillis() }
+    val accessedAt = long("accessed_at").clientDefault { System.currentTimeMillis() }
     val expiresAt = long("expires_at")
 
     val invalidatedAt = long("invalidated_at").nullable()

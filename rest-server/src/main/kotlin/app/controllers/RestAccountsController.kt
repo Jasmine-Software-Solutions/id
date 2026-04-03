@@ -2,9 +2,12 @@ package app.controllers
 
 import app.application.accounts.*
 import app.infrastructure.etc.toUUIDOrNull
+import com.fasterxml.jackson.annotation.JsonProperty
 import io.javalin.community.routing.annotations.*
-import io.javalin.community.routing.annotations.Header
-import io.javalin.http.*
+import io.javalin.http.BadRequestResponse
+import io.javalin.http.Context
+import io.javalin.http.ForbiddenResponse
+import io.javalin.http.NotFoundResponse
 import java.time.Instant
 import java.util.*
 
@@ -15,9 +18,9 @@ class RestAccountsController(
     private val createAccountHandler: CreateAccountHandler,
 ) {
     data class CreateAccountPayload(
-        @get:com.fasterxml.jackson.annotation.JsonProperty("email") val email: String?,
-        @get:com.fasterxml.jackson.annotation.JsonProperty("first_name") val firstName: String?,
-        @get:com.fasterxml.jackson.annotation.JsonProperty("last_name") val lastName: String?,
+        @field:JsonProperty("email") val email: String?,
+        @field:JsonProperty("first_name") val firstName: String?,
+        @field:JsonProperty("last_name") val lastName: String?,
     )
 
     @Get
@@ -59,7 +62,7 @@ class RestAccountsController(
     @Post
     fun create(ctx: Context, @Header("Authorization") authorization: String?) {
         val payload = runCatching { ctx.bodyAsClass(CreateAccountPayload::class.java) }.getOrNull()
-            ?: throw BadRequestResponse("Invalid payload")
+            ?: throw BadRequestResponse("Invalid: " + ctx.body())
 
         val email = payload.email?.trim().takeUnless { it.isNullOrBlank() }
             ?: throw BadRequestResponse("Missing email")
@@ -76,7 +79,6 @@ class RestAccountsController(
         ))) {
             is CreateAccountResult.Success -> ctx.status(201).json(result.account)
             is CreateAccountResult.Forbidden -> throw ForbiddenResponse()
-            is CreateAccountResult.EmailAlreadyExists -> throw ConflictResponse("Email already exists")
         }
     }
 }

@@ -9,7 +9,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import java.util.*
 
 object AccountsTable : UUIDTable("accounts") {
-    val createdAt = long("created_at")
+    val createdAt = long("created_at").clientDefault { System.currentTimeMillis() }
 
     val email = varchar("email", 320).uniqueIndex()
 

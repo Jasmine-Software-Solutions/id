@@ -9,8 +9,12 @@ import org.jetbrains.exposed.sql.ReferenceOption
 import java.util.*
 
 object MagicLinksTable : UUIDTable("magic_links") {
-    val createdAt = long("created_at")
+    val createdAt = long("created_at").clientDefault { System.currentTimeMillis() }
     val expiresAt = long("expires_at")
+
+    var decidedAt = long("decided_at").nullable()
+    var approved = bool("approved").default(false)
+    var consumed = bool("consumed").default(false)
 
     val account = reference("account_id", AccountsTable, onDelete = ReferenceOption.CASCADE)
 

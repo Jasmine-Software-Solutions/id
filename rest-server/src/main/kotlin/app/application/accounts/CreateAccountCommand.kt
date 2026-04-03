@@ -27,7 +27,6 @@ interface CreateAccountHandler {
 sealed class CreateAccountResult {
     data class Success(val account: AccountDTO) : CreateAccountResult()
     object Forbidden : CreateAccountResult()
-    object EmailAlreadyExists : CreateAccountResult()
 }
 
 class CreateAccountService : CreateAccountHandler {
@@ -48,10 +47,7 @@ class CreateAccountService : CreateAccountHandler {
             else -> throw IllegalStateException()
         }
 
-        if (Account.select(command.email) != null)
-            return@transaction CreateAccountResult.EmailAlreadyExists
-
-        val account = Account.new {
+        val account = Account.select(command.email) ?: Account.new {
             createdAt = Instant.now()
             email = command.email
             firstName = command.firstName
