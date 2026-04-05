@@ -6,20 +6,16 @@ import app.domain.models.account.ITOTPConfiguration
 import app.domain.repositories.IAccountRepository
 import app.domain.repositories.ITOTPConfigurationRepository
 import app.domain.services.ITOTPService
-import app.infrastructure.models.account.AccountsTable
-import app.infrastructure.models.account.TOTPConfigurationTable
+import app.infrastructure.entities.ExposedEntity
 import app.infrastructure.util.EntityTransformer
 import app.infrastructure.util.ExposedColumnTransformer
-import app.infrastructure.util.ExposedEntityWrapper
 import app.infrastructure.util.NullableInstantTransformer
-import org.jetbrains.exposed.sql.ResultRow
-import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.dao.id.UUIDTable
+import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.statements.InsertStatement
 import org.jetbrains.exposed.sql.statements.UpdateStatement
 import org.jetbrains.exposed.sql.statements.api.ExposedBlob
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.update
 import java.time.Instant
 import java.util.*
 
@@ -28,26 +24,26 @@ class ExposedTOTPConfigurationRepository(
     val totpService: ITOTPService
 ) : ITOTPConfigurationRepository {
     override fun findByAccount(id: UUID): ITOTPConfiguration = transaction {
-        val row = TOTPConfigurationTable.select { TOTPConfigurationTable.account eq id }.firstOrNull()
+        val row = Table.select { Table.account eq id }.firstOrNull()
             ?: return@transaction create(id)
 
-        if (row[TOTPConfigurationTable.enabled])
+        if (row[Table.enabled])
             return@transaction SetTOTPConfiguration(row, null, null)
 
         return@transaction TOTPConfiguration(row, null, null)
     }
 
     private fun create(id: UUID): ITOTPConfiguration = transaction {
-        TOTPConfigurationTable.insert {
-            it[TOTPConfigurationTable.account] = id
-            it[TOTPConfigurationTable.createdAt] = System.currentTimeMillis()
-            it[TOTPConfigurationTable.enabled] = false
+        Table.insert {
+            it[Table.account] = id
+            it[Table.createdAt] = System.currentTimeMillis()
+            it[Table.enabled] = false
 
-            it[TOTPConfigurationTable.confirmedAt] = null
-            it[TOTPConfigurationTable.digits] = null
-            it[TOTPConfigurationTable.periodSeconds] = null
-            it[TOTPConfigurationTable.algorithm] = null
-            it[TOTPConfigurationTable.encryptedSecret] = null
+            it[Table.confirmedAt] = null
+            it[Table.digits] = null
+            it[Table.periodSeconds] = null
+            it[Table.algorithm] = null
+            it[Table.encryptedSecret] = null
         }
 
         return@transaction findByAccount(id)
@@ -57,7 +53,7 @@ class ExposedTOTPConfigurationRepository(
         val isExposedEntity = entity is TOTPConfiguration
         val oldWrappedEntity = if (isExposedEntity) entity as TOTPConfiguration else null
 
-        TOTPConfigurationTable.update({ TOTPConfigurationTable.account eq entity.account.id }) {
+        Table.update({ Table.account eq entity.account.id }) {
             val row = oldWrappedEntity?.row
 
             val newWrappedEntity = SetTOTPConfiguration(row, null, it)
@@ -70,11 +66,11 @@ class ExposedTOTPConfigurationRepository(
             }
 
             if (!entity.enabled) {
-                it[TOTPConfigurationTable.confirmedAt] = null
-                it[TOTPConfigurationTable.digits] = null
-                it[TOTPConfigurationTable.periodSeconds] = null
-                it[TOTPConfigurationTable.algorithm] = null
-                it[TOTPConfigurationTable.encryptedSecret] = null
+                it[Table.confirmedAt] = null
+                it[Table.digits] = null
+                it[Table.periodSeconds] = null
+                it[Table.algorithm] = null
+                it[Table.encryptedSecret] = null
             }
         }
 
@@ -85,11 +81,11 @@ class ExposedTOTPConfigurationRepository(
         row: ResultRow? = null,
         insert: InsertStatement<Number>? = null,
         update: UpdateStatement? = null
-    ) : ExposedEntityWrapper(row, insert, update), ITOTPConfiguration {
-        override var account: IAccount by column(TOTPConfigurationTable.account,
-            EntityTransformer(AccountsTable, accountRepository))
+    ) : ExposedEntity(row, insert, update), ITOTPConfiguration {
+        override var account: IAccount by column(Table.account,
+            EntityTransformer(ExposedAccountRepository.Table, accountRepository))
 
-        override var enabled: Boolean by column(TOTPConfigurationTable.enabled)
+        override var enabled: Boolean by column(Table.enabled)
     }
 
     inner class SetTOTPConfiguration(
@@ -97,13 +93,13 @@ class ExposedTOTPConfigurationRepository(
         insert: InsertStatement<Number>? = null,
         update: UpdateStatement? = null
     ) : TOTPConfiguration(row, insert, update), IEncryptedTOTPConfiguration {
-        override var confirmedAt: Instant? by nullableColumn(TOTPConfigurationTable.confirmedAt, NullableInstantTransformer)
+        override var confirmedAt: Instant? by nullableColumn(Table.confirmedAt, NullableInstantTransformer)
 
-        override var digits: Int by requiredColumn(TOTPConfigurationTable.digits)
-        override var periodSeconds: Long by requiredColumn(TOTPConfigurationTable.periodSeconds)
-        override var algorithm: String by requiredColumn(TOTPConfigurationTable.algorithm)
+        override var digits: Int by requiredColumn(Table.digits)
+        override var periodSeconds: Long by requiredColumn(Table.periodSeconds)
+        override var algorithm: String by requiredColumn(Table.algorithm)
 
-        override var secret: ByteArray by requiredColumn(TOTPConfigurationTable.encryptedSecret,
+        override var secret: ByteArray by requiredColumn(Table.encryptedSecret,
             transformer = ExposedColumnTransformer(
                 fromColumn = { it!!.bytes },
                 toColumn = { ExposedBlob(it) }
@@ -112,5 +108,19 @@ class ExposedTOTPConfigurationRepository(
         override fun verify(code: Int): Boolean {
             return totpService.verify(secret, code)
         }
+    }
+
+    object Table : UUIDTable("account_2fa_totp") {
+        val createdAt = long("created_at").clientDefault { System.currentTimeMillis() }
+        val confirmedAt = long("confirmed_at").nullable()
+
+        val account = reference("account", ExposedAccountRepository.Table, onDelete = ReferenceOption.CASCADE).uniqueIndex()
+        val enabled = bool("enabled").default(false)
+
+        val encryptedSecret = blob("encrypted_secret").nullable()
+
+        val digits = integer("digits").nullable()
+        val periodSeconds = long("period_seconds").nullable()
+        val algorithm = varchar("algorithm", 10).nullable()
     }
 }

@@ -1,12 +1,14 @@
-package app.infrastructure.util
+package app.infrastructure.entities
 
+import app.infrastructure.util.ExposedColumnDelegate
+import app.infrastructure.util.ExposedColumnTransformer
 import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.statements.InsertStatement
 import org.jetbrains.exposed.sql.statements.UpdateStatement
 import kotlin.properties.ReadWriteProperty
 
-abstract class ExposedEntityWrapper(
+abstract class ExposedEntity(
     internal var row: ResultRow? = null,
     internal var insert: InsertStatement<Number>? = null,
     internal var update: UpdateStatement? = null

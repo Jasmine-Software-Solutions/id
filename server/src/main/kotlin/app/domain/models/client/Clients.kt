@@ -10,11 +10,18 @@ interface IClient : IIdentified, ICreated {
     var name: String
     var confidential: Boolean
 
-    val redirectUris: List<URI>
+    val redirectUris: IClientRedirectUris
 
-    fun verify(secret: String): Boolean
+    fun isSecret(secret: String): Boolean
 }
 
 interface IHashedClient : IClient {
     var secret: String
+}
+
+interface IClientRedirectUris : Iterable<URI> {
+    val values: List<URI>
+
+    fun add(uri: URI)
+    fun remove(uri: URI)
 }

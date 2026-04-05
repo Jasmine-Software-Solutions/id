@@ -5,12 +5,13 @@ import app.domain.models.account.IHashedSession
 import app.domain.models.account.ISession
 import app.domain.repositories.IAccountRepository
 import app.domain.repositories.ISessionRepository
+import app.infrastructure.entities.ExposedIdentifiedEntity
 import app.infrastructure.models.account.AccountsTable
-import app.infrastructure.models.account.SessionsTable
+import app.infrastructure.repositories.ExposedIdentifiedEntityRepository
 import app.infrastructure.util.EntityTransformer
-import app.infrastructure.util.ExposedIdentifiedEntityRepository
-import app.infrastructure.util.ExposedIdentifiedEntityWrapper
 import app.infrastructure.util.InstantTransformer
+import org.jetbrains.exposed.dao.id.UUIDTable
+import org.jetbrains.exposed.sql.ReferenceOption
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.select
@@ -22,13 +23,14 @@ import java.util.*
 
 class ExposedSessionRepository(
     val accountRepository: IAccountRepository
-) : ExposedIdentifiedEntityRepository<ISession, ExposedSessionRepository.Session>(SessionsTable, Session::class), ISessionRepository {
+) : ExposedIdentifiedEntityRepository<ISession, ExposedSessionRepository.Session>(Table, Session::class),
+    ISessionRepository {
     override fun read(row: ResultRow?, insert: InsertStatement<Number>?, update: UpdateStatement?)
             = Session(row, insert, update)
 
     override fun findByAccount(id: UUID): List<ISession> = transaction {
-        SessionsTable.select { SessionsTable.account eq id }
-            .orderBy(SessionsTable.createdAt, SortOrder.ASC)
+        Table.select { Table.account eq id }
+            .orderBy(Table.createdAt, SortOrder.ASC)
             .map { read(it, null, null) }
             .toList()
     }
@@ -37,20 +39,32 @@ class ExposedSessionRepository(
         row: ResultRow? = null,
         insert: InsertStatement<Number>? = null,
         update: UpdateStatement? = null
-    ) : ExposedIdentifiedEntityWrapper(SessionsTable, row, insert, update), IHashedSession {
-        override val createdAt: Instant by column(SessionsTable.createdAt, InstantTransformer)
-        override var expiresAt: Instant by column(SessionsTable.expiresAt, InstantTransformer)
+    ) : ExposedIdentifiedEntity(Table, row, insert, update), IHashedSession {
+        override val createdAt: Instant by column(Table.createdAt, InstantTransformer)
+        override var expiresAt: Instant by column(Table.expiresAt, InstantTransformer)
 
-        override var userAgent: String by column(SessionsTable.userAgent)
-        override var ipAddress: String by column(SessionsTable.ipAddress)
+        override var userAgent: String by column(Table.userAgent)
+        override var ipAddress: String by column(Table.ipAddress)
 
-        override var account: IAccount by column(SessionsTable.account,
-            EntityTransformer(AccountsTable, accountRepository))
+        override var account: IAccount by column(Table.account,
+            EntityTransformer(ExposedAccountRepository.Table, accountRepository))
 
-        override var token: String by column(SessionsTable.token)
+        override var token: String by column(Table.token)
 
         override fun verify(token: String): Boolean {
             TODO("Not yet implemented")
         }
+    }
+
+    object Table : UUIDTable("sessions") {
+        val createdAt = long("created_at").clientDefault { System.currentTimeMillis() }
+        val expiresAt = long("expires_at")
+
+        val account = reference("account", AccountsTable, onDelete = ReferenceOption.CASCADE)
+
+        val userAgent = varchar("user_agent", 256)
+        val ipAddress = varchar("ip_address", 39)
+
+        val token = varchar("token", 32).uniqueIndex()
     }
 }

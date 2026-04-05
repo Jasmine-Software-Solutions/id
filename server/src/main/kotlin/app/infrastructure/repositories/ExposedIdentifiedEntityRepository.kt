@@ -1,7 +1,8 @@
-package app.infrastructure.util
+package app.infrastructure.repositories
 
 import app.domain.models.IIdentified
 import app.domain.repositories.IIdentifiedRepository
+import app.infrastructure.entities.ExposedEntity
 import app.infrastructure.models.account.AccountsTable
 import org.jetbrains.exposed.dao.id.UUIDTable
 import org.jetbrains.exposed.sql.*
@@ -15,15 +16,17 @@ import kotlin.reflect.KClass
 abstract class ExposedIdentifiedEntityRepository<T, TWrapper>(
     val table: UUIDTable,
     val wrapperClazz: KClass<TWrapper>
-) : IIdentifiedRepository<T> where T : IIdentified, TWrapper : ExposedEntityWrapper {
+) : IIdentifiedRepository<T> where T : IIdentified, TWrapper : ExposedEntity {
     abstract fun read(
         row: ResultRow? = null,
         insert: InsertStatement<Number>? = null,
         update: UpdateStatement? = null): T
 
-    open fun writeDefaults(id: UUID, it: InsertStatement<Number>) {
+    open fun writeDefaults(id: UUID, entity: T, it: InsertStatement<Number>) {
         it[table.id] = id
     }
+
+    open fun createDependents(id: UUID, entity: T) {}
 
     override fun findById(id: UUID): T? = transaction {
         val row = table.select { table.id eq id }.firstOrNull()
@@ -34,19 +37,23 @@ abstract class ExposedIdentifiedEntityRepository<T, TWrapper>(
 
     override fun create(function: T.() -> Unit): T = transaction {
         val entityId = UUID.randomUUID()
+        lateinit var entity: T
+
         table.insert {
-            val entity = read(null, it, null)
+            entity = read(null, it, null)
             function(entity)
 
-            writeDefaults(entityId, it)
+            writeDefaults(entityId, entity, it)
         }
+
+        createDependents(entityId, entity)
 
         return@transaction findById(entityId)!!
     }
 
     override fun update(entity: T, function: T.() -> Unit) = transaction {
         val isExposedEntity = entity::class == wrapperClazz
-        val oldWrappedEntity = if (isExposedEntity) entity as ExposedEntityWrapper else null
+        val oldWrappedEntity = if (isExposedEntity) entity as ExposedEntity else null
 
         table.update({ AccountsTable.id eq entity.id }) {
             val row = oldWrappedEntity?.row

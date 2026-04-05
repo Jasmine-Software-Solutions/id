@@ -6,12 +6,12 @@ import app.domain.models.account.IPassword
 import app.domain.repositories.IAccountRepository
 import app.domain.repositories.IPasswordRepository
 import app.domain.services.IPasswordService
-import app.infrastructure.models.account.AccountsTable
-import app.infrastructure.models.account.PasswordsTable
+import app.infrastructure.entities.ExposedIdentifiedEntity
+import app.infrastructure.repositories.ExposedIdentifiedEntityRepository
 import app.infrastructure.util.EntityTransformer
-import app.infrastructure.util.ExposedIdentifiedEntityRepository
-import app.infrastructure.util.ExposedIdentifiedEntityWrapper
 import app.infrastructure.util.InstantTransformer
+import org.jetbrains.exposed.dao.id.UUIDTable
+import org.jetbrains.exposed.sql.ReferenceOption
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.select
@@ -24,31 +24,39 @@ import java.util.*
 class ExposedPasswordRepository(
     val accountRepository: IAccountRepository,
     val passwordService: IPasswordService
-) : ExposedIdentifiedEntityRepository<IPassword, ExposedPasswordRepository.Password>(PasswordsTable, Password::class), IPasswordRepository {
+) : ExposedIdentifiedEntityRepository<IPassword, ExposedPasswordRepository.Password>(Table, Password::class),
+    IPasswordRepository {
     override fun read(row: ResultRow?, insert: InsertStatement<Number>?, update: UpdateStatement?)
             = Password(row, insert, update)
 
     override fun findByAccount(id: UUID): List<IPassword> = transaction {
-        PasswordsTable.select { PasswordsTable.account eq id }
-            .orderBy(PasswordsTable.createdAt, SortOrder.ASC)
+        Table.select { Table.account eq id }
+            .orderBy(Table.createdAt, SortOrder.ASC)
             .map { read(it, null, null) }
             .toList()
     }
 
     inner class Password(
-        row: ResultRow?,
-        insert: InsertStatement<Number>?,
-        update: UpdateStatement?
-    ) : ExposedIdentifiedEntityWrapper(PasswordsTable, row, insert, update), IHashedPassword {
-        override val createdAt: Instant by column(PasswordsTable.createdAt, InstantTransformer)
+        row: ResultRow? = null,
+        insert: InsertStatement<Number>? = null,
+        update: UpdateStatement? = null
+    ) : ExposedIdentifiedEntity(Table, row, insert, update), IHashedPassword {
+        override val createdAt: Instant by column(Table.createdAt, InstantTransformer)
 
-        override var account: IAccount by column(PasswordsTable.account,
-            EntityTransformer(AccountsTable, accountRepository))
+        override var account: IAccount by column(Table.account,
+            EntityTransformer(ExposedAccountRepository.Table, accountRepository))
 
-        override var password: String by column(PasswordsTable.passwordHash)
+        override var password: String by column(Table.passwordHash)
 
         override fun verify(password: String): Boolean {
             return passwordService.verify(this.password, password)
         }
+    }
+
+    object Table : UUIDTable("passwords") {
+        val createdAt = long("created_at").clientDefault { System.currentTimeMillis() }
+
+        val account = reference("account_id", ExposedAccountRepository.Table, onDelete = ReferenceOption.CASCADE)
+        val passwordHash = text("argon2_password_hash")
     }
 }
