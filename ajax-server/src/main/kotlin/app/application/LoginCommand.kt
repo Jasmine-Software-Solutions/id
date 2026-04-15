@@ -1,16 +1,6 @@
 package app.application
 
-import app.infrastructure.account.AccountMagicLinkEngine
-import app.infrastructure.account.AccountTOTPEngine
-import app.infrastructure.etc.SecureToken
-import app.infrastructure.models.account.*
-import app.infrastructure.models.tenant.TenantAccountLinksTable
-import de.mkammerer.argon2.Argon2Factory
-import org.jetbrains.exposed.sql.SortOrder
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.select
-import org.jetbrains.exposed.sql.transactions.transaction
+import app.domain.models.account.IMagicLink
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import java.util.*
@@ -41,7 +31,7 @@ sealed class LoginResult {
     object InvalidOtp : LoginResult()
 
     data class MagicLinkIssued(
-        val magicLink: MagicLink,
+        val magicLink: IMagicLink,
         val magicLinkAcceptanceToken: String,
         val acceptPasswordAsAlternative: Boolean
     ) : LoginResult()

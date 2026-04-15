@@ -5,6 +5,7 @@ import app.domain.models.account.IHashedSession
 import app.domain.models.account.ISession
 import app.domain.repositories.IAccountRepository
 import app.domain.repositories.ISessionRepository
+import app.domain.services.IHashFunction
 import app.infrastructure.entities.ExposedIdentifiedEntity
 import app.infrastructure.models.account.AccountsTable
 import app.infrastructure.repositories.ExposedIdentifiedEntityRepository
@@ -22,6 +23,7 @@ import java.time.Instant
 import java.util.*
 
 class ExposedSessionRepository(
+    val hashService: IHashFunction,
     val accountRepository: IAccountRepository
 ) : ExposedIdentifiedEntityRepository<ISession, ExposedSessionRepository.Session>(Table, Session::class),
     ISessionRepository {
@@ -49,10 +51,16 @@ class ExposedSessionRepository(
         override var account: IAccount by column(Table.account,
             EntityTransformer(ExposedAccountRepository.Table, accountRepository))
 
-        override var token: String by column(Table.token)
+        override var token: String
+            get() = throw UnsupportedOperationException()
+            set(value) = hashService.hash(value.toByteArray()).let {
+                row?.set(Table.tokenHash, it)
+                insert?.set(Table.tokenHash, it)
+                update?.set(Table.tokenHash, it)
+            }
 
         override fun verify(token: String): Boolean {
-            TODO("Not yet implemented")
+            return hashService.verify(token.toByteArray(), row!![Table.tokenHash])
         }
     }
 
@@ -65,6 +73,6 @@ class ExposedSessionRepository(
         val userAgent = varchar("user_agent", 256)
         val ipAddress = varchar("ip_address", 39)
 
-        val token = varchar("token", 32).uniqueIndex()
+        val tokenHash = text("argon2_token_hash")
     }
 }

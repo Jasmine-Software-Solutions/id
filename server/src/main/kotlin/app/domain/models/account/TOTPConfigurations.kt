@@ -1,6 +1,8 @@
 package app.domain.models.account
 
+import dev.turingcomplete.kotlinonetimepassword.HmacAlgorithm
 import java.time.Instant
+import kotlin.time.Duration
 
 
 interface ITOTPConfiguration {
@@ -12,10 +14,8 @@ interface ISetTOTPConfiguration : ITOTPConfiguration {
     var confirmedAt: Instant?
 
     var digits: Int
-    var periodSeconds: Long
-    var algorithm: String
-
-    fun verify(code: Int): Boolean
+    var period: Duration
+    var algorithm: HmacAlgorithm
 }
 
 interface IEncryptedTOTPConfiguration : ISetTOTPConfiguration {

@@ -5,7 +5,7 @@ import app.domain.models.account.IHashedMagicLink
 import app.domain.models.account.IMagicLink
 import app.domain.repositories.IAccountRepository
 import app.domain.repositories.IMagicLinkRepository
-import app.domain.services.IMagicLinkService
+import app.domain.services.IHashFunction
 import app.infrastructure.entities.ExposedIdentifiedEntity
 import app.infrastructure.models.account.AccountsTable
 import app.infrastructure.repositories.ExposedIdentifiedEntityRepository
@@ -24,8 +24,8 @@ import java.time.Instant
 import java.util.*
 
 class ExposedMagicLinkRepository(
-    val accountRepository: IAccountRepository,
-    val magicLinkService: IMagicLinkService,
+    val hashService: IHashFunction,
+    val accountRepository: IAccountRepository
 ) : ExposedIdentifiedEntityRepository<IMagicLink, ExposedMagicLinkRepository.MagicLink>(Table, MagicLink::class), IMagicLinkRepository {
     override fun read(row: ResultRow?, insert: InsertStatement<Number>?, update: UpdateStatement?)
             = MagicLink(row, insert, update)
@@ -52,15 +52,28 @@ class ExposedMagicLinkRepository(
         override var approved: Boolean by column(Table.approved)
         override var consumed: Boolean by column(Table.consumed)
 
-        override var decisionToken: String by column(Table.decisionToken)
-        override var acceptanceToken: String by column(Table.acceptanceTokenHash)
+        override var decisionToken: String
+            get() = throw UnsupportedOperationException()
+            set(value) = hashService.hash(value.toByteArray()).let {
+                row?.set(Table.decisionTokenHash, it)
+                insert?.set(Table.decisionTokenHash, it)
+                update?.set(Table.decisionTokenHash, it)
+            }
+
+        override var acceptanceToken: String
+            get() = throw UnsupportedOperationException()
+            set(value) = hashService.hash(value.toByteArray()).let {
+                row?.set(Table.acceptanceTokenHash, it)
+                insert?.set(Table.acceptanceTokenHash, it)
+                update?.set(Table.acceptanceTokenHash, it)
+            }
 
         override fun verifyDecisionToken(token: String): Boolean {
-           return  magicLinkService.verify(token, decisionToken)
+            return hashService.verify(token.toByteArray(), row!![Table.decisionTokenHash])
         }
 
         override fun verifyAcceptanceToken(token: String): Boolean {
-            return magicLinkService.verify(token, acceptanceToken)
+            return hashService.verify(token.toByteArray(), row!![Table.acceptanceTokenHash])
         }
     }
 
@@ -74,7 +87,7 @@ class ExposedMagicLinkRepository(
 
         val account = reference("account_id", AccountsTable, onDelete = ReferenceOption.CASCADE)
 
-        val decisionToken = varchar("decision_token", 32).uniqueIndex()
+        val decisionTokenHash = text("argon2_decision_token_hash")
         val acceptanceTokenHash = text("argon2_acceptance_token_hash")
     }
 }

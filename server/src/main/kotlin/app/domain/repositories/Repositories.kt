@@ -8,6 +8,8 @@ interface IRepository<T> {
 
     fun update(entity: T, function: T.() -> Unit)
     fun delete(entity: T)
+
+    fun install()
 }
 
 interface IIdentifiedRepository<T : IIdentified> : IRepository<T> {

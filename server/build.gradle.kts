@@ -40,6 +40,12 @@ dependencies {
     api("org.eclipse.angus:angus-mail:2.0.1")
 
     api("com.fasterxml.jackson.core:jackson-annotations:2.18.3")
+
+    implementation("com.google.code.gson:gson:2.13.2")
+
+    implementation("io.jsonwebtoken:jjwt-api:0.13.0")
+    runtimeOnly("io.jsonwebtoken:jjwt-impl:0.13.0")
+    runtimeOnly("io.jsonwebtoken:jjwt-gson:0.13.0")
 }
 
 tasks.test {

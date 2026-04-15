@@ -5,11 +5,13 @@ import app.domain.models.account.IEncryptedTOTPConfiguration
 import app.domain.models.account.ITOTPConfiguration
 import app.domain.repositories.IAccountRepository
 import app.domain.repositories.ITOTPConfigurationRepository
-import app.domain.services.ITOTPService
+import app.domain.services.IEncryptionFunction
 import app.infrastructure.entities.ExposedEntity
+import app.infrastructure.models.account.TOTPConfigurationTable
 import app.infrastructure.util.EntityTransformer
 import app.infrastructure.util.ExposedColumnTransformer
 import app.infrastructure.util.NullableInstantTransformer
+import dev.turingcomplete.kotlinonetimepassword.HmacAlgorithm
 import org.jetbrains.exposed.dao.id.UUIDTable
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.statements.InsertStatement
@@ -18,10 +20,13 @@ import org.jetbrains.exposed.sql.statements.api.ExposedBlob
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.time.Instant
 import java.util.*
+import kotlin.time.Duration
+import kotlin.time.DurationUnit
+import kotlin.time.toDuration
 
 class ExposedTOTPConfigurationRepository(
-    val accountRepository: IAccountRepository,
-    val totpService: ITOTPService
+    val encryptionService: IEncryptionFunction,
+    val accountRepository: IAccountRepository
 ) : ITOTPConfigurationRepository {
     override fun findByAccount(id: UUID): ITOTPConfiguration = transaction {
         val row = Table.select { Table.account eq id }.firstOrNull()
@@ -77,6 +82,10 @@ class ExposedTOTPConfigurationRepository(
         Unit
     }
 
+    override fun install() {
+        transaction { SchemaUtils.createMissingTablesAndColumns(TOTPConfigurationTable) }
+    }
+
     open inner class TOTPConfiguration(
         row: ResultRow? = null,
         insert: InsertStatement<Number>? = null,
@@ -96,18 +105,21 @@ class ExposedTOTPConfigurationRepository(
         override var confirmedAt: Instant? by nullableColumn(Table.confirmedAt, NullableInstantTransformer)
 
         override var digits: Int by requiredColumn(Table.digits)
-        override var periodSeconds: Long by requiredColumn(Table.periodSeconds)
-        override var algorithm: String by requiredColumn(Table.algorithm)
+        override var period: Duration by requiredColumn(Table.periodSeconds, ExposedColumnTransformer(
+            fromColumn = { it!!.toDuration(DurationUnit.SECONDS) },
+            toColumn = { it.inWholeSeconds },
+        ))
+
+        override var algorithm: HmacAlgorithm by requiredColumn(Table.algorithm, ExposedColumnTransformer(
+            fromColumn = { HmacAlgorithm.valueOf(it!!) },
+            toColumn = { it.name },
+        ))
 
         override var secret: ByteArray by requiredColumn(Table.encryptedSecret,
             transformer = ExposedColumnTransformer(
-                fromColumn = { it!!.bytes },
-                toColumn = { ExposedBlob(it) }
+                fromColumn = { encryptionService.decrypt(it!!.bytes) },
+                toColumn = { ExposedBlob(encryptionService.encrypt(it)) }
             ))
-
-        override fun verify(code: Int): Boolean {
-            return totpService.verify(secret, code)
-        }
     }
 
     object Table : UUIDTable("account_2fa_totp") {

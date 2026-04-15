@@ -1,6 +1,5 @@
 import app.AjaxApplication
 import app.Env
-import app.infrastructure.account.AccountPasswordUpdater
 import app.infrastructure.models.account.Account
 import app.infrastructure.models.account.Session
 import app.infrastructure.models.client.Client

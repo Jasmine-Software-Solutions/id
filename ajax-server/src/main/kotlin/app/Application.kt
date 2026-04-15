@@ -11,7 +11,6 @@ import app.controllers.oauth2.OAuth2Controller
 import app.infrastructure.ExposedLoginAuditLogger
 import app.infrastructure.ForgotPasswordEmailSender
 import app.infrastructure.MailMagicLinkIssuer
-import app.infrastructure.account.AccountPasswordUpdater
 import app.infrastructure.etc.exception.FormErrorException
 import app.infrastructure.etc.hxReswap
 import app.infrastructure.etc.hxRetarget

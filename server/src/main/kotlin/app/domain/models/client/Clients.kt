@@ -12,14 +12,14 @@ interface IClient : IIdentified, ICreated {
 
     val redirectUris: IClientRedirectUris
 
-    fun isSecret(secret: String): Boolean
+    fun verify(secret: String): Boolean
 }
 
 interface IHashedClient : IClient {
     var secret: String
 }
 
-interface IClientRedirectUris : Iterable<URI> {
+interface IClientRedirectUris {
     val values: List<URI>
 
     fun add(uri: URI)

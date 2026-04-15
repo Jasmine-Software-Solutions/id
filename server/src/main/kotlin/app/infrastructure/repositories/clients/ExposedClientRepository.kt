@@ -4,6 +4,7 @@ import app.domain.models.client.IClient
 import app.domain.models.client.IClientRedirectUris
 import app.domain.models.client.IHashedClient
 import app.domain.repositories.IClientRepository
+import app.domain.services.IHashFunction
 import app.infrastructure.entities.ExposedIdentifiedEntity
 import app.infrastructure.repositories.ExposedIdentifiedEntityRepository
 import app.infrastructure.util.InstantTransformer
@@ -17,14 +18,20 @@ import java.net.URI
 import java.time.Instant
 import java.util.*
 
-class ExposedClientRepository
-    : ExposedIdentifiedEntityRepository<IClient, ExposedClientRepository.Client>(Table, Client::class),
+class ExposedClientRepository(
+    val hashService: IHashFunction
+) : ExposedIdentifiedEntityRepository<IClient, ExposedClientRepository.Client>(Table, Client::class),
     IClientRepository {
     override fun read(row: ResultRow?, insert: InsertStatement<Number>?, update: UpdateStatement?)
             = Client(row, insert, update)
 
+    override fun clone(src: Client, dest: Client) {
+        (dest.redirectUris.values as MutableList).clear()
+        (dest.redirectUris.values as MutableList).addAll(src.redirectUris.values)
+    }
+
     override fun createDependents(id: UUID, entity: IClient) {
-        for (uri in entity.redirectUris)
+        for (uri in entity.redirectUris.values)
             addRedirectUri(id, uri)
     }
 
@@ -60,13 +67,15 @@ class ExposedClientRepository
         override var confidential by column(Table.confidential)
 
         override val redirectUris = object : IClientRedirectUris {
-            override val values: List<URI> = findRedirectUris(id).toMutableList()
+            override val values: List<URI> =
+                if (insert == null) findRedirectUris(id).toMutableList()
+                else mutableListOf()
 
             override fun add(uri: URI) {
                 if (insert == null) try {
                     addRedirectUri(id, uri)
                 } catch (e: IllegalStateException) {
-                    throw IllegalStateException("Invoked IClient#add(URI) outside of IRepository#update(IClient, ...) callback")
+                    throw IllegalStateException("Invoked IClientRedirectUris#add(URI) outside of IRepository#update(IClient, ...) callback")
                 }
 
                 (values as MutableList).add(uri)
@@ -76,21 +85,23 @@ class ExposedClientRepository
                 if (insert == null) try {
                     removeRedirectUri(id, uri)
                 } catch (e: IllegalStateException) {
-                    throw IllegalStateException("Invoked IClient#remove(URI) outside of IRepository#update(IClient, ...) callback")
+                    throw IllegalStateException("Invoked IClientRedirectUris#remove(URI) outside of IRepository#update(IClient, ...) callback")
                 }
 
                 (values as MutableList).remove(uri)
             }
-
-            override fun iterator(): Iterator<URI> {
-                return values.iterator()
-            }
         }
 
-        override var secret: String by column(Table.secret)
+        override var secret: String
+            get() = throw UnsupportedOperationException()
+            set(value) = hashService.hash(value.toByteArray()).let {
+                row?.set(Table.secretHash, it)
+                insert?.set(Table.secretHash, it)
+                update?.set(Table.secretHash, it)
+            }
 
-        override fun isSecret(secret: String): Boolean {
-            TODO("Not yet implemented")
+        override fun verify(secret: String): Boolean {
+            return hashService.verify(secret.toByteArray(), row!![Table.secretHash])
         }
     }
 
@@ -101,7 +112,7 @@ class ExposedClientRepository
         val name = varchar("name", 64)
         val confidential = bool("confidential")
 
-        val secret = varchar("secret", 64)
+        val secretHash = varchar("argon2_secret_hash", 64)
 
         val automaticGrant = bool("automatic_grant").default(false)
 

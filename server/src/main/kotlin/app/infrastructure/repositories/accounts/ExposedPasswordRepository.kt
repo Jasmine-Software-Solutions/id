@@ -5,7 +5,7 @@ import app.domain.models.account.IHashedPassword
 import app.domain.models.account.IPassword
 import app.domain.repositories.IAccountRepository
 import app.domain.repositories.IPasswordRepository
-import app.domain.services.IPasswordService
+import app.domain.services.IHashFunction
 import app.infrastructure.entities.ExposedIdentifiedEntity
 import app.infrastructure.repositories.ExposedIdentifiedEntityRepository
 import app.infrastructure.util.EntityTransformer
@@ -22,8 +22,8 @@ import java.time.Instant
 import java.util.*
 
 class ExposedPasswordRepository(
-    val accountRepository: IAccountRepository,
-    val passwordService: IPasswordService
+    val hashService: IHashFunction,
+    val accountRepository: IAccountRepository
 ) : ExposedIdentifiedEntityRepository<IPassword, ExposedPasswordRepository.Password>(Table, Password::class),
     IPasswordRepository {
     override fun read(row: ResultRow?, insert: InsertStatement<Number>?, update: UpdateStatement?)
@@ -46,10 +46,16 @@ class ExposedPasswordRepository(
         override var account: IAccount by column(Table.account,
             EntityTransformer(ExposedAccountRepository.Table, accountRepository))
 
-        override var password: String by column(Table.passwordHash)
+        override var password: String
+            get() = throw UnsupportedOperationException()
+            set(value) = hashService.hash(value.toByteArray()).let {
+                row?.set(Table.passwordHash, it)
+                insert?.set(Table.passwordHash, it)
+                update?.set(Table.passwordHash, it)
+            }
 
         override fun verify(password: String): Boolean {
-            return passwordService.verify(this.password, password)
+            return hashService.verify(this.password.toByteArray(), row!![Table.passwordHash])
         }
     }
 

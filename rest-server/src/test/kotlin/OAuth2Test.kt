@@ -1,6 +1,5 @@
 import app.Env
 import app.RestApplication
-import app.infrastructure.account.AccountPasswordUpdater
 import app.infrastructure.etc.SecureToken
 import app.infrastructure.models.account.Account
 import app.infrastructure.models.account.Session

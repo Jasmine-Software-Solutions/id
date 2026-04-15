@@ -3,7 +3,6 @@ package app.infrastructure.repositories
 import app.domain.models.IIdentified
 import app.domain.repositories.IIdentifiedRepository
 import app.infrastructure.entities.ExposedEntity
-import app.infrastructure.models.account.AccountsTable
 import org.jetbrains.exposed.dao.id.UUIDTable
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
@@ -21,6 +20,8 @@ abstract class ExposedIdentifiedEntityRepository<T, TWrapper>(
         row: ResultRow? = null,
         insert: InsertStatement<Number>? = null,
         update: UpdateStatement? = null): T
+
+    open fun clone(src: TWrapper, dest: TWrapper) {}
 
     open fun writeDefaults(id: UUID, entity: T, it: InsertStatement<Number>) {
         it[table.id] = id
@@ -55,18 +56,25 @@ abstract class ExposedIdentifiedEntityRepository<T, TWrapper>(
         val isExposedEntity = entity::class == wrapperClazz
         val oldWrappedEntity = if (isExposedEntity) entity as ExposedEntity else null
 
-        table.update({ AccountsTable.id eq entity.id }) {
-            val row = oldWrappedEntity?.row
+        try {
+            table.update({ table.id eq entity.id }) {
+                val row = oldWrappedEntity?.row
 
-            val newWrappedEntity = read(row, null, it)
-            function(newWrappedEntity)
+                val newWrappedEntity = read(row, null, it)
+                function(newWrappedEntity)
 
-            if (isExposedEntity) {
-                oldWrappedEntity?.row = row
-                oldWrappedEntity?.insert = null
-                oldWrappedEntity?.update = null
+                if (isExposedEntity && oldWrappedEntity != null) {
+                    oldWrappedEntity.row = row
+                    oldWrappedEntity.insert = null
+                    oldWrappedEntity.update = null
+
+                    this@ExposedIdentifiedEntityRepository.clone(
+                        src = newWrappedEntity as TWrapper,
+                        dest = oldWrappedEntity as TWrapper
+                    )
+                }
             }
-        }
+        } catch (ex: IllegalArgumentException) {}
 
         Unit
     }
@@ -74,5 +82,17 @@ abstract class ExposedIdentifiedEntityRepository<T, TWrapper>(
     override fun delete(entity: T) = transaction {
         table.deleteWhere { table.id eq entity.id }
         Unit
+    }
+
+    override fun install() {
+        transaction {
+            SchemaUtils.createMissingTablesAndColumns(
+                table
+            )
+        }
+    }
+
+    init {
+        install()
     }
 }
