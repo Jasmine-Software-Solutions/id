@@ -20,7 +20,7 @@ class EmailMagicLinkService(
     val lifetime: Duration = 5.minutes,
     val emailService: IEmailService,
     val templateEngine: TemplateEngine
-) : IMagicLinkService {
+) : IMagicLinkService<IHashedMagicLink> {
     override fun create(account: IAccount): IHashedMagicLink {
         val acceptanceToken = SecureToken()
         val decisionToken = SecureToken()

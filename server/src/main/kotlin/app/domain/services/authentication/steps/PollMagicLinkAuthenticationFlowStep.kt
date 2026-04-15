@@ -3,10 +3,8 @@ package app.domain.services.authentication.steps
 import app.domain.models.account.IHashedMagicLink
 import app.domain.models.authentication.IAuthenticationFlow
 import app.domain.repositories.IMagicLinkRepository
+import app.domain.services.accounts.IMagicLinkService
 import app.domain.services.authentication.*
-import app.infrastructure.etc.SecureToken
-import java.time.Instant
-import java.time.temporal.ChronoUnit
 import java.util.*
 
 object PollMagicLinkAuthenticationFlowStep : AuthenticationFlowStep(
@@ -18,22 +16,15 @@ object PollMagicLinkAuthenticationFlowStep : AuthenticationFlowStep(
     object Response
 
     class Handler(
-        val magicLinkRepository: IMagicLinkRepository
+        val magicLinkRepository: IMagicLinkRepository,
+        val magicLinkService: IMagicLinkService<IHashedMagicLink>,
     ) : AuthenticationFlowStepHandler<Request, Response>(Request::class, Response::class) {
         override fun create(flow: IAuthenticationFlow): Request {
-            val acceptanceToken = SecureToken()
-            val decisionToken = SecureToken()
+            if (flow.account == null)
+                throw IllegalArgumentException()
 
-            val magicLink = magicLinkRepository.create {
-                this.expiresAt = Instant.now().plus(1, ChronoUnit.HOURS)
-                this.account = flow.account!!
-
-                (this as IHashedMagicLink).acceptanceToken = acceptanceToken
-                this.decisionToken = decisionToken
-            }
-
-            TODO("Email magic link / create abstraction")
-            return Request(magicLink.id, acceptanceToken)
+            val magicLink = magicLinkService.create(flow.account!!)
+            return Request(magicLink.id, magicLink.acceptanceToken)
         }
 
         override fun accept(
