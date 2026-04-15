@@ -13,7 +13,7 @@ interface IAuthenticationService {
     fun IAuthenticationFlow.current(): AuthenticationFlowStep
         = this.steps.values.last()
 
-    fun <TRequest, TResponse> IAuthenticationFlow.next(request: TRequest, response: TResponse): Pair<AuthenticationFlowStepResult, AuthenticationFlowStep?>
+    fun <TRequest : Any, TResponse : Any> IAuthenticationFlow.next(request: TRequest, response: TResponse): Pair<AuthenticationFlowStepResult, AuthenticationFlowStep?>
 }
 
 open class StandardAuthenticationService(
@@ -36,11 +36,11 @@ open class StandardAuthenticationService(
         return flow
     }
 
-    override fun <TRequest, TResponse> IAuthenticationFlow.next(request: TRequest, response: TResponse): Pair<AuthenticationFlowStepResult, AuthenticationFlowStep?> {
+    override fun <TRequest : Any, TResponse : Any> IAuthenticationFlow.next(request: TRequest, response: TResponse): Pair<AuthenticationFlowStepResult, AuthenticationFlowStep?> {
         val current = current()
         val currentHandler = (handlerRegistry[current]
             ?: throw IllegalStateException("No handler found for " + current.fqdn))
-            as IAuthenticationFlowStepHandler<TRequest, TResponse>
+            as AuthenticationFlowStepHandler<TRequest, TResponse>
 
         val result = currentHandler.accept(this, request, response)
 

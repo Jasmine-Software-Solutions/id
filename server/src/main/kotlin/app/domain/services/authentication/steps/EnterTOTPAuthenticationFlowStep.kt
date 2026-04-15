@@ -14,7 +14,7 @@ object EnterTOTPAuthenticationFlowStep : AuthenticationFlowStep(
 
     class Handler<T : ITOTPConfiguration>(
         val totpService: ITOTPService<T>
-    ) : IAuthenticationFlowStepHandler<Request, Response> {
+    ) : AuthenticationFlowStepHandler<Request, Response>(Request::class, Response::class) {
         override fun create(flow: IAuthenticationFlow) = Request
 
         override fun accept(

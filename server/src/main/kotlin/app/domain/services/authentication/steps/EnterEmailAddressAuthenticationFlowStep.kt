@@ -17,7 +17,7 @@ object EnterEmailAddressAuthenticationFlowStep : AuthenticationFlowStep(
         val accountRepository: IAccountRepository,
         val tenantMembershipRepository: ITenantMembershipRepository,
         val flowRepository: IAuthenticationFlowRepository
-    ) : IAuthenticationFlowStepHandler<Request, Response> {
+    ) : AuthenticationFlowStepHandler<Request, Response>(Request::class, Response::class) {
         override fun create(flow: IAuthenticationFlow) = Request
 
         override fun accept(

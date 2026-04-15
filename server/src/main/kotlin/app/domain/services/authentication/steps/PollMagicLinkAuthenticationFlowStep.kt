@@ -19,7 +19,7 @@ object PollMagicLinkAuthenticationFlowStep : AuthenticationFlowStep(
 
     class Handler(
         val magicLinkRepository: IMagicLinkRepository
-    ) : IAuthenticationFlowStepHandler<Request, Response> {
+    ) : AuthenticationFlowStepHandler<Request, Response>(Request::class, Response::class) {
         override fun create(flow: IAuthenticationFlow): Request {
             val acceptanceToken = SecureToken()
             val decisionToken = SecureToken()

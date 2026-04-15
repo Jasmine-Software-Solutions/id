@@ -1,6 +1,7 @@
 package app.domain.services.authentication
 
 import app.domain.models.authentication.IAuthenticationFlow
+import kotlin.reflect.KClass
 
 open class AuthenticationFlowStep(
     val fqdn: String,
@@ -8,7 +9,10 @@ open class AuthenticationFlowStep(
     val level: Int = 0
 )
 
-interface IAuthenticationFlowStepHandler<TRequest, TResponse> {
-    fun create(flow: IAuthenticationFlow): TRequest
-    fun accept(flow: IAuthenticationFlow, request: TRequest, response: TResponse): AuthenticationFlowStepResult
+abstract class AuthenticationFlowStepHandler<TRequest : Any, TResponse : Any>(
+    val requestClass: KClass<TRequest>,
+    val responseClass: KClass<TResponse>
+) {
+    abstract fun create(flow: IAuthenticationFlow): TRequest
+    abstract fun accept(flow: IAuthenticationFlow, request: TRequest, response: TResponse): AuthenticationFlowStepResult
 }
