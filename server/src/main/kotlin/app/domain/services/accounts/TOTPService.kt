@@ -1,4 +1,4 @@
-package app.domain.services
+package app.domain.services.accounts
 
 import app.domain.models.account.IAccount
 import app.domain.models.account.ITOTPConfiguration

@@ -2,7 +2,7 @@ package app.domain.services.authentication.steps
 
 import app.domain.models.account.ITOTPConfiguration
 import app.domain.models.authentication.IAuthenticationFlow
-import app.domain.services.ITOTPService
+import app.domain.services.accounts.ITOTPService
 import app.domain.services.authentication.*
 
 object EnterTOTPAuthenticationFlowStep : AuthenticationFlowStep(

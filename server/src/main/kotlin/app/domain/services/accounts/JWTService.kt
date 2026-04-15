@@ -1,4 +1,4 @@
-package app.domain.services
+package app.domain.services.accounts
 
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject

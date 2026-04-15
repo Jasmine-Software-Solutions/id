@@ -1,11 +1,11 @@
-package app.infrastructure.services
+package app.infrastructure.services.accounts
 
 import app.domain.models.account.IAccount
 import app.domain.models.account.IEncryptedTOTPConfiguration
 import app.domain.models.account.ITOTPConfiguration
 import app.domain.repositories.ITOTPConfigurationRepository
-import app.domain.services.ITOTPService
-import app.domain.services.TOTPVerificationResult
+import app.domain.services.accounts.ITOTPService
+import app.domain.services.accounts.TOTPVerificationResult
 import dev.turingcomplete.kotlinonetimepassword.GoogleAuthenticator
 import dev.turingcomplete.kotlinonetimepassword.HmacAlgorithm
 import dev.turingcomplete.kotlinonetimepassword.HmacOneTimePasswordGenerator

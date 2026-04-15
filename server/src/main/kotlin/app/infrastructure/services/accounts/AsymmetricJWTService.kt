@@ -1,8 +1,8 @@
-package app.infrastructure.services
+package app.infrastructure.services.accounts
 
-import app.domain.services.IJWT
-import app.domain.services.IJWTService
-import app.domain.services.JWTDecodeException
+import app.domain.services.accounts.IJWT
+import app.domain.services.accounts.IJWTService
+import app.domain.services.accounts.JWTDecodeException
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import io.jsonwebtoken.Jws

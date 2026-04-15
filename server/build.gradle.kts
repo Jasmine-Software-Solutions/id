@@ -46,6 +46,11 @@ dependencies {
     implementation("io.jsonwebtoken:jjwt-api:0.13.0")
     runtimeOnly("io.jsonwebtoken:jjwt-impl:0.13.0")
     runtimeOnly("io.jsonwebtoken:jjwt-gson:0.13.0")
+
+    implementation("gg.jte:jte:3.1.16")
+    implementation("gg.jte:jte-watcher:3.1.15")
+
+    implementation("gg.jte:jte-kotlin:3.1.15")
 }
 
 tasks.test {
