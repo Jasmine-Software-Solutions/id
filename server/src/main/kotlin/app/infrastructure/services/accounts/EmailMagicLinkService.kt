@@ -45,8 +45,8 @@ class EmailMagicLinkService(
 
     class MagicLink(
         private val magicLink: IHashedMagicLink,
-        private val _acceptanceToken: String,
-        private val _decisionToken: String
+        private var _acceptanceToken: String,
+        private var _decisionToken: String
     ) : IHashedMagicLink {
         override val id: UUID
             get() = magicLink.id
@@ -76,11 +76,17 @@ class EmailMagicLinkService(
 
         override var acceptanceToken: String
             get() = _acceptanceToken
-            set(value) { magicLink.acceptanceToken = value }
+            set(value) {
+                magicLink.acceptanceToken = value
+                _acceptanceToken = value
+            }
 
         override var decisionToken: String
             get() = _decisionToken
-            set(value) { magicLink.decisionToken = value }
+            set(value) {
+                magicLink.decisionToken = value
+                _decisionToken = value
+            }
 
         override fun verifyAcceptanceToken(token: String): Boolean {
             return magicLink.verifyAcceptanceToken(token)

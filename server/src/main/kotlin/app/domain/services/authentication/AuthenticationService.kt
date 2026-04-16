@@ -4,24 +4,28 @@ import app.domain.models.authentication.IAuthenticationFlow
 import app.domain.registries.IAuthenticationStepHandlerRegistry
 import app.domain.registries.IAuthenticationStepRegistry
 import app.domain.repositories.IAuthenticationFlowRepository
+import app.domain.services.accounts.ISessionService
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
 interface IAuthenticationService {
-    fun begin(): IAuthenticationFlow
+    fun start(): IAuthenticationFlow
 
     fun IAuthenticationFlow.current(): AuthenticationFlowStep
         = this.steps.values.last()
 
     fun <TRequest : Any, TResponse : Any> IAuthenticationFlow.next(request: TRequest, response: TResponse): Pair<AuthenticationFlowStepResult, AuthenticationFlowStep?>
+
+    fun IAuthenticationFlow.finish(): AuthenticationFlowResult
 }
 
 open class StandardAuthenticationService(
     protected val stepRegistry: IAuthenticationStepRegistry,
     protected val handlerRegistry: IAuthenticationStepHandlerRegistry,
-    protected val flowRepository: IAuthenticationFlowRepository
+    protected val flowRepository: IAuthenticationFlowRepository,
+    protected val sessionService: ISessionService<*>
 ) : IAuthenticationService {
-    override fun begin(): IAuthenticationFlow {
+    override fun start(): IAuthenticationFlow {
         val flow = flowRepository.create {
             this.expiresAt = Instant.now().plus(1, ChronoUnit.HOURS)
         }
@@ -63,5 +67,16 @@ open class StandardAuthenticationService(
         }
 
         return result to next
+    }
+
+    override fun IAuthenticationFlow.finish(): AuthenticationFlowResult {
+        if (this.account == null) return AccountMissingAuthenticationFlowResult
+
+        val level = this.steps.values.map { it.level }.distinct()
+        for (x in 0 until level.max())
+            if (!level.contains(x)) return LevelMissingAuthenticationFlowResult
+
+        val session = sessionService.create(account!!)
+        return AuthenticatedAuthenticationFlowResult(session)
     }
 }
