@@ -1,5 +1,7 @@
 package app.domain.services.authentication.steps
 
+import app.domain.models.account.IAccount
+import app.domain.models.account.IPassword
 import app.domain.models.authentication.IAuthenticationFlow
 import app.domain.repositories.IAccountRepository
 import app.domain.repositories.IAuthenticationFlowRepository
@@ -14,15 +16,15 @@ object EnterPasswordAuthenticationFlowStep : AuthenticationFlowStep(
     object Request
     data class Response(val email: String?, val password: String?)
 
-    class Handler(
-        val accountRepository: IAccountRepository,
-        val passwordRepository: IPasswordRepository,
-        val flowRepository: IAuthenticationFlowRepository,
-    ) : AuthenticationFlowStepHandler<Request, Response>(Request::class, Response::class) {
-        override fun create(flow: IAuthenticationFlow) = Request
+    class Handler<Flow : IAuthenticationFlow, TAccount : IAccount, TPassword : IPassword>(
+        val accountRepository: IAccountRepository<TAccount>,
+        val passwordRepository: IPasswordRepository<TPassword>,
+        val flowRepository: IAuthenticationFlowRepository<Flow>,
+    ) : AuthenticationFlowStepHandler<Flow, Request, Response>(Request::class, Response::class) {
+        override fun create(flow: Flow) = Request
 
         override fun accept(
-            flow: IAuthenticationFlow,
+            flow: Flow,
             request: Request,
             response: Response
         ): AuthenticationFlowStepResult {

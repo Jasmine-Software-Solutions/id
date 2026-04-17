@@ -19,15 +19,19 @@ import java.time.Instant
 import java.util.*
 
 class ExposedClientRepository(
-    val hashService: IHashFunction
+    val hashFunction: IHashFunction
 ) : ExposedIdentifiedEntityRepository<IClient, ExposedClientRepository.Client>(Table, Client::class),
-    IClientRepository {
+    IClientRepository<IClient> {
     override fun read(row: ResultRow?, insert: InsertStatement<Number>?, update: UpdateStatement?)
             = Client(row, insert, update)
 
     override fun clone(src: Client, dest: Client) {
         (dest.redirectUris.values as MutableList).clear()
         (dest.redirectUris.values as MutableList).addAll(src.redirectUris.values)
+
+        runCatching {
+            dest.secret = src.secret
+        }
     }
 
     override fun createDependents(id: UUID, entity: IClient) {
@@ -60,6 +64,8 @@ class ExposedClientRepository(
         insert: InsertStatement<Number>? = null,
         update: UpdateStatement? = null
     ) : ExposedIdentifiedEntity(Table, row, insert, update), IHashedClient {
+        private var _secret: String? = null
+
         override val createdAt: Instant by column(Table.createdAt, InstantTransformer)
 
         override var name: String by column(Table.name)
@@ -93,15 +99,16 @@ class ExposedClientRepository(
         }
 
         override var secret: String
-            get() = throw UnsupportedOperationException()
-            set(value) = hashService.hash(value.toByteArray()).let {
+            get() = _secret ?: throw UnsupportedOperationException("IClient#secret is transient and no longer accessible")
+            set(value) = hashFunction.hash(value.toByteArray()).let {
                 row?.set(Table.secretHash, it)
                 insert?.set(Table.secretHash, it)
                 update?.set(Table.secretHash, it)
+                _secret = value
             }
 
         override fun verify(secret: String): Boolean {
-            return hashService.verify(secret.toByteArray(), row!![Table.secretHash])
+            return hashFunction.verify(secret.toByteArray(), row!![Table.secretHash])
         }
     }
 

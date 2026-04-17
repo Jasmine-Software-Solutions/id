@@ -1,6 +1,6 @@
 package app.domain.services.authentication.steps
 
-import app.domain.models.account.IHashedMagicLink
+import app.domain.models.account.IMagicLink
 import app.domain.models.authentication.IAuthenticationFlow
 import app.domain.repositories.IMagicLinkRepository
 import app.domain.services.accounts.IMagicLinkService
@@ -15,11 +15,11 @@ object PollMagicLinkAuthenticationFlowStep : AuthenticationFlowStep(
     data class Request(val id: UUID, val acceptanceToken: String)
     object Response
 
-    class Handler(
-        val magicLinkRepository: IMagicLinkRepository,
-        val magicLinkService: IMagicLinkService<IHashedMagicLink>,
-    ) : AuthenticationFlowStepHandler<Request, Response>(Request::class, Response::class) {
-        override fun create(flow: IAuthenticationFlow): Request {
+    class Handler<Flow : IAuthenticationFlow, TMagicLink : IMagicLink>(
+        val magicLinkRepository: IMagicLinkRepository<TMagicLink>,
+        val magicLinkService: IMagicLinkService<TMagicLink>,
+    ) : AuthenticationFlowStepHandler<Flow, Request, Response>(Request::class, Response::class) {
+        override fun create(flow: Flow): Request {
             if (flow.account == null)
                 throw IllegalArgumentException()
 
@@ -28,7 +28,7 @@ object PollMagicLinkAuthenticationFlowStep : AuthenticationFlowStep(
         }
 
         override fun accept(
-            flow: IAuthenticationFlow,
+            flow: Flow,
             request: Request,
             response: Response
         ): AuthenticationFlowStepResult {

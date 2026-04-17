@@ -12,13 +12,13 @@ object EnterTOTPAuthenticationFlowStep : AuthenticationFlowStep(
     object Request
     data class Response(val totp: Int?)
 
-    class Handler<T : ITOTPConfiguration>(
-        val totpService: ITOTPService<T>
-    ) : AuthenticationFlowStepHandler<Request, Response>(Request::class, Response::class) {
-        override fun create(flow: IAuthenticationFlow) = Request
+    class Handler<Flow : IAuthenticationFlow, TTOTPConfiguration : ITOTPConfiguration>(
+        val totpService: ITOTPService<TTOTPConfiguration>
+    ) : AuthenticationFlowStepHandler<Flow, Request, Response>(Request::class, Response::class) {
+        override fun create(flow: Flow) = Request
 
         override fun accept(
-            flow: IAuthenticationFlow,
+            flow: Flow,
             request: Request,
             response: Response
         ): AuthenticationFlowStepResult {
@@ -26,6 +26,7 @@ object EnterTOTPAuthenticationFlowStep : AuthenticationFlowStep(
                 return RetryAuthenticationFlowStepResult
 
             val configuration = totpService.findByAccount(flow.account!!)
+                ?: return RetryAuthenticationFlowStepResult
 
             val result = totpService.verify(configuration, response.totp)
             if (!result.valid)

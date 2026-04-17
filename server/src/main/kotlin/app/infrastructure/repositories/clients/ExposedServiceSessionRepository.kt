@@ -20,10 +20,10 @@ import org.jetbrains.exposed.sql.statements.UpdateStatement
 import java.time.Instant
 
 class ExposedServiceSessionRepository(
-    val tenantRepository: ITenantRepository,
-    val clientRepository: IClientRepository
+    val tenantRepository: ITenantRepository<ITenant>,
+    val clientRepository: IClientRepository<IClient>
 ) : ExposedIdentifiedEntityRepository<IServiceSession, ExposedServiceSessionRepository.ServiceSession>(Table, ServiceSession::class),
-    IServiceSessionRepository {
+    IServiceSessionRepository<IServiceSession> {
     override fun read(row: ResultRow?, insert: InsertStatement<Number>?, update: UpdateStatement?)
             = ServiceSession(row, insert, update)
 

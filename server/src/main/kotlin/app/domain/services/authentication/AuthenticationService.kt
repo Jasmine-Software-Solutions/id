@@ -1,5 +1,6 @@
 package app.domain.services.authentication
 
+import app.domain.models.account.ISession
 import app.domain.models.authentication.IAuthenticationFlow
 import app.domain.registries.IAuthenticationStepHandlerRegistry
 import app.domain.registries.IAuthenticationStepRegistry
@@ -8,24 +9,24 @@ import app.domain.services.accounts.ISessionService
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
-interface IAuthenticationService {
-    fun start(): IAuthenticationFlow
+interface IAuthenticationService<T : IAuthenticationFlow> {
+    fun start(): T
 
-    fun IAuthenticationFlow.current(): AuthenticationFlowStep
+    fun T.current(): AuthenticationFlowStep
         = this.steps.values.last()
 
-    fun <TRequest : Any, TResponse : Any> IAuthenticationFlow.next(request: TRequest, response: TResponse): Pair<AuthenticationFlowStepResult, AuthenticationFlowStep?>
+    fun <TRequest : Any, TResponse : Any> T.next(request: TRequest, response: TResponse): Pair<AuthenticationFlowStepResult, AuthenticationFlowStep?>
 
-    fun IAuthenticationFlow.finish(): AuthenticationFlowResult
+    fun T.finish(): AuthenticationFlowResult
 }
 
-open class StandardAuthenticationService(
-    protected val stepRegistry: IAuthenticationStepRegistry,
-    protected val handlerRegistry: IAuthenticationStepHandlerRegistry,
-    protected val flowRepository: IAuthenticationFlowRepository,
-    protected val sessionService: ISessionService<*>
-) : IAuthenticationService {
-    override fun start(): IAuthenticationFlow {
+open class StandardAuthenticationService<TFlow : IAuthenticationFlow, TSession: ISession>(
+    protected val stepRegistry: IAuthenticationStepRegistry<TFlow>,
+    protected val handlerRegistry: IAuthenticationStepHandlerRegistry<TFlow>,
+    protected val flowRepository: IAuthenticationFlowRepository<TFlow>,
+    protected val sessionService: ISessionService<TSession>
+) : IAuthenticationService<TFlow> {
+    override fun start(): TFlow {
         val flow = flowRepository.create {
             this.expiresAt = Instant.now().plus(1, ChronoUnit.HOURS)
         }
@@ -40,11 +41,11 @@ open class StandardAuthenticationService(
         return flow
     }
 
-    override fun <TRequest : Any, TResponse : Any> IAuthenticationFlow.next(request: TRequest, response: TResponse): Pair<AuthenticationFlowStepResult, AuthenticationFlowStep?> {
+    override fun <TRequest : Any, TResponse : Any> TFlow.next(request: TRequest, response: TResponse): Pair<AuthenticationFlowStepResult, AuthenticationFlowStep?> {
         val current = current()
         val currentHandler = (handlerRegistry[current]
             ?: throw IllegalStateException("No handler found for " + current.fqdn))
-            as AuthenticationFlowStepHandler<TRequest, TResponse>
+            as AuthenticationFlowStepHandler<TFlow, TRequest, TResponse>
 
         val result = currentHandler.accept(this, request, response)
 
@@ -69,7 +70,7 @@ open class StandardAuthenticationService(
         return result to next
     }
 
-    override fun IAuthenticationFlow.finish(): AuthenticationFlowResult {
+    override fun TFlow.finish(): AuthenticationFlowResult {
         if (this.account == null) return AccountMissingAuthenticationFlowResult
 
         val level = this.steps.values.map { it.level }.distinct()

@@ -2,7 +2,6 @@ package app.infrastructure.repositories.accounts
 
 import app.domain.models.account.IAccount
 import app.domain.models.account.IHashedSession
-import app.domain.models.account.ISession
 import app.domain.repositories.IAccountRepository
 import app.domain.repositories.ISessionRepository
 import app.domain.services.IHashFunction
@@ -23,25 +22,33 @@ import java.time.Instant
 import java.util.*
 
 class ExposedSessionRepository(
-    val hashService: IHashFunction,
-    val accountRepository: IAccountRepository
-) : ExposedIdentifiedEntityRepository<ISession, ExposedSessionRepository.Session>(Table, Session::class),
-    ISessionRepository {
+    val hashFunction: IHashFunction,
+    val accountRepository: IAccountRepository<IAccount>
+) : ExposedIdentifiedEntityRepository<IHashedSession, ExposedSessionRepository.Session>(Table, Session::class),
+    ISessionRepository<IHashedSession> {
     override fun read(row: ResultRow?, insert: InsertStatement<Number>?, update: UpdateStatement?)
             = Session(row, insert, update)
 
-    override fun findByAccount(id: UUID): List<ISession> = transaction {
+    override fun clone(src: Session, dest: Session) {
+        runCatching {
+            dest.token = src.token
+        }
+    }
+
+    override fun findByAccount(id: UUID): List<IHashedSession> = transaction {
         Table.select { Table.account eq id }
             .orderBy(Table.createdAt, SortOrder.ASC)
             .map { read(it, null, null) }
             .toList()
     }
 
-    open inner class Session(
+    inner class Session(
         row: ResultRow? = null,
         insert: InsertStatement<Number>? = null,
         update: UpdateStatement? = null
     ) : ExposedIdentifiedEntity(Table, row, insert, update), IHashedSession {
+        private var _token: String? = null
+
         override val createdAt: Instant by column(Table.createdAt, InstantTransformer)
         override var expiresAt: Instant by column(Table.expiresAt, InstantTransformer)
 
@@ -52,15 +59,16 @@ class ExposedSessionRepository(
             EntityTransformer(ExposedAccountRepository.Table, accountRepository))
 
         override var token: String
-            get() = throw UnsupportedOperationException()
-            set(value) = hashService.hash(value.toByteArray()).let {
+            get() = _token ?: throw UnsupportedOperationException("ISession#token is transient and no longer accessible")
+            set(value) = hashFunction.hash(value.toByteArray()).let {
                 row?.set(Table.tokenHash, it)
                 insert?.set(Table.tokenHash, it)
                 update?.set(Table.tokenHash, it)
+                _token = value
             }
 
         override fun verify(token: String): Boolean {
-            return hashService.verify(token.toByteArray(), row!![Table.tokenHash])
+            return hashFunction.verify(token.toByteArray(), row!![Table.tokenHash])
         }
     }
 

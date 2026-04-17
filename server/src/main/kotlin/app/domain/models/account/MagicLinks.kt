@@ -13,11 +13,11 @@ interface IMagicLink : IIdentified, ICreated, IExpires {
     var approved: Boolean
     var consumed: Boolean
 
+    var decisionToken: String
+    var acceptanceToken: String
+
     fun verifyDecisionToken(token: String): Boolean
     fun verifyAcceptanceToken(token: String): Boolean
 }
 
-interface IHashedMagicLink : IMagicLink {
-    var decisionToken: String
-    var acceptanceToken: String
-}
+interface IHashedMagicLink : IMagicLink

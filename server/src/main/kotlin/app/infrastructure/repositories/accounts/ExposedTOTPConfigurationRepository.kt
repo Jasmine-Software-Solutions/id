@@ -25,9 +25,9 @@ import kotlin.time.DurationUnit
 import kotlin.time.toDuration
 
 class ExposedTOTPConfigurationRepository(
-    val encryptionService: IEncryptionFunction,
-    val accountRepository: IAccountRepository
-) : ITOTPConfigurationRepository {
+    val encryptionFunction: IEncryptionFunction,
+    val accountRepository: IAccountRepository<IAccount>
+) : ITOTPConfigurationRepository<ITOTPConfiguration> {
     override fun findByAccount(id: UUID): ITOTPConfiguration = transaction {
         val row = Table.select { Table.account eq id }.firstOrNull()
             ?: return@transaction create(id)
@@ -117,8 +117,8 @@ class ExposedTOTPConfigurationRepository(
 
         override var secret: ByteArray by requiredColumn(Table.encryptedSecret,
             transformer = ExposedColumnTransformer(
-                fromColumn = { encryptionService.decrypt(it!!.bytes) },
-                toColumn = { ExposedBlob(encryptionService.encrypt(it)) }
+                fromColumn = { encryptionFunction.decrypt(it!!.bytes) },
+                toColumn = { ExposedBlob(encryptionFunction.encrypt(it)) }
             ))
     }
 

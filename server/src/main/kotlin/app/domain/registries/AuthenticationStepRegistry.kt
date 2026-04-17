@@ -3,41 +3,41 @@ package app.domain.registries
 import app.domain.models.authentication.IAuthenticationFlow
 import app.domain.services.authentication.AuthenticationFlowStep
 
-interface IAuthenticationStepRegistry {
-    class Entry(
+interface IAuthenticationStepRegistry<T : IAuthenticationFlow> {
+    class Entry<T : IAuthenticationFlow>(
         val step: AuthenticationFlowStep,
         val after: AuthenticationFlowStep? = null,
-        val condition: (IAuthenticationFlow) -> Boolean = { true }
+        val condition: (T) -> Boolean = { true }
     )
 
-    fun entries(): Set<Entry>
+    fun entries(): Set<Entry<T>>
 
     fun register(
         step: AuthenticationFlowStep,
         after: AuthenticationFlowStep? = null,
-        condition: (IAuthenticationFlow) -> Boolean = { true },
+        condition: (T) -> Boolean = { true },
         force: Boolean = false
     )
 
-    fun findByFqdn(fqdn: String): Entry?
+    fun findByFqdn(fqdn: String): Entry<T>?
 
-    fun firstOrNull(flow: IAuthenticationFlow): AuthenticationFlowStep?
+    fun firstOrNull(flow: T): AuthenticationFlowStep?
         = entries().firstOrNull { it.after == null && it.condition(flow) }?.step
 
-    fun nextOrNull(flow: IAuthenticationFlow): AuthenticationFlowStep?
+    fun nextOrNull(flow: T): AuthenticationFlowStep?
         = entries().firstOrNull { it.after?.fqdn == flow.steps.values.last().fqdn && it.condition(flow) }?.step ?: firstOrNull(flow)
 }
 
-open class AuthenticationStepRegistry : IAuthenticationStepRegistry {
-    protected val steps: MutableSet<IAuthenticationStepRegistry.Entry> = mutableSetOf()
+open class AuthenticationStepRegistry<T : IAuthenticationFlow> : IAuthenticationStepRegistry<T> {
+    protected val steps: MutableSet<IAuthenticationStepRegistry.Entry<T>> = mutableSetOf()
 
-    override fun entries(): Set<IAuthenticationStepRegistry.Entry>
+    override fun entries(): Set<IAuthenticationStepRegistry.Entry<T>>
         = HashSet(steps)
 
     override fun register(
         step: AuthenticationFlowStep,
         after: AuthenticationFlowStep?,
-        condition: (IAuthenticationFlow) -> Boolean,
+        condition: (T) -> Boolean,
         force: Boolean
     ) {
         val existingStep = findByFqdn(step.fqdn)
@@ -47,6 +47,6 @@ open class AuthenticationStepRegistry : IAuthenticationStepRegistry {
         steps.add(IAuthenticationStepRegistry.Entry(step, after, condition))
     }
 
-    override fun findByFqdn(fqdn: String): IAuthenticationStepRegistry.Entry?
+    override fun findByFqdn(fqdn: String): IAuthenticationStepRegistry.Entry<T>?
         = steps.find { it.step.fqdn == fqdn }
 }

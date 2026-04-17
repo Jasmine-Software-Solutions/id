@@ -16,8 +16,8 @@ interface ISetTOTPConfiguration : ITOTPConfiguration {
     var digits: Int
     var period: Duration
     var algorithm: HmacAlgorithm
-}
 
-interface IEncryptedTOTPConfiguration : ISetTOTPConfiguration {
     var secret: ByteArray
 }
+
+interface IEncryptedTOTPConfiguration : ISetTOTPConfiguration

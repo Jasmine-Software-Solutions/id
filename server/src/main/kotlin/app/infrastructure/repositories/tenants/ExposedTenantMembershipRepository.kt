@@ -21,10 +21,10 @@ import java.time.Instant
 import java.util.*
 
 class ExposedTenantMembershipRepository(
-    val tenantRepository: ITenantRepository,
-    val accountRepository: IAccountRepository
+    val tenantRepository: ITenantRepository<ITenant>,
+    val accountRepository: IAccountRepository<IAccount>
 ) : ExposedIdentifiedEntityRepository<ITenantMembership, ExposedTenantMembershipRepository.TenantMembership>(Table, TenantMembership::class),
-    ITenantMembershipRepository {
+    ITenantMembershipRepository<ITenantMembership> {
     override fun read(row: ResultRow?, insert: InsertStatement<Number>?, update: UpdateStatement?)
             = TenantMembership(row, insert, update)
 

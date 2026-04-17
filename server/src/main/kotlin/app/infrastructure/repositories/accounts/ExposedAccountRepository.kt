@@ -15,7 +15,7 @@ import java.time.Instant
 
 open class ExposedAccountRepository
     : ExposedIdentifiedEntityRepository<IAccount, ExposedAccountRepository.Account>(Table, Account::class),
-    IAccountRepository {
+    IAccountRepository<IAccount> {
     override fun read(row: ResultRow?, insert: InsertStatement<Number>?, update: UpdateStatement?)
         = Account(row, insert, update)
 

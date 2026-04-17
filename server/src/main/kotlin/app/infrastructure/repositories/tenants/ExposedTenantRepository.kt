@@ -13,7 +13,7 @@ import java.time.Instant
 
 class ExposedTenantRepository
     : ExposedIdentifiedEntityRepository<ITenant, ExposedTenantRepository.Tenant>(Table, Tenant::class),
-    ITenantRepository {
+    ITenantRepository<ITenant> {
     override fun read(row: ResultRow?, insert: InsertStatement<Number>?, update: UpdateStatement?)
             = Tenant(row, insert, update)
 

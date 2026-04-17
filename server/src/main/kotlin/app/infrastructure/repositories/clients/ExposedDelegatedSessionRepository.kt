@@ -5,7 +5,10 @@ import app.domain.models.client.IClient
 import app.domain.models.client.IDelegatedSession
 import app.domain.models.client.IHashedUnnegotiatedDelegatedSession
 import app.domain.models.tenant.ITenant
+import app.domain.repositories.IClientRepository
 import app.domain.repositories.IDelegatedSessionRepository
+import app.domain.repositories.ISessionRepository
+import app.domain.repositories.ITenantRepository
 import app.infrastructure.entities.ExposedIdentifiedEntity
 import app.infrastructure.repositories.ExposedIdentifiedEntityRepository
 import app.infrastructure.repositories.accounts.ExposedSessionRepository
@@ -23,11 +26,11 @@ import java.net.URI
 import java.time.Instant
 
 class ExposedDelegatedSessionRepository(
-    val sessionRepository: ExposedSessionRepository,
-    val clientRepository: ExposedClientRepository,
-    val tenantRepository: ExposedTenantRepository
+    val sessionRepository: ISessionRepository<ISession>,
+    val clientRepository: IClientRepository<IClient>,
+    val tenantRepository: ITenantRepository<ITenant>
 ) : ExposedIdentifiedEntityRepository<IDelegatedSession, ExposedDelegatedSessionRepository.DelegatedSession>(Table, DelegatedSession::class),
-    IDelegatedSessionRepository {
+    IDelegatedSessionRepository<IDelegatedSession> {
     override fun read(row: ResultRow?, insert: InsertStatement<Number>?, update: UpdateStatement?)
         = DelegatedSession(row, insert, update)
 

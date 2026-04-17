@@ -1,6 +1,7 @@
 package app.infrastructure.authentication
 
 import app.domain.models.authentication.IAuthenticationFlow
+import app.domain.services.authentication.AuthenticationFlowStep
 import app.domain.services.authentication.AuthenticationFlowStepRenderer
 import app.domain.services.authentication.AuthenticationFlowStepResult
 import app.infrastructure.etc.renderWithContext
@@ -10,10 +11,11 @@ import app.domain.services.authentication.steps.EnterPasswordAuthenticationFlowS
 import app.domain.services.authentication.steps.EnterTOTPAuthenticationFlowStep.Request as EnterTOTPRequest
 import app.domain.services.authentication.steps.PollMagicLinkAuthenticationFlowStep.Request as PollMagicLinkRequest
 
-object EnterEmailAddressAuthenticationFlowRenderer : AuthenticationFlowStepRenderer<Context, EnterEmailAddressRequest> {
+class EnterEmailAddressAuthenticationFlowRenderer<T : IAuthenticationFlow> : AuthenticationFlowStepRenderer<T, Context, EnterEmailAddressRequest> {
     override fun render(
         agent: Context,
-        flow: IAuthenticationFlow,
+        flow: T,
+        step: AuthenticationFlowStep,
         request: EnterEmailAddressRequest,
         source: AuthenticationFlowStepResult
     ) {
@@ -25,10 +27,11 @@ object EnterEmailAddressAuthenticationFlowRenderer : AuthenticationFlowStepRende
     }
 }
 
-object EnterPasswordAuthenticationFlowRenderer : AuthenticationFlowStepRenderer<Context, EnterPasswordRequest> {
+class EnterPasswordAuthenticationFlowRenderer<T : IAuthenticationFlow> : AuthenticationFlowStepRenderer<T, Context, EnterPasswordRequest> {
     override fun render(
         agent: Context,
-        flow: IAuthenticationFlow,
+        flow: T,
+        step: AuthenticationFlowStep,
         request: EnterPasswordRequest,
         source: AuthenticationFlowStepResult
     ) {
@@ -40,10 +43,11 @@ object EnterPasswordAuthenticationFlowRenderer : AuthenticationFlowStepRenderer<
     }
 }
 
-object EnterTOTPAuthenticationFlowRenderer : AuthenticationFlowStepRenderer<Context, EnterTOTPRequest> {
+class EnterTOTPAuthenticationFlowRenderer<T : IAuthenticationFlow> : AuthenticationFlowStepRenderer<T, Context, EnterTOTPRequest> {
     override fun render(
         agent: Context,
-        flow: IAuthenticationFlow,
+        flow: T,
+        step: AuthenticationFlowStep,
         request: EnterTOTPRequest,
         source: AuthenticationFlowStepResult
     ) {
@@ -51,10 +55,11 @@ object EnterTOTPAuthenticationFlowRenderer : AuthenticationFlowStepRenderer<Cont
     }
 }
 
-object PollMagicLinkAuthenticationFlowRenderer : AuthenticationFlowStepRenderer<Context, PollMagicLinkRequest> {
+class PollMagicLinkAuthenticationFlowRenderer<T : IAuthenticationFlow> : AuthenticationFlowStepRenderer<T, Context, PollMagicLinkRequest> {
     override fun render(
         agent: Context,
-        flow: IAuthenticationFlow,
+        flow: T,
+        step: AuthenticationFlowStep,
         request: PollMagicLinkRequest,
         source: AuthenticationFlowStepResult
     ) {

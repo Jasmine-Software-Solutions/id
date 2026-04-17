@@ -1,28 +1,29 @@
 package app.domain.registries
 
+import app.domain.models.authentication.IAuthenticationFlow
 import app.domain.services.authentication.AuthenticationFlowStep
 import app.domain.services.authentication.AuthenticationFlowStepHandler
 
-interface IAuthenticationStepHandlerRegistry {
-    fun entries(): Map<AuthenticationFlowStep, AuthenticationFlowStepHandler<*, *>>
+interface IAuthenticationStepHandlerRegistry<T : IAuthenticationFlow> {
+    fun entries(): Map<AuthenticationFlowStep, AuthenticationFlowStepHandler<T, *, *>>
 
-    fun <Request, Response, T : AuthenticationFlowStepHandler<out Request, out Response>> register(step: AuthenticationFlowStep, handler: T, force: Boolean = false)
+    fun <TRequest : Any, TResponse : Any, THandler : AuthenticationFlowStepHandler<T, out TRequest, out TResponse>> register(step: AuthenticationFlowStep, handler: THandler, force: Boolean = false)
 
-    operator fun get(step: AuthenticationFlowStep): AuthenticationFlowStepHandler<*, *>?
+    operator fun get(step: AuthenticationFlowStep): AuthenticationFlowStepHandler<T, *, *>?
         = entries().entries.firstOrNull { it.key.fqdn == step.fqdn }?.value
 }
 
-open class AuthenticationStepHandlerRegistry(
-    protected val stepRegistry: IAuthenticationStepRegistry
-) : IAuthenticationStepHandlerRegistry {
-    protected val handlers = mutableMapOf<AuthenticationFlowStep, AuthenticationFlowStepHandler<*, *>>()
+open class AuthenticationStepHandlerRegistry<T : IAuthenticationFlow>(
+    protected val stepRegistry: IAuthenticationStepRegistry<T>
+) : IAuthenticationStepHandlerRegistry<T> {
+    protected val handlers = mutableMapOf<AuthenticationFlowStep, AuthenticationFlowStepHandler<T, *, *>>()
 
-    override fun entries(): Map<AuthenticationFlowStep, AuthenticationFlowStepHandler<*, *>>
+    override fun entries(): Map<AuthenticationFlowStep, AuthenticationFlowStepHandler<T, *, *>>
         = handlers.toMap()
 
-    override fun <Request, Response, T : AuthenticationFlowStepHandler<out Request, out Response>> register(
+    override fun <TRequest : Any, TResponse : Any, THandler : AuthenticationFlowStepHandler<T, out TRequest, out TResponse>> register(
         step: AuthenticationFlowStep,
-        handler: T,
+        handler: THandler,
         force: Boolean
     ) {
         val existingStep = stepRegistry.findByFqdn(step.fqdn)?.step

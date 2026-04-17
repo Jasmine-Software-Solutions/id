@@ -24,10 +24,10 @@ import java.time.Instant
 import java.util.*
 
 class ExposedAuthenticationFlowRepository(
-    val stepRegistry: AuthenticationStepRegistry,
-    val tenantRepository: ITenantRepository,
-    val accountRepository: IAccountRepository
-) : ExposedIdentifiedEntityRepository<IAuthenticationFlow, ExposedAuthenticationFlowRepository.AuthenticationFlow>(Table, AuthenticationFlow::class), IAuthenticationFlowRepository {
+    val stepRegistry: AuthenticationStepRegistry<IAuthenticationFlow>,
+    val tenantRepository: ITenantRepository<ITenant>,
+    val accountRepository: IAccountRepository<IAccount>
+) : ExposedIdentifiedEntityRepository<IAuthenticationFlow, ExposedAuthenticationFlowRepository.AuthenticationFlow>(Table, ExposedAuthenticationFlowRepository.AuthenticationFlow::class), IAuthenticationFlowRepository<IAuthenticationFlow> {
     override fun read(row: ResultRow?, insert: InsertStatement<Number>?, update: UpdateStatement?)
             = AuthenticationFlow(row, insert, update)
 

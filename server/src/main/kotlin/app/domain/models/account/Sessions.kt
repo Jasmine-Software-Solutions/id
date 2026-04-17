@@ -10,9 +10,9 @@ interface ISession : IIdentified, ICreated, IExpires {
 
     var account: IAccount
 
+    var token: String
+
     fun verify(token: String): Boolean
 }
 
-interface IHashedSession : ISession {
-    var token: String
-}
+interface IHashedSession : ISession

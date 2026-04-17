@@ -2,7 +2,6 @@ package app.infrastructure.repositories.accounts
 
 import app.domain.models.account.IAccount
 import app.domain.models.account.IHashedPassword
-import app.domain.models.account.IPassword
 import app.domain.repositories.IAccountRepository
 import app.domain.repositories.IPasswordRepository
 import app.domain.services.IHashFunction
@@ -22,14 +21,14 @@ import java.time.Instant
 import java.util.*
 
 class ExposedPasswordRepository(
-    val hashService: IHashFunction,
-    val accountRepository: IAccountRepository
-) : ExposedIdentifiedEntityRepository<IPassword, ExposedPasswordRepository.Password>(Table, Password::class),
-    IPasswordRepository {
+    val hashFunction: IHashFunction,
+    val accountRepository: IAccountRepository<IAccount>
+) : ExposedIdentifiedEntityRepository<IHashedPassword, ExposedPasswordRepository.Password>(Table, Password::class),
+    IPasswordRepository<IHashedPassword> {
     override fun read(row: ResultRow?, insert: InsertStatement<Number>?, update: UpdateStatement?)
             = Password(row, insert, update)
 
-    override fun findByAccount(id: UUID): List<IPassword> = transaction {
+    override fun findByAccount(id: UUID): List<IHashedPassword> = transaction {
         Table.select { Table.account eq id }
             .orderBy(Table.createdAt, SortOrder.ASC)
             .map { read(it, null, null) }
@@ -48,14 +47,14 @@ class ExposedPasswordRepository(
 
         override var password: String
             get() = throw UnsupportedOperationException()
-            set(value) = hashService.hash(value.toByteArray()).let {
+            set(value) = hashFunction.hash(value.toByteArray()).let {
                 row?.set(Table.passwordHash, it)
                 insert?.set(Table.passwordHash, it)
                 update?.set(Table.passwordHash, it)
             }
 
         override fun verify(password: String): Boolean {
-            return hashService.verify(this.password.toByteArray(), row!![Table.passwordHash])
+            return hashFunction.verify(this.password.toByteArray(), row!![Table.passwordHash])
         }
     }
 

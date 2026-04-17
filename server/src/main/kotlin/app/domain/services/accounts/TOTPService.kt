@@ -10,7 +10,7 @@ data class TOTPVerificationResult(
     val period: Long
 )
 
-interface ITOTPService<T : ITOTPConfiguration> : IRepositoryRelatedToAccount<T> {
+interface ITOTPService<T : ITOTPConfiguration> : IRepositoryRelatedToAccount<T?> {
     fun enable(account: IAccount): T
     fun disable(account: IAccount): ITOTPConfiguration
 

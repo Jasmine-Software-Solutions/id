@@ -1,7 +1,7 @@
 package app.infrastructure.services.accounts
 
 import app.domain.models.account.IAccount
-import app.domain.models.account.IEncryptedTOTPConfiguration
+import app.domain.models.account.ISetTOTPConfiguration
 import app.domain.models.account.ITOTPConfiguration
 import app.domain.repositories.ITOTPConfigurationRepository
 import app.domain.services.accounts.ITOTPService
@@ -17,43 +17,43 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
 class GoogleAuthenticatorTOTPService(
-    val totpRepository: ITOTPConfigurationRepository,
-    val defaultAlgorithm: HmacAlgorithm = HmacAlgorithm.SHA1,
-    val defaultPeriod: Duration = 30.seconds,
-    val defaultDigits: Int = 6
-) : ITOTPService<IEncryptedTOTPConfiguration> {
-    override fun findByAccount(id: UUID): IEncryptedTOTPConfiguration
-        = totpRepository.findByAccount(id) as IEncryptedTOTPConfiguration
+    private val repository: ITOTPConfigurationRepository<*>,
+    private val defaultAlgorithm: HmacAlgorithm = HmacAlgorithm.SHA1,
+    private val defaultPeriod: Duration = 30.seconds,
+    private val defaultDigits: Int = 6
+) : ITOTPService<ISetTOTPConfiguration> {
+    companion object {
+        private fun <T : ITOTPConfiguration> update(repository: ITOTPConfigurationRepository<T>, account: IAccount, function: T.() -> Unit) =
+            repository.findByAccount(account).also { repository.update(it, function )}
+    }
 
-    override fun enable(account: IAccount): IEncryptedTOTPConfiguration {
+    override fun findByAccount(id: UUID): ISetTOTPConfiguration?
+        = repository.findByAccount(id) as? ISetTOTPConfiguration
+
+    override fun enable(account: IAccount): ISetTOTPConfiguration {
         val newSecret = GoogleAuthenticator.createRandomSecretAsByteArray()
         try {
-            val existingConfiguration = totpRepository.findByAccount(account)
-            totpRepository.update(existingConfiguration) {
-                val new = this as IEncryptedTOTPConfiguration
-                new.enabled = true
-                new.algorithm = defaultAlgorithm
-                new.period = defaultPeriod
-                new.digits = defaultDigits
-                new.secret = newSecret
-            }
+            return update(repository, account) {
+                this as ISetTOTPConfiguration
 
-            return existingConfiguration as IEncryptedTOTPConfiguration
+                this.enabled = true
+                this.algorithm = defaultAlgorithm
+                this.period = defaultPeriod
+                this.digits = defaultDigits
+                this.secret = newSecret
+            } as ISetTOTPConfiguration
         } finally {
             Arrays.fill(newSecret, 0)
         }
     }
 
     override fun disable(account: IAccount): ITOTPConfiguration {
-        val existingConfiguration = totpRepository.findByAccount(account)
-        totpRepository.update(existingConfiguration) {
+        return update(repository, account) {
             this.enabled = false
         }
-
-        return existingConfiguration
     }
 
-    override fun generate(config: IEncryptedTOTPConfiguration, period: Long): Int {
+    override fun generate(config: ISetTOTPConfiguration, period: Long): Int {
         val totpSecret = config.secret.clone()
 
         try {
@@ -74,7 +74,7 @@ class GoogleAuthenticatorTOTPService(
     }
 
     override fun verify(
-        config: IEncryptedTOTPConfiguration,
+        config: ISetTOTPConfiguration,
         period: Long,
         code: Int
     ): TOTPVerificationResult {
@@ -83,7 +83,7 @@ class GoogleAuthenticatorTOTPService(
     }
 
     override fun verify(
-        config: IEncryptedTOTPConfiguration,
+        config: ISetTOTPConfiguration,
         code: Int
     ): TOTPVerificationResult {
         val periodNow = period(config, Instant.now())
@@ -97,6 +97,6 @@ class GoogleAuthenticatorTOTPService(
         return TOTPVerificationResult(codeNow == code, periodNow)
     }
 
-    override fun period(config: IEncryptedTOTPConfiguration, instant: Instant): Long
+    override fun period(config: ISetTOTPConfiguration, instant: Instant): Long
             = instant.epochSecond / config.period.inWholeSeconds
 }

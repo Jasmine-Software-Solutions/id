@@ -3,8 +3,8 @@ package app.domain.repositories
 import app.domain.models.account.*
 import java.util.*
 
-interface IAccountRepository : IIdentifiedRepository<IAccount> {
-    fun findByEmail(email: String): IAccount?
+interface IAccountRepository<T : IAccount> : IIdentifiedRepository<T> {
+    fun findByEmail(email: String): T?
 }
 
 interface IRepositoryRelatedToAccount<T> {
@@ -12,18 +12,18 @@ interface IRepositoryRelatedToAccount<T> {
     fun findByAccount(id: UUID): T
 }
 
-interface ITOTPConfigurationRepository : IRepository<ITOTPConfiguration>, IRepositoryRelatedToAccount<ITOTPConfiguration> {
-    override fun create(function: ITOTPConfiguration.() -> Unit): ITOTPConfiguration {
+interface ITOTPConfigurationRepository<T : ITOTPConfiguration> : IRepository<T>, IRepositoryRelatedToAccount<T> {
+    override fun create(function: T.() -> Unit): T {
         throw UnsupportedOperationException()
     }
 
-    override fun delete(entity: ITOTPConfiguration) {
+    override fun delete(entity: T) {
         throw UnsupportedOperationException()
     }
 }
 
-interface IMagicLinkRepository : IIdentifiedRepository<IMagicLink>, IRepositoryRelatedToAccount<List<IMagicLink>>
+interface IMagicLinkRepository<T : IMagicLink> : IIdentifiedRepository<T>, IRepositoryRelatedToAccount<List<T>>
 
-interface IPasswordRepository : IIdentifiedRepository<IPassword>, IRepositoryRelatedToAccount<List<IPassword>>
+interface IPasswordRepository<T : IPassword> : IIdentifiedRepository<T>, IRepositoryRelatedToAccount<List<T>>
 
-interface ISessionRepository : IIdentifiedRepository<ISession>, IRepositoryRelatedToAccount<List<ISession>>
+interface ISessionRepository<T : ISession> : IIdentifiedRepository<T>, IRepositoryRelatedToAccount<List<T>>

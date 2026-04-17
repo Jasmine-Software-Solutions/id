@@ -4,7 +4,7 @@ import app.domain.models.client.IClient
 import app.domain.models.client.IDelegatedSession
 import app.domain.models.client.IServiceSession
 
-interface IClientRepository : IIdentifiedRepository<IClient>
+interface IClientRepository<T : IClient> : IIdentifiedRepository<T>
 
-interface IDelegatedSessionRepository : IIdentifiedRepository<IDelegatedSession>
-interface IServiceSessionRepository : IIdentifiedRepository<IServiceSession>
+interface IDelegatedSessionRepository<T : IDelegatedSession> : IIdentifiedRepository<T>
+interface IServiceSessionRepository<T : IServiceSession> : IIdentifiedRepository<T>
