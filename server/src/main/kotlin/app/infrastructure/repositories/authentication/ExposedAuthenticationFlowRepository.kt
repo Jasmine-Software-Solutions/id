@@ -43,6 +43,7 @@ class ExposedAuthenticationFlowRepository(
 
     private fun findSteps(id: UUID): List<AuthenticationFlowStep> = transaction {
         val steps = StepsTable.select { StepsTable.flow eq id }
+            .orderBy(StepsTable.createdAt, SortOrder.ASC)
             .map { it[StepsTable.stepFqdn] }
             .mapNotNull { stepRegistry.findByFqdn(it) }
             .map { it.step }
@@ -54,6 +55,18 @@ class ExposedAuthenticationFlowRepository(
     private fun addStep(id: UUID, step: AuthenticationFlowStep) {
         StepsTable.insert {
             it[StepsTable.flow] = id
+            it[StepsTable.stepFqdn] = step.fqdn
+        }
+    }
+
+    private fun replaceStep(id: UUID, step: AuthenticationFlowStep) {
+        val lastStep = StepsTable.select { StepsTable.flow eq id }
+            .orderBy(StepsTable.createdAt, SortOrder.DESC)
+            .limit(1)
+            .first()
+
+        StepsTable.update({ StepsTable.id eq lastStep[StepsTable.id] }) {
+            it[StepsTable.createdAt] = System.currentTimeMillis()
             it[StepsTable.stepFqdn] = step.fqdn
         }
     }
@@ -81,9 +94,20 @@ class ExposedAuthenticationFlowRepository(
                 if (insert == null) try {
                     addStep(id, step)
                 } catch (e: IllegalStateException) {
-                    throw IllegalStateException("Invoked IAuthenticationFlowSteps#add(URI) outside of IRepository#update(IAuthenticationFlow, ...) callback")
+                    throw IllegalStateException("Invoked IAuthenticationFlowSteps#add(AuthenticationFlowStep) outside of IRepository#update(IAuthenticationFlow, ...) callback")
                 }
 
+                (values as MutableList).add(step)
+            }
+
+            override fun replace(step: AuthenticationFlowStep) {
+                if (insert == null) try {
+                    replaceStep(id, step)
+                } catch (e: IllegalStateException) {
+                    throw IllegalStateException("Invoked IAuthenticationFlowSteps#replace(AuthenticationFlowStep) outside of IRepository#update(IAuthenticationFlow, ...) callback")
+                }
+
+                (values as MutableList).removeLast()
                 (values as MutableList).add(step)
             }
         }

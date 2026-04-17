@@ -18,4 +18,11 @@ interface IAuthenticationFlowSteps {
     val values: List<AuthenticationFlowStep>
 
     fun add(step: AuthenticationFlowStep)
+    fun replace(step: AuthenticationFlowStep)
+
+    fun currentOrNull(): AuthenticationFlowStep?
+            = values.lastOrNull()
+
+    fun current(): AuthenticationFlowStep
+            = values.last()
 }
