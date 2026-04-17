@@ -21,11 +21,8 @@ interface IAuthenticationStepRegistry<T : IAuthenticationFlow> {
 
     fun findByFqdn(fqdn: String): Entry<T>?
 
-    fun firstOrNull(flow: T): AuthenticationFlowStep?
-        = entries().firstOrNull { it.after == null && it.condition(flow) }?.step
-
     fun nextOrNull(flow: T): AuthenticationFlowStep?
-        = entries().firstOrNull { it.after?.fqdn == flow.steps.values.last().fqdn && it.condition(flow) }?.step ?: firstOrNull(flow)
+        = entries().firstOrNull { it.after?.fqdn == flow.steps.currentOrNull()?.fqdn && it.condition(flow) }?.step
 }
 
 open class AuthenticationStepRegistry<T : IAuthenticationFlow> : IAuthenticationStepRegistry<T> {
