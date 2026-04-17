@@ -7,7 +7,6 @@ import app.domain.repositories.IAccountRepository
 import app.domain.repositories.ITOTPConfigurationRepository
 import app.domain.services.IEncryptionFunction
 import app.infrastructure.entities.ExposedEntity
-import app.infrastructure.models.account.TOTPConfigurationTable
 import app.infrastructure.util.EntityTransformer
 import app.infrastructure.util.ExposedColumnTransformer
 import app.infrastructure.util.NullableInstantTransformer
@@ -83,7 +82,13 @@ class ExposedTOTPConfigurationRepository(
     }
 
     override fun install() {
-        transaction { SchemaUtils.createMissingTablesAndColumns(TOTPConfigurationTable) }
+        transaction {
+            SchemaUtils.createMissingTablesAndColumns(Table)
+        }
+    }
+
+    init {
+        install()
     }
 
     open inner class TOTPConfiguration(
