@@ -54,7 +54,7 @@ class ExposedPasswordRepository(
             }
 
         override fun verify(password: String): Boolean {
-            return hashFunction.verify(this.password.toByteArray(), row!![Table.passwordHash])
+            return hashFunction.verify(password.toByteArray(), row!![Table.passwordHash])
         }
     }
 
