@@ -168,13 +168,13 @@ class IDServerImpl : IDServer {
                 step = EnterPasswordAuthenticationFlowStep,
                 after = EnterEmailAddressAuthenticationFlowStep,
             )
-            /*register(
+            register(
                 step = EnterTOTPAuthenticationFlowStep,
                 after = EnterPasswordAuthenticationFlowStep,
                 condition = {
                     it.account != null && totpConfigurationRepository.findByAccount(it.account!!.id).enabled
                 }
-            )*/
+            )
         }
 
         authenticationStepHandlerRegistry.apply {

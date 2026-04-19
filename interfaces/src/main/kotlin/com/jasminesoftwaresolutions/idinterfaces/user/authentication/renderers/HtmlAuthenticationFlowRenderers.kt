@@ -57,7 +57,12 @@ class HTMLEnterTOTPAuthenticationFlowRenderer<T : IAuthenticationFlow> : Authent
         request: SignedValue<EnterTOTPRequest>,
         source: AuthenticationFlowStepResult
     ) {
-        agent.renderWithContext("components/login/enter_otp.kte")
+        agent.renderWithContext(
+            "components/login/enter_otp.kte",
+            "flowId" to flow.id,
+            "request" to request,
+            "error" to (source is RetryAuthenticationFlowStepResult)
+        )
     }
 }
 

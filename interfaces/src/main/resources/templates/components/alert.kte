@@ -1,4 +1,4 @@
-@param summary: String
+@param summary: String = ""
 @param detail: String
 
 <div class="flex items-center p-4 mb-4 text-sm text-red-800 rounded-lg bg-red-50 dark:bg-gray-800 dark:text-red-400" role="alert">
@@ -7,6 +7,10 @@
     </svg>
     <span class="sr-only">Info</span>
     <div>
-        <span class="font-medium">${summary}</span> ${detail}
+        @if (summary.isNotBlank())
+            <span class="font-medium">${summary}</span>
+        @endif
+
+        ${detail}
     </div>
 </div>

@@ -5,11 +5,13 @@ import com.jasminesoftwaresolutions.id.domain.models.authentication.IAuthenticat
 import com.jasminesoftwaresolutions.id.domain.registries.AuthenticationStepRendererRegistry
 import com.jasminesoftwaresolutions.id.domain.services.authentication.steps.EnterEmailAddressAuthenticationFlowStep
 import com.jasminesoftwaresolutions.id.domain.services.authentication.steps.EnterPasswordAuthenticationFlowStep
+import com.jasminesoftwaresolutions.id.domain.services.authentication.steps.EnterTOTPAuthenticationFlowStep
 import com.jasminesoftwaresolutions.idinterfaces.IDJavalinInterface
 import com.jasminesoftwaresolutions.idinterfaces.services.LoginControllerService
 import com.jasminesoftwaresolutions.idinterfaces.user.authentication.AjaxLoginController
 import com.jasminesoftwaresolutions.idinterfaces.user.authentication.renderers.HTMLEnterEmailAddressAuthenticationFlowRenderer
 import com.jasminesoftwaresolutions.idinterfaces.user.authentication.renderers.HTMLEnterPasswordAuthenticationFlowRenderer
+import com.jasminesoftwaresolutions.idinterfaces.user.authentication.renderers.HTMLEnterTOTPAuthenticationFlowRenderer
 import io.javalin.Javalin
 import io.javalin.community.routing.annotations.AnnotatedRouting
 import io.javalin.config.JavalinConfig
@@ -31,6 +33,12 @@ open class IDJavalinUserInterface(server: IDServer) : IDJavalinInterface {
             agentType = Context::class,
             step = EnterPasswordAuthenticationFlowStep,
             renderer = HTMLEnterPasswordAuthenticationFlowRenderer()
+        )
+
+        register(
+            agentType = Context::class,
+            step = EnterTOTPAuthenticationFlowStep,
+            renderer = HTMLEnterTOTPAuthenticationFlowRenderer()
         )
     }
 

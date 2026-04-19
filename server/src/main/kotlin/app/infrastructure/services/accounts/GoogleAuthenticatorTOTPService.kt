@@ -33,6 +33,10 @@ class GoogleAuthenticatorTOTPService(
     override fun enable(account: IAccount): ISetTOTPConfiguration {
         val newSecret = GoogleAuthenticator.createRandomSecretAsByteArray()
         try {
+            update(repository, account) {
+                this.enabled = true
+            }
+
             return update(repository, account) {
                 this as ISetTOTPConfiguration
 
