@@ -1,7 +1,7 @@
 package app.infrastructure.entities
 
-import app.domain.models.IIdentified
 import app.infrastructure.util.EntityIdTransformer
+import com.jasminesoftwaresolutions.id.domain.models.IIdentified
 import org.jetbrains.exposed.dao.id.IdTable
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.statements.InsertStatement

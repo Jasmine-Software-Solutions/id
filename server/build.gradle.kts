@@ -9,11 +9,15 @@ version = "1.0.0-SNAPSHOT"
 
 repositories {
     mavenCentral()
+    mavenLocal()
 
     maven("https://maven.reposilite.com/snapshots")
 }
 
 dependencies {
+    implementation(project(":domain"))
+    implementation(project(":interfaces"))
+
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
 
@@ -47,10 +51,17 @@ dependencies {
     runtimeOnly("io.jsonwebtoken:jjwt-impl:0.13.0")
     runtimeOnly("io.jsonwebtoken:jjwt-gson:0.13.0")
 
-    implementation("gg.jte:jte:3.1.16")
-    implementation("gg.jte:jte-watcher:3.1.15")
+    implementation("gg.jte:jte:3.2.4-jasmine.1-SNAPSHOT")
+    implementation("gg.jte:jte-watcher:3.2.4-jasmine.1-SNAPSHOT")
 
-    implementation("gg.jte:jte-kotlin:3.1.15")
+    implementation("gg.jte:jte-kotlin:3.2.4-jasmine.1-SNAPSHOT")
+
+    implementation("io.javalin:javalin:6.6.0")
+    implementation("io.javalin:javalin-rendering:6.4.0")
+
+    implementation("io.javalin.community.routing:routing-core:6.4.1-SNAPSHOT")
+    implementation("io.javalin.community.routing:routing-annotated:6.4.1-SNAPSHOT")
+    implementation("io.javalin.community.routing:routing-coroutines:6.4.1-SNAPSHOT")
 }
 
 tasks.test {

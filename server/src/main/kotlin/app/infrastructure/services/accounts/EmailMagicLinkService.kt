@@ -1,16 +1,16 @@
 package app.infrastructure.services.accounts
 
-import app.domain.models.account.IAccount
-import app.domain.models.account.IMagicLink
-import app.domain.repositories.IMagicLinkRepository
-import app.domain.services.IEmailService
-import app.domain.services.accounts.StandardMagicLinkService
+import com.jasminesoftwaresolutions.id.domain.models.account.IAccount
+import com.jasminesoftwaresolutions.id.domain.models.account.IMagicLink
+import com.jasminesoftwaresolutions.id.domain.repositories.IMagicLinkRepository
+import com.jasminesoftwaresolutions.id.domain.services.IEmailService
+import com.jasminesoftwaresolutions.id.domain.services.accounts.StandardMagicLinkService
 import gg.jte.TemplateEngine
 import gg.jte.output.StringOutput
 import kotlin.time.Duration
 
 class EmailMagicLinkService<T : IMagicLink>(
-    repository: IMagicLinkRepository<T>,
+    repository: IMagicLinkRepository<out T>,
     lifetime: Duration,
     private val emailService: IEmailService,
     private val templateEngine: TemplateEngine,

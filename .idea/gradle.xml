@@ -5,12 +5,11 @@
     <option name="linkedExternalProjectsSettings">
       <GradleProjectSettings>
         <option name="externalProjectPath" value="$PROJECT_DIR$" />
-        <option name="gradleHome" value="" />
         <option name="modules">
           <set>
             <option value="$PROJECT_DIR$" />
-            <option value="$PROJECT_DIR$/ajax-server" />
-            <option value="$PROJECT_DIR$/rest-server" />
+            <option value="$PROJECT_DIR$/domain" />
+            <option value="$PROJECT_DIR$/interfaces" />
             <option value="$PROJECT_DIR$/server" />
           </set>
         </option>

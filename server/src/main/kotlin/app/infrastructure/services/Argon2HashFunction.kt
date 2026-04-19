@@ -1,6 +1,6 @@
 package app.infrastructure.services
 
-import app.domain.services.IHashFunction
+import com.jasminesoftwaresolutions.id.domain.services.IHashFunction
 import de.mkammerer.argon2.Argon2Factory
 
 class Argon2HashFunction(

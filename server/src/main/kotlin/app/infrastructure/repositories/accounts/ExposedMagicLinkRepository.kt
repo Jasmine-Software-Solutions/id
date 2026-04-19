@@ -1,16 +1,15 @@
 package app.infrastructure.repositories.accounts
 
-import app.domain.models.account.IAccount
-import app.domain.models.account.IHashedMagicLink
-import app.domain.repositories.IAccountRepository
-import app.domain.repositories.IMagicLinkRepository
-import app.domain.services.IHashFunction
 import app.infrastructure.entities.ExposedIdentifiedEntity
-import app.infrastructure.models.account.AccountsTable
 import app.infrastructure.repositories.ExposedIdentifiedEntityRepository
 import app.infrastructure.util.EntityTransformer
 import app.infrastructure.util.InstantTransformer
 import app.infrastructure.util.NullableInstantTransformer
+import com.jasminesoftwaresolutions.id.domain.models.account.IAccount
+import com.jasminesoftwaresolutions.id.domain.models.account.IHashedMagicLink
+import com.jasminesoftwaresolutions.id.domain.repositories.IAccountRepository
+import com.jasminesoftwaresolutions.id.domain.repositories.IMagicLinkRepository
+import com.jasminesoftwaresolutions.id.domain.services.IHashFunction
 import org.jetbrains.exposed.dao.id.UUIDTable
 import org.jetbrains.exposed.sql.ReferenceOption
 import org.jetbrains.exposed.sql.ResultRow
@@ -59,7 +58,7 @@ class ExposedMagicLinkRepository(
         override var decidedAt: Instant? by nullableColumn(Table.decidedAt, NullableInstantTransformer)
 
         override var account: IAccount by column(Table.account,
-            EntityTransformer(AccountsTable, accountRepository))
+            EntityTransformer(ExposedAccountRepository.Table, accountRepository))
 
         override var approved: Boolean by column(Table.approved)
         override var consumed: Boolean by column(Table.consumed)
@@ -99,7 +98,7 @@ class ExposedMagicLinkRepository(
         var approved = bool("approved").default(false)
         var consumed = bool("consumed").default(false)
 
-        val account = reference("account_id", AccountsTable, onDelete = ReferenceOption.CASCADE)
+        val account = reference("account_id", ExposedAccountRepository.Table, onDelete = ReferenceOption.CASCADE)
 
         val decisionTokenHash = text("argon2_decision_token_hash")
         val acceptanceTokenHash = text("argon2_acceptance_token_hash")

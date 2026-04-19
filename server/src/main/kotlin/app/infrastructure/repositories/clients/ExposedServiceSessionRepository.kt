@@ -1,17 +1,17 @@
 package app.infrastructure.repositories.clients
 
-import app.domain.models.client.IClient
-import app.domain.models.client.IServiceSession
-import app.domain.models.tenant.ITenant
-import app.domain.repositories.IClientRepository
-import app.domain.repositories.IServiceSessionRepository
-import app.domain.repositories.ITenantRepository
 import app.infrastructure.entities.ExposedIdentifiedEntity
 import app.infrastructure.repositories.ExposedIdentifiedEntityRepository
 import app.infrastructure.repositories.tenants.ExposedTenantRepository
 import app.infrastructure.util.EntityTransformer
 import app.infrastructure.util.InstantTransformer
 import app.infrastructure.util.NullableEntityTransformer
+import com.jasminesoftwaresolutions.id.domain.models.client.IClient
+import com.jasminesoftwaresolutions.id.domain.models.client.IServiceSession
+import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenant
+import com.jasminesoftwaresolutions.id.domain.repositories.IClientRepository
+import com.jasminesoftwaresolutions.id.domain.repositories.IServiceSessionRepository
+import com.jasminesoftwaresolutions.id.domain.repositories.ITenantRepository
 import org.jetbrains.exposed.dao.id.UUIDTable
 import org.jetbrains.exposed.sql.ReferenceOption
 import org.jetbrains.exposed.sql.ResultRow

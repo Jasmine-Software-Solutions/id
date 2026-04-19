@@ -1,20 +1,20 @@
 package app.infrastructure.repositories.authentication
 
-import app.domain.models.account.IAccount
-import app.domain.models.authentication.IAuthenticationFlow
-import app.domain.models.authentication.IAuthenticationFlowSteps
-import app.domain.models.tenant.ITenant
-import app.domain.registries.AuthenticationStepRegistry
-import app.domain.repositories.IAccountRepository
-import app.domain.repositories.IAuthenticationFlowRepository
-import app.domain.repositories.ITenantRepository
-import app.domain.services.authentication.AuthenticationFlowStep
 import app.infrastructure.entities.ExposedIdentifiedEntity
 import app.infrastructure.repositories.ExposedIdentifiedEntityRepository
 import app.infrastructure.repositories.accounts.ExposedAccountRepository
 import app.infrastructure.repositories.tenants.ExposedTenantRepository
 import app.infrastructure.util.InstantTransformer
 import app.infrastructure.util.NullableEntityTransformer
+import com.jasminesoftwaresolutions.id.domain.models.account.IAccount
+import com.jasminesoftwaresolutions.id.domain.models.authentication.IAuthenticationFlow
+import com.jasminesoftwaresolutions.id.domain.models.authentication.IAuthenticationFlowSteps
+import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenant
+import com.jasminesoftwaresolutions.id.domain.registries.IAuthenticationStepRegistry
+import com.jasminesoftwaresolutions.id.domain.repositories.IAccountRepository
+import com.jasminesoftwaresolutions.id.domain.repositories.IAuthenticationFlowRepository
+import com.jasminesoftwaresolutions.id.domain.repositories.ITenantRepository
+import com.jasminesoftwaresolutions.id.domain.services.authentication.AuthenticationFlowStep
 import org.jetbrains.exposed.dao.id.UUIDTable
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.statements.InsertStatement
@@ -24,10 +24,10 @@ import java.time.Instant
 import java.util.*
 
 class ExposedAuthenticationFlowRepository(
-    val stepRegistry: AuthenticationStepRegistry<IAuthenticationFlow>,
+    val stepRegistry: IAuthenticationStepRegistry<IAuthenticationFlow>,
     val tenantRepository: ITenantRepository<ITenant>,
     val accountRepository: IAccountRepository<IAccount>
-) : ExposedIdentifiedEntityRepository<IAuthenticationFlow, ExposedAuthenticationFlowRepository.AuthenticationFlow>(Table, ExposedAuthenticationFlowRepository.AuthenticationFlow::class), IAuthenticationFlowRepository<IAuthenticationFlow> {
+) : ExposedIdentifiedEntityRepository<IAuthenticationFlow, ExposedAuthenticationFlowRepository.AuthenticationFlow>(Table, AuthenticationFlow::class), IAuthenticationFlowRepository<IAuthenticationFlow> {
     override fun read(row: ResultRow?, insert: InsertStatement<Number>?, update: UpdateStatement?)
             = AuthenticationFlow(row, insert, update)
 

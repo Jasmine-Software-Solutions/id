@@ -1,15 +1,14 @@
 package app.infrastructure.repositories.accounts
 
-import app.domain.models.account.IAccount
-import app.domain.models.account.IHashedSession
-import app.domain.repositories.IAccountRepository
-import app.domain.repositories.ISessionRepository
-import app.domain.services.IHashFunction
 import app.infrastructure.entities.ExposedIdentifiedEntity
-import app.infrastructure.models.account.AccountsTable
 import app.infrastructure.repositories.ExposedIdentifiedEntityRepository
 import app.infrastructure.util.EntityTransformer
 import app.infrastructure.util.InstantTransformer
+import com.jasminesoftwaresolutions.id.domain.models.account.IAccount
+import com.jasminesoftwaresolutions.id.domain.models.account.IHashedSession
+import com.jasminesoftwaresolutions.id.domain.repositories.IAccountRepository
+import com.jasminesoftwaresolutions.id.domain.repositories.ISessionRepository
+import com.jasminesoftwaresolutions.id.domain.services.IHashFunction
 import org.jetbrains.exposed.dao.id.UUIDTable
 import org.jetbrains.exposed.sql.ReferenceOption
 import org.jetbrains.exposed.sql.ResultRow
@@ -52,8 +51,8 @@ class ExposedSessionRepository(
         override val createdAt: Instant by column(Table.createdAt, InstantTransformer)
         override var expiresAt: Instant by column(Table.expiresAt, InstantTransformer)
 
-        override var userAgent: String by column(Table.userAgent)
-        override var ipAddress: String by column(Table.ipAddress)
+        override var userAgent: String? by nullableColumn(Table.userAgent)
+        override var ipAddress: String? by nullableColumn(Table.ipAddress)
 
         override var account: IAccount by column(Table.account,
             EntityTransformer(ExposedAccountRepository.Table, accountRepository))
@@ -76,10 +75,10 @@ class ExposedSessionRepository(
         val createdAt = long("created_at").clientDefault { System.currentTimeMillis() }
         val expiresAt = long("expires_at")
 
-        val account = reference("account", AccountsTable, onDelete = ReferenceOption.CASCADE)
+        val account = reference("account", ExposedAccountRepository.Table, onDelete = ReferenceOption.CASCADE)
 
-        val userAgent = varchar("user_agent", 256)
-        val ipAddress = varchar("ip_address", 39)
+        val userAgent = varchar("user_agent", 256).nullable()
+        val ipAddress = varchar("ip_address", 39).nullable()
 
         val tokenHash = text("argon2_token_hash")
     }

@@ -1,6 +1,6 @@
 package app.infrastructure.services
 
-import app.domain.services.IEmailService
+import com.jasminesoftwaresolutions.id.domain.services.IEmailService
 import jakarta.mail.*
 import jakarta.mail.internet.InternetAddress
 import jakarta.mail.internet.MimeBodyPart

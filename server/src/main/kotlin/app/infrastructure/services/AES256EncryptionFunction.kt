@@ -1,6 +1,6 @@
 package app.infrastructure.services
 
-import app.domain.services.IEncryptionFunction
+import com.jasminesoftwaresolutions.id.domain.services.IEncryptionFunction
 import java.security.SecureRandom
 import java.security.spec.KeySpec
 import javax.crypto.Cipher

@@ -1,8 +1,8 @@
 package app.infrastructure.repositories
 
-import app.domain.models.IIdentified
-import app.domain.repositories.IIdentifiedRepository
 import app.infrastructure.entities.ExposedEntity
+import com.jasminesoftwaresolutions.id.domain.models.IIdentified
+import com.jasminesoftwaresolutions.id.domain.repositories.IIdentifiedRepository
 import org.jetbrains.exposed.dao.id.UUIDTable
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq

@@ -1,4 +1,11 @@
 rootProject.name = "id"
+include("domain")
+include("interfaces")
 include("server")
-include("rest-server")
-include("ajax-server")
+
+pluginManagement {
+    repositories {
+        mavenLocal()
+        gradlePluginPortal()
+    }
+}

@@ -1,8 +1,0 @@
-package app.domain.services.authentication
-
-sealed class AuthenticationFlowStepResult
-
-object ContinueAuthenticationFlowStepResult : AuthenticationFlowStepResult()
-object RetryAuthenticationFlowStepResult : AuthenticationFlowStepResult()
-
-object BypassAuthenticationFlowStepResult : AuthenticationFlowStepResult()

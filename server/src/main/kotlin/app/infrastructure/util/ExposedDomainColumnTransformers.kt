@@ -1,7 +1,7 @@
 package app.infrastructure.util
 
-import app.domain.models.IIdentified
-import app.domain.repositories.IIdentifiedRepository
+import com.jasminesoftwaresolutions.id.domain.models.IIdentified
+import com.jasminesoftwaresolutions.id.domain.repositories.IIdentifiedRepository
 import org.jetbrains.exposed.dao.id.EntityID
 import org.jetbrains.exposed.dao.id.IdTable
 import java.time.Instant

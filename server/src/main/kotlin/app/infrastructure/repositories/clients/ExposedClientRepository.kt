@@ -1,13 +1,13 @@
 package app.infrastructure.repositories.clients
 
-import app.domain.models.client.IClient
-import app.domain.models.client.IClientRedirectUris
-import app.domain.models.client.IHashedClient
-import app.domain.repositories.IClientRepository
-import app.domain.services.IHashFunction
 import app.infrastructure.entities.ExposedIdentifiedEntity
 import app.infrastructure.repositories.ExposedIdentifiedEntityRepository
 import app.infrastructure.util.InstantTransformer
+import com.jasminesoftwaresolutions.id.domain.models.client.IClient
+import com.jasminesoftwaresolutions.id.domain.models.client.IClientRedirectUris
+import com.jasminesoftwaresolutions.id.domain.models.client.IHashedClient
+import com.jasminesoftwaresolutions.id.domain.repositories.IClientRepository
+import com.jasminesoftwaresolutions.id.domain.services.IHashFunction
 import org.jetbrains.exposed.dao.id.UUIDTable
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq

@@ -1,10 +1,10 @@
 package app.infrastructure.services.accounts
 
-import app.domain.services.accounts.IJWT
-import app.domain.services.accounts.IJWTService
-import app.domain.services.accounts.JWTDecodeException
 import com.google.gson.Gson
 import com.google.gson.JsonObject
+import com.jasminesoftwaresolutions.id.domain.services.accounts.IJWT
+import com.jasminesoftwaresolutions.id.domain.services.accounts.IJWTService
+import com.jasminesoftwaresolutions.id.domain.services.accounts.JWTDecodeException
 import io.jsonwebtoken.Jws
 import io.jsonwebtoken.JwtException
 import io.jsonwebtoken.Jwts

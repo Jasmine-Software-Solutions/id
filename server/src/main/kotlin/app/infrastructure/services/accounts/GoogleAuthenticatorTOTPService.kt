@@ -1,11 +1,11 @@
 package app.infrastructure.services.accounts
 
-import app.domain.models.account.IAccount
-import app.domain.models.account.ISetTOTPConfiguration
-import app.domain.models.account.ITOTPConfiguration
-import app.domain.repositories.ITOTPConfigurationRepository
-import app.domain.services.accounts.ITOTPService
-import app.domain.services.accounts.TOTPVerificationResult
+import com.jasminesoftwaresolutions.id.domain.models.account.IAccount
+import com.jasminesoftwaresolutions.id.domain.models.account.ISetTOTPConfiguration
+import com.jasminesoftwaresolutions.id.domain.models.account.ITOTPConfiguration
+import com.jasminesoftwaresolutions.id.domain.repositories.ITOTPConfigurationRepository
+import com.jasminesoftwaresolutions.id.domain.services.accounts.ITOTPService
+import com.jasminesoftwaresolutions.id.domain.services.accounts.TOTPVerificationResult
 import dev.turingcomplete.kotlinonetimepassword.GoogleAuthenticator
 import dev.turingcomplete.kotlinonetimepassword.HmacAlgorithm
 import dev.turingcomplete.kotlinonetimepassword.HmacOneTimePasswordGenerator

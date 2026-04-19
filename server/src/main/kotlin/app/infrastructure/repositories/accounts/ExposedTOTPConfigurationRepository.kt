@@ -1,15 +1,15 @@
 package app.infrastructure.repositories.accounts
 
-import app.domain.models.account.IAccount
-import app.domain.models.account.IEncryptedTOTPConfiguration
-import app.domain.models.account.ITOTPConfiguration
-import app.domain.repositories.IAccountRepository
-import app.domain.repositories.ITOTPConfigurationRepository
-import app.domain.services.IEncryptionFunction
 import app.infrastructure.entities.ExposedEntity
 import app.infrastructure.util.EntityTransformer
 import app.infrastructure.util.ExposedColumnTransformer
 import app.infrastructure.util.NullableInstantTransformer
+import com.jasminesoftwaresolutions.id.domain.models.account.IAccount
+import com.jasminesoftwaresolutions.id.domain.models.account.IEncryptedTOTPConfiguration
+import com.jasminesoftwaresolutions.id.domain.models.account.ITOTPConfiguration
+import com.jasminesoftwaresolutions.id.domain.repositories.IAccountRepository
+import com.jasminesoftwaresolutions.id.domain.repositories.ITOTPConfigurationRepository
+import com.jasminesoftwaresolutions.id.domain.services.IEncryptionFunction
 import dev.turingcomplete.kotlinonetimepassword.HmacAlgorithm
 import org.jetbrains.exposed.dao.id.UUIDTable
 import org.jetbrains.exposed.sql.*
