@@ -20,7 +20,8 @@ interface IAuthenticationStepRendererRegistry<T : IAuthenticationFlow> {
     fun <TAgent : Any> register(agentType: KClass<TAgent>, step: AuthenticationFlowStep, renderer: AuthenticationFlowStepRenderer<T, TAgent, *>, force: Boolean = false)
 }
 
-open class AuthenticationStepRendererRegistry<T : IAuthenticationFlow> : IAuthenticationStepRendererRegistry<T> {
+open class AuthenticationStepRendererRegistry<T : IAuthenticationFlow> :
+    IAuthenticationStepRendererRegistry<T> {
     protected val entries = mutableMapOf<KClass<*>, MutableMap<AuthenticationFlowStep, AuthenticationFlowStepRenderer<T, *, *>>>()
 
     override fun entries(): Map<KClass<*>, Map<AuthenticationFlowStep, AuthenticationFlowStepRenderer<T, *, *>>>

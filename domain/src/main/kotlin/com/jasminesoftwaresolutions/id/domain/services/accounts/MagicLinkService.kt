@@ -16,8 +16,10 @@ open class StandardMagicLinkService<T : IMagicLink>(
     protected val repository: IMagicLinkRepository<out T>,
     protected val lifetime: Duration
 ) : IMagicLinkService<T> {
-    protected open fun nextDecisionToken(account: IAccount) = SecureToken()
-    protected open fun nextAcceptanceToken(account: IAccount) = SecureToken()
+    protected open fun nextDecisionToken(account: IAccount) =
+        SecureToken()
+    protected open fun nextAcceptanceToken(account: IAccount) =
+        SecureToken()
 
     protected open fun T.create(account: IAccount, function: (T).() -> Unit) {
         function(this)

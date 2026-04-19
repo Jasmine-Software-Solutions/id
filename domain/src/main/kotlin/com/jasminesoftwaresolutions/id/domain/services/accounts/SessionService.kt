@@ -15,7 +15,8 @@ open class StandardSessionService<T : ISession>(
     protected val repository: ISessionRepository<out T>,
     protected val lifetime: Duration
 ) : ISessionService<T> {
-    protected open fun nextToken(account: IAccount) = SecureToken()
+    protected open fun nextToken(account: IAccount) =
+        SecureToken()
 
     protected open fun T.create(account: IAccount, function: (T).() -> (Unit) = {}) {
         function(this)

@@ -24,7 +24,10 @@ open class LoginControllerService<T : IAuthenticationFlow>(
             flow.handler()
         }
 
-        return SignedValue(signingFunction, handler.create(flow))
+        return SignedValue(
+            signingFunction,
+            handler.create(flow)
+        )
     }
 
     inner class LoginResult(val flow: T, val step: AuthenticationFlowStep, val request: SignedValue<Any>)

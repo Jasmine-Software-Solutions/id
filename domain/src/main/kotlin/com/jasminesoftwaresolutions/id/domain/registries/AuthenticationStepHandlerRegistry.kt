@@ -13,7 +13,8 @@ interface IAuthenticationStepHandlerRegistry<T : IAuthenticationFlow> {
         = entries().entries.firstOrNull { it.key.fqdn == step.fqdn }?.value
 }
 
-open class AuthenticationStepHandlerRegistry<T : IAuthenticationFlow>() : IAuthenticationStepHandlerRegistry<T> {
+open class AuthenticationStepHandlerRegistry<T : IAuthenticationFlow>() :
+    IAuthenticationStepHandlerRegistry<T> {
     protected val handlers = mutableMapOf<AuthenticationFlowStep, AuthenticationFlowStepHandler<T, *, *>>()
 
     override fun entries(): Map<AuthenticationFlowStep, AuthenticationFlowStepHandler<T, *, *>>
