@@ -4,8 +4,12 @@ import app.infrastructure.entities.ExposedIdentifiedEntity
 import app.infrastructure.repositories.ExposedIdentifiedEntityRepository
 import app.infrastructure.repositories.accounts.ExposedAccountRepository
 import app.infrastructure.util.EntityTransformer
+import app.infrastructure.util.ExposedColumnTransformer
 import app.infrastructure.util.InstantTransformer
 import com.jasminesoftwaresolutions.id.domain.models.account.IAccount
+import com.jasminesoftwaresolutions.id.domain.models.authorization.ITenantRole
+import com.jasminesoftwaresolutions.id.domain.models.authorization.TenantAdministrator
+import com.jasminesoftwaresolutions.id.domain.models.authorization.TenantMember
 import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenant
 import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenantMembership
 import com.jasminesoftwaresolutions.id.domain.repositories.IAccountRepository
@@ -50,7 +54,17 @@ class ExposedTenantMembershipRepository(
         override var account: IAccount by column(Table.account,
             EntityTransformer(ExposedAccountRepository.Table, accountRepository))
 
-        override var administrator: Boolean by column(Table.administrator)
+        override val roles: Set<ITenantRole> by column(
+            Table.roles, ExposedColumnTransformer(
+            fromColumn = { it.split(",").mapNotNull {
+                if (it == TenantAdministrator.id)
+                    TenantAdministrator(this.tenant)
+                else if (it == TenantMember.id)
+                    TenantMember(this.tenant)
+                else null
+            }.toSet() },
+            toColumn = { it.map { it.id }.joinToString(",") },
+        ))
     }
 
     object Table : UUIDTable("tenant_memberships") {
@@ -58,6 +72,11 @@ class ExposedTenantMembershipRepository(
 
         val tenant = reference("tenant", ExposedTenantRepository.Table.id)
         val account = reference("account", ExposedAccountRepository.Table.id)
-        val administrator = bool("administrator").default(false)
+
+        val roles = text("roles").clientDefault { TenantMember.id }
+
+        init {
+            uniqueIndex(tenant, account)
+        }
     }
 }

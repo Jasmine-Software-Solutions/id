@@ -10,13 +10,13 @@ import app.infrastructure.util.InstantTransformer
 import app.infrastructure.util.NullableEntityTransformer
 import com.jasminesoftwaresolutions.id.domain.models.account.ISession
 import com.jasminesoftwaresolutions.id.domain.models.client.IClient
-import com.jasminesoftwaresolutions.id.domain.models.client.IDelegatedSession
-import com.jasminesoftwaresolutions.id.domain.models.client.IHashedUnnegotiatedDelegatedSession
+import com.jasminesoftwaresolutions.id.domain.models.client.IHashedDelegatedSession
 import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenant
 import com.jasminesoftwaresolutions.id.domain.repositories.IClientRepository
 import com.jasminesoftwaresolutions.id.domain.repositories.IDelegatedSessionRepository
 import com.jasminesoftwaresolutions.id.domain.repositories.ISessionRepository
 import com.jasminesoftwaresolutions.id.domain.repositories.ITenantRepository
+import com.jasminesoftwaresolutions.id.domain.services.IHashFunction
 import org.jetbrains.exposed.dao.id.UUIDTable
 import org.jetbrains.exposed.sql.ReferenceOption
 import org.jetbrains.exposed.sql.ResultRow
@@ -26,21 +26,29 @@ import java.net.URI
 import java.time.Instant
 
 class ExposedDelegatedSessionRepository(
-    val sessionRepository: ISessionRepository<ISession>,
-    val clientRepository: IClientRepository<IClient>,
-    val tenantRepository: ITenantRepository<ITenant>
-) : ExposedIdentifiedEntityRepository<IDelegatedSession, ExposedDelegatedSessionRepository.DelegatedSession>(Table, DelegatedSession::class),
-    IDelegatedSessionRepository<IDelegatedSession> {
+    val hashFunction: IHashFunction,
+    val sessionRepository: ISessionRepository<out ISession>,
+    val clientRepository: IClientRepository<out IClient>,
+    val tenantRepository: ITenantRepository<out ITenant>
+) : ExposedIdentifiedEntityRepository<IHashedDelegatedSession, ExposedDelegatedSessionRepository.DelegatedSession>(Table, DelegatedSession::class),
+    IDelegatedSessionRepository<IHashedDelegatedSession> {
     override fun read(row: ResultRow?, insert: InsertStatement<Number>?, update: UpdateStatement?)
         = DelegatedSession(row, insert, update)
+
+    override fun clone(src: DelegatedSession, dest: DelegatedSession) {
+        runCatching {
+            dest.code = src.code
+        }
+    }
 
     open inner class DelegatedSession(
         row: ResultRow? = null,
         insert: InsertStatement<Number>? = null,
         update: UpdateStatement? = null
-    ) : ExposedIdentifiedEntity(Table, row, insert, update), IDelegatedSession {
+    ) : ExposedIdentifiedEntity(Table, row, insert, update), IHashedDelegatedSession {
+        private var _code: String? = null
+
         override val createdAt: Instant by column(Table.createdAt, InstantTransformer)
-        override var refreshedAt: Instant by column(Table.refreshedAt, InstantTransformer)
         override var expiresAt: Instant by column(Table.expiresAt, InstantTransformer)
 
         override var session: ISession by column(Table.session,
@@ -56,37 +64,24 @@ class ExposedDelegatedSessionRepository(
             fromColumn = { URI.create(it) },
             toColumn = { it.toString() }))
 
-        override var state: String? by nullableColumn(Table.state)
-        override var scope: String? by nullableColumn(Table.scope)
+        override var scope: String by column(Table.scope)
 
-        override fun isAccessToken(token: String): Boolean {
-            TODO("Not yet implemented")
-        }
+        override var code: String
+            get() = _code ?: throw UnsupportedOperationException("IDelegatedSession#code is transient and no longer accessible")
+            set(value) = hashFunction.hash(value.toByteArray()).let {
+                row?.set(Table.codeHash, it)
+                insert?.set(Table.codeHash, it)
+                update?.set(Table.codeHash, it)
+                _code = value
+            }
 
-        override fun isRefreshToken(token: String): Boolean {
-            TODO("Not yet implemented")
-        }
-
-        override fun isValidAt(instant: Instant): Boolean {
-            return instant < expiresAt && instant > createdAt
-        }
-    }
-
-    open inner class UnnegotiatedDelegatedSession(
-        row: ResultRow?,
-        insert: InsertStatement<Number>?,
-        update: UpdateStatement?
-    ) : DelegatedSession(row, insert, update), IHashedUnnegotiatedDelegatedSession {
-        override var authorizationCode: String by requiredColumn(Table.authorizationCode)
-
-        override fun isAuthorizationCode(code: String): Boolean {
-            TODO("Not yet implemented")
+        override fun verify(code: String): Boolean {
+            return hashFunction.verify(code.toByteArray(), row!![Table.codeHash])
         }
     }
 
     object Table : UUIDTable("delegated_sessions") {
         val createdAt = long("created_at").clientDefault { System.currentTimeMillis() }
-        val refreshedAt = long("refreshed_at").clientDefault { System.currentTimeMillis() }
         val expiresAt = long("expiresAt")
 
         val session = reference("session", ExposedSessionRepository.Table, onDelete = ReferenceOption.CASCADE)
@@ -94,9 +89,8 @@ class ExposedDelegatedSessionRepository(
         val tenant = optReference("tenant", ExposedTenantRepository.Table, onDelete = ReferenceOption.CASCADE)
 
         val redirectUri = varchar("redirect_uri", 2048)
-        val state = varchar("state", 256).nullable()
-        val scope = varchar("scope", 256).nullable()
+        val scope = varchar("scope", 256)
 
-        val authorizationCode = varchar("authorization_code", 64).nullable()
+        val codeHash = text("argon2_code_hash")
     }
 }

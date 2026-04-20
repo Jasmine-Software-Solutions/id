@@ -1,8 +1,6 @@
-@import app.infrastructure.models.account.Account
-@import app.infrastructure.models.tenant.Tenant
+@import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenant
 
-@param account: Account
-@param tenants: List<Tenant>
+@param tenants: List<ITenant>
 
 <head>
     @template.scripts.htmx()
@@ -24,18 +22,24 @@
                 </h1>
 
                 <div class="flex flex-col">
+                    !{ var i = 0 }
                     @for(tenant in tenants)
-                        <form hx-post="/oauth2/select">
-                            <input name="tenant" id="tenant" type="hidden" value="${tenant.id?.toString()}"/>
-
-                            <button type="submit" class="w-full text-black hover:bg-opacity-20 hover:bg-primary-700 focus:ring-4 focus:outline-none focus:ring-primary-300 font-medium text-sm px-5 py-2.5 text-center  dark:hover:bg-primary-700 dark:focus:ring-primary-800 dark:hover:bg-opacity-20">
-                                ${tenant.name}
-                            </button>
-                        </form>
+                        <a id="tenant-${i}" class="w-full cursor-pointer text-black hover:bg-opacity-20 hover:bg-primary-700 focus:ring-4 focus:outline-none focus:ring-primary-300 font-medium text-sm px-5 py-2.5 text-center  dark:hover:bg-primary-700 dark:focus:ring-primary-800 dark:hover:bg-opacity-20">
+                            ${tenant.name}
+                        </a>
+                        !{ i += 1 }
                     @endfor
                 </div>
             </div>
         </div>
     </div>
 </section>
+
+<script>
+    @for(i in 0 until tenants.size)
+        document.getElementById("tenant-${i}").addEventListener("click", function () {
+            window.location.href = window.location.href.replace("&tenant_id=", "") + "&tenant_id=${tenants.get(i).id.toString()}";
+        });
+    @endfor
+</script>
 </body>

@@ -3,6 +3,7 @@ package app.application
 import app.infrastructure.repositories.accounts.*
 import app.infrastructure.repositories.authentication.ExposedAuthenticationFlowRepository
 import app.infrastructure.repositories.clients.ExposedClientRepository
+import app.infrastructure.repositories.clients.ExposedDelegatedSessionRepository
 import app.infrastructure.repositories.tenants.ExposedTenantMembershipRepository
 import app.infrastructure.repositories.tenants.ExposedTenantRepository
 import app.infrastructure.services.AES256EncryptionFunction
@@ -16,6 +17,7 @@ import com.jasminesoftwaresolutions.id.domain.IDServer
 import com.jasminesoftwaresolutions.id.domain.models.account.*
 import com.jasminesoftwaresolutions.id.domain.models.authentication.IAuthenticationFlow
 import com.jasminesoftwaresolutions.id.domain.models.client.IClient
+import com.jasminesoftwaresolutions.id.domain.models.client.IHashedDelegatedSession
 import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenant
 import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenantMembership
 import com.jasminesoftwaresolutions.id.domain.registries.AuthenticationStepHandlerRegistry
@@ -91,6 +93,8 @@ class IDServerImpl : IDServer {
     override var tenantMembershipRepository: ITenantMembershipRepository<ITenantMembership> = ExposedTenantMembershipRepository(tenantRepository, accountRepository)
 
     override var authenticationFlowRepository: IAuthenticationFlowRepository<IAuthenticationFlow> = ExposedAuthenticationFlowRepository(authenticationStepRegistry, tenantRepository, accountRepository)
+
+    override var delegatedSessionRepository: IDelegatedSessionRepository<IHashedDelegatedSession> = ExposedDelegatedSessionRepository(hashFunction, sessionRepository, clientRepository, tenantRepository)
 
     override var emailService: IEmailService = EmailService(
         Env.SMTP_AUTH,

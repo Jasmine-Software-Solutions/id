@@ -17,12 +17,12 @@ object NullableInstantTransformer : ExposedColumnTransformer<Long?, Instant?>(
     toColumn = { it?.toEpochMilli() }
 )
 
-class EntityTransformer<T : IIdentified>(val table: IdTable<UUID>, val repository: IIdentifiedRepository<T>) : ExposedColumnTransformer<EntityID<UUID>, T>(
+class EntityTransformer<T : IIdentified>(val table: IdTable<UUID>, val repository: IIdentifiedRepository<out T>) : ExposedColumnTransformer<EntityID<UUID>, T>(
     fromColumn = { repository.findById(it.value)!! },
     toColumn = { EntityID(it.id, table) }
 )
 
-class NullableEntityTransformer<T : IIdentified>(val table: IdTable<UUID>, val repository: IIdentifiedRepository<T>) : ExposedColumnTransformer<EntityID<UUID>?, T?>(
+class NullableEntityTransformer<T : IIdentified>(val table: IdTable<UUID>, val repository: IIdentifiedRepository<out T>) : ExposedColumnTransformer<EntityID<UUID>?, T?>(
     fromColumn = { it?.let { repository.findById(it.value) } },
     toColumn = { it?.id?.let { EntityID(it, table) } }
 )

@@ -59,6 +59,15 @@ class ExposedClientRepository(
         RedirectUrisTable.deleteWhere { RedirectUrisTable.client eq id and (RedirectUrisTable.uri eq uri.toString()) }
     }
 
+    override fun install() {
+        transaction {
+            SchemaUtils.createMissingTablesAndColumns(
+                Table,
+                RedirectUrisTable
+            )
+        }
+    }
+
     open inner class Client(
         row: ResultRow? = null,
         insert: InsertStatement<Number>? = null,

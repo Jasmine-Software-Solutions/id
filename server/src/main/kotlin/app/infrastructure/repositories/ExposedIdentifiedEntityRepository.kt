@@ -49,7 +49,10 @@ abstract class ExposedIdentifiedEntityRepository<T, TWrapper>(
 
         createDependents(entityId, entity)
 
-        return@transaction findById(entityId)!!
+        val new = findById(entityId)!!
+        clone(entity as TWrapper, new as TWrapper)
+
+        return@transaction new
     }
 
     override fun update(entity: T, function: T.() -> Unit) = transaction {

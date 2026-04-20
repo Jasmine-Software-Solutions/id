@@ -13,6 +13,8 @@ import io.javalin.community.routing.annotations.Get
 import io.javalin.community.routing.annotations.Post
 import io.javalin.http.BadRequestResponse
 import io.javalin.http.Context
+import io.javalin.http.Cookie
+import io.javalin.http.SameSite
 import java.util.*
 
 class AjaxLoginController<T : IAuthenticationFlow>(
@@ -61,7 +63,23 @@ class AjaxLoginController<T : IAuthenticationFlow>(
             }
 
             is LoginControllerService.AuthenticatedFlowNextResult -> {
-                ctx.result("SIGNED IN")
+                ctx.header("HX-Redirect", "/")
+
+                ctx.cookie(Cookie(
+                        name = "session_id",
+                        value = result.session.id.toString(),
+                        isHttpOnly = true,
+                        secure = true,
+                        sameSite = SameSite.STRICT
+                    ))
+
+                ctx.cookie(Cookie(
+                    name = "session_token",
+                    value = result.session.token,
+                    isHttpOnly = true,
+                    secure = true,
+                    sameSite = SameSite.STRICT
+                ))
             }
         }
     }

@@ -2,8 +2,12 @@ package app.infrastructure.repositories.accounts
 
 import app.infrastructure.entities.ExposedIdentifiedEntity
 import app.infrastructure.repositories.ExposedIdentifiedEntityRepository
+import app.infrastructure.util.ExposedColumnTransformer
 import app.infrastructure.util.InstantTransformer
 import com.jasminesoftwaresolutions.id.domain.models.account.IAccount
+import com.jasminesoftwaresolutions.id.domain.models.authorization.IPlatformRole
+import com.jasminesoftwaresolutions.id.domain.models.authorization.PlatformAdministrator
+import com.jasminesoftwaresolutions.id.domain.models.authorization.PlatformMember
 import com.jasminesoftwaresolutions.id.domain.repositories.IAccountRepository
 import org.jetbrains.exposed.dao.id.UUIDTable
 import org.jetbrains.exposed.sql.ResultRow
@@ -37,7 +41,16 @@ open class ExposedAccountRepository
         override var firstName: String by column(Table.firstName)
         override var lastName: String by column(Table.lastName)
 
-        override var platformAdministrator: Boolean by column(Table.platformAdministrator)
+        override val roles: Set<IPlatformRole> by column(Table.roles, ExposedColumnTransformer(
+            fromColumn = { it.split(",").mapNotNull {
+                if (it == PlatformAdministrator.id)
+                    PlatformAdministrator
+                else if (it == PlatformMember.id)
+                    PlatformMember
+                else null
+            }.toSet() },
+            toColumn = { it.map { it.id }.joinToString(",") },
+        ))
     }
 
     object Table : UUIDTable("accounts") {
@@ -48,6 +61,6 @@ open class ExposedAccountRepository
         val firstName = varchar("first_name", 40)
         val lastName = varchar("last_name", 40)
 
-        val platformAdministrator = bool("platform_administrator").default(false)
+        val roles = text("roles").clientDefault { PlatformMember.id }
     }
 }

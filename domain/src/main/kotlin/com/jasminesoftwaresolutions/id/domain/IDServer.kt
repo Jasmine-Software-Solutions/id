@@ -4,6 +4,7 @@ import com.google.gson.Gson
 import com.jasminesoftwaresolutions.id.domain.models.account.*
 import com.jasminesoftwaresolutions.id.domain.models.authentication.IAuthenticationFlow
 import com.jasminesoftwaresolutions.id.domain.models.client.IClient
+import com.jasminesoftwaresolutions.id.domain.models.client.IHashedDelegatedSession
 import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenant
 import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenantMembership
 import com.jasminesoftwaresolutions.id.domain.registries.IAuthenticationStepHandlerRegistry
@@ -37,6 +38,7 @@ interface IDServer {
     var authenticationFlowRepository: IAuthenticationFlowRepository<IAuthenticationFlow>
 
     var clientRepository: IClientRepository<IClient>
+    var delegatedSessionRepository: IDelegatedSessionRepository<IHashedDelegatedSession>
 
     var tenantRepository: ITenantRepository<ITenant>
     var tenantMembershipRepository: ITenantMembershipRepository<ITenantMembership>

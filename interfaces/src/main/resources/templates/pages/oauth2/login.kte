@@ -1,0 +1,25 @@
+<head>
+    @template.scripts.htmx()
+    @template.scripts.tailwind()
+
+    <title>Jasmine Software Solutions</title>
+</head>
+<body>
+<iframe
+    id="loginFrame"
+    src="/login"
+    class="fixed inset-0 w-full h-full border-0"
+></iframe>
+
+<script>
+    const iframe = document.getElementById("loginFrame");
+
+    iframe.addEventListener("load", () => {
+        const currentPath = iframe.contentWindow.location.pathname;
+
+        if (currentPath === "/") {
+            window.location.reload()
+        }
+    });
+</script>
+</body>

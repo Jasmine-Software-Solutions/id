@@ -8,10 +8,12 @@ import com.jasminesoftwaresolutions.id.domain.services.authentication.steps.Ente
 import com.jasminesoftwaresolutions.id.domain.services.authentication.steps.EnterTOTPAuthenticationFlowStep
 import com.jasminesoftwaresolutions.idinterfaces.IDJavalinInterface
 import com.jasminesoftwaresolutions.idinterfaces.services.LoginControllerService
+import com.jasminesoftwaresolutions.idinterfaces.services.OAuth2ControllerService
 import com.jasminesoftwaresolutions.idinterfaces.user.authentication.AjaxLoginController
 import com.jasminesoftwaresolutions.idinterfaces.user.authentication.renderers.HTMLEnterEmailAddressAuthenticationFlowRenderer
 import com.jasminesoftwaresolutions.idinterfaces.user.authentication.renderers.HTMLEnterPasswordAuthenticationFlowRenderer
 import com.jasminesoftwaresolutions.idinterfaces.user.authentication.renderers.HTMLEnterTOTPAuthenticationFlowRenderer
+import com.jasminesoftwaresolutions.idinterfaces.user.authorization.AjaxOAuth2Controller
 import io.javalin.Javalin
 import io.javalin.community.routing.annotations.AnnotatedRouting
 import io.javalin.config.JavalinConfig
@@ -19,8 +21,11 @@ import io.javalin.http.Context
 import java.util.*
 
 open class IDJavalinUserInterface(server: IDServer) : IDJavalinInterface {
-    override var loginControllerService
+    var loginControllerService
         = LoginControllerService(server.authenticationStepRegistry, server.authenticationFlowRepository, server.authenticationService, server.signingFunction)
+
+    var oAuth2ControllerService
+        = OAuth2ControllerService(server.sessionRepository, server.clientRepository, server.tenantRepository, server.tenantMembershipRepository, server.delegatedSessionRepository, server.encryptionFunction)
 
     open var authenticationStepRendererRegistry = AuthenticationStepRendererRegistry<IAuthenticationFlow>().apply {
         register(
@@ -44,9 +49,13 @@ open class IDJavalinUserInterface(server: IDServer) : IDJavalinInterface {
 
     override fun install(config: JavalinConfig) {
         val loginController = AjaxLoginController(authenticationStepRendererRegistry, loginControllerService)
+        val oauth2Controller = AjaxOAuth2Controller(oAuth2ControllerService)
 
         config.router.mount(AnnotatedRouting) {
-            it.registerEndpoints(loginController)
+            it.registerEndpoints(
+                loginController,
+                oauth2Controller
+            )
         }
 
         config.validation.register(UUID::class.java, UUID::fromString)
