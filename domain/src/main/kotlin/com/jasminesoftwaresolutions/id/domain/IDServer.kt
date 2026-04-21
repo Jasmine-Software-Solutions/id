@@ -3,12 +3,14 @@ package com.jasminesoftwaresolutions.id.domain
 import com.google.gson.Gson
 import com.jasminesoftwaresolutions.id.domain.models.account.*
 import com.jasminesoftwaresolutions.id.domain.models.authentication.IAuthenticationFlow
+import com.jasminesoftwaresolutions.id.domain.models.authorization.IScope
 import com.jasminesoftwaresolutions.id.domain.models.client.IClient
 import com.jasminesoftwaresolutions.id.domain.models.client.IHashedDelegatedSession
 import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenant
 import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenantMembership
 import com.jasminesoftwaresolutions.id.domain.registries.IAuthenticationStepHandlerRegistry
 import com.jasminesoftwaresolutions.id.domain.registries.IAuthenticationStepRegistry
+import com.jasminesoftwaresolutions.id.domain.registries.IScopeRegistry
 import com.jasminesoftwaresolutions.id.domain.repositories.*
 import com.jasminesoftwaresolutions.id.domain.services.IEmailService
 import com.jasminesoftwaresolutions.id.domain.services.IEncryptionFunction
@@ -28,6 +30,7 @@ interface IDServer {
 
     var authenticationStepRegistry: IAuthenticationStepRegistry<IAuthenticationFlow>
     var authenticationStepHandlerRegistry: IAuthenticationStepHandlerRegistry<IAuthenticationFlow>
+    var scopeRegistry: IScopeRegistry<IScope>
 
     var accountRepository: IAccountRepository<IAccount>
     var passwordRepository: IPasswordRepository<IHashedPassword>

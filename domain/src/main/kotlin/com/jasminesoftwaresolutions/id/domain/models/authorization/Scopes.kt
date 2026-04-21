@@ -39,5 +39,5 @@ sealed class TenantScope(id: String, description: String) : StaticScope("tenant:
     }
 }
 
-object TenantMembersScope : TenantScope("members", "Know the members in your organization")
-object TenantMembersWriteScope : TenantScope("members:write", "Update the members in your organization")
+object TenantMembersScope : TenantScope("members", "Know the members of your organization")
+object TenantMembersWriteScope : TenantScope("members:write", "Manage member membership in your organization")

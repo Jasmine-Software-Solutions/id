@@ -16,7 +16,6 @@ import java.security.spec.X509EncodedKeySpec
 import java.time.Instant
 
 class AsymmetricJWTService(
-    val authority: String,
     private val keyAlgorithm: String,
     private val publicKeyData: ByteArray,
     private val privateKeyData: ByteArray

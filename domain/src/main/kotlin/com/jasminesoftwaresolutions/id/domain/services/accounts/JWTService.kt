@@ -19,6 +19,7 @@ interface IJWT {
         return now < expiresAt() && now > notBefore() && now > issuedAt()
     }
 
+    fun scope(): String? = payload().get("scope").asString
     fun audience(): String? = payload().get("aud").asString
     fun issuer(): String? = payload().get("iss").asString
     fun subject(): String? = payload().get("sub").asString

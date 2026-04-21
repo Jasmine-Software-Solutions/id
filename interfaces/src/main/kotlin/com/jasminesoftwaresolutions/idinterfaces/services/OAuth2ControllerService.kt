@@ -1,19 +1,23 @@
 package com.jasminesoftwaresolutions.idinterfaces.services
 
+import com.google.gson.JsonObject
 import com.jasminesoftwaresolutions.id.domain.models.SecureToken
 import com.jasminesoftwaresolutions.id.domain.models.account.IAccount
 import com.jasminesoftwaresolutions.id.domain.models.account.ISession
-import com.jasminesoftwaresolutions.id.domain.models.authorization.IScope
-import com.jasminesoftwaresolutions.id.domain.models.authorization.PlatformScope
-import com.jasminesoftwaresolutions.id.domain.models.authorization.StaticScope
+import com.jasminesoftwaresolutions.id.domain.models.authorization.*
 import com.jasminesoftwaresolutions.id.domain.models.client.IClient
 import com.jasminesoftwaresolutions.id.domain.models.client.IDelegatedSession
 import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenant
 import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenantMembership
+import com.jasminesoftwaresolutions.id.domain.registries.IScopeRegistry
 import com.jasminesoftwaresolutions.id.domain.repositories.*
 import com.jasminesoftwaresolutions.id.domain.services.IEncryptionFunction
+import com.jasminesoftwaresolutions.id.domain.services.accounts.IJWTService
+import com.jasminesoftwaresolutions.id.domain.services.authorization.IAuthorizationService
 import java.time.Instant
+import java.time.temporal.ChronoUnit
 import java.util.*
+import kotlin.time.Duration.Companion.hours
 
 open class OAuth2ControllerService(
     protected val sessionRepository: ISessionRepository<out ISession>,
@@ -21,7 +25,10 @@ open class OAuth2ControllerService(
     protected val tenantRepository: ITenantRepository<out ITenant>,
     protected val tenantMembershipRepository: ITenantMembershipRepository<out ITenantMembership>,
     protected val delegatedSessionRepository: IDelegatedSessionRepository<out IDelegatedSession>,
-    protected val encryptionFunction: IEncryptionFunction
+    protected val encryptionFunction: IEncryptionFunction,
+    protected val jwtService: IJWTService,
+    protected val authorizationService: IAuthorizationService<*, out IAuthorizationContext>,
+    protected val scopeRegistry: IScopeRegistry<out IScope>,
 ) {
     open class OAuth2Request(
         val clientId: UUID,
@@ -38,81 +45,77 @@ open class OAuth2ControllerService(
         val tenantId: UUID? = null
     ) : OAuth2Request(clientId, redirectUri, scope, state)
 
-    open inner class AuthorizeResult()
-    inner class InvalidClientAuthorizeResult : AuthorizeResult()
-    inner class InvalidRedirectUriAuthorizeResult : AuthorizeResult()
-    inner class LoginRequiredAuthorizeResult : AuthorizeResult()
-    inner class InvalidTenantAuthorizeResult : AuthorizeResult()
-    inner class SelectTenantAuthorizeResult(val account: IAccount, val tenants: List<ITenant>) : AuthorizeResult()
-    inner class ConsentRequiredAuthorizeResult(val client: IClient, val account: IAccount, val tenant: ITenant?, val scopes: List<IScope>) : AuthorizeResult()
-
-    protected fun getSession(id: UUID, token: String)
-        = sessionRepository.findById(id)?.takeIf { it.verify(token) }
+    open class AuthorizeResult {
+        class Unauthorized : AuthorizeResult()
+        class InvalidClient : AuthorizeResult()
+        class InvalidRedirectUri : AuthorizeResult()
+        class InvalidTenant : AuthorizeResult()
+        class SelectTenant(val account: IAccount, val tenants: List<ITenant>) : AuthorizeResult()
+        class ConsentRequired(val client: IClient, val account: IAccount, val tenant: ITenant?, val scopes: List<IScope>) : AuthorizeResult()
+    }
 
     open fun authorize(
-        sessionId: UUID,
-        sessionToken: String,
+        authentication: IAuthorizationContext,
         request: OAuth2Request
     ) : AuthorizeResult {
+        if (authentication !is ISessionAuthorizationContext)
+            return AuthorizeResult.Unauthorized()
+
         val client = clientRepository.findById(request.clientId)
-            ?: return InvalidClientAuthorizeResult()
+            ?: return AuthorizeResult.InvalidClient()
 
         val redirectUri = client.redirectUris.values.firstOrNull { it.toString() == request.redirectUri }
-            ?: return InvalidRedirectUriAuthorizeResult()
+            ?: return AuthorizeResult.InvalidRedirectUri()
 
-        val session = getSession(sessionId, sessionToken)
-        if (session == null || Instant.now() > session.expiresAt)
-            return LoginRequiredAuthorizeResult()
-
-        val linkedTenants = tenantMembershipRepository.findByAccount(session.account.id)
+        val linkedTenants = tenantMembershipRepository.findByAccount(authentication.session.account.id)
             .map { it.tenant }
 
         if (request is TenantOAuth2Request && request.tenantId == null) {
-            return SelectTenantAuthorizeResult(
-                account = session.account,
+            return AuthorizeResult.SelectTenant(
+                account = authentication.session.account,
                 tenants = linkedTenants
             )
         }
 
         val tenant = (request as? TenantOAuth2Request)?.tenantId
             ?.let { tenantRepository.findById(it)
-                ?: return InvalidTenantAuthorizeResult() }
+                ?: return AuthorizeResult.InvalidTenant()
+            }
 
         if (tenant != null && tenant.id !in linkedTenants.map(ITenant::id))
-            return InvalidTenantAuthorizeResult()
+            return AuthorizeResult.InvalidTenant()
 
         val scopes = mutableListOf<IScope>()
         for (scope in request.scope?.split(" ") ?: emptyList())
             StaticScope.all().firstOrNull { it.id == scope }?.let { scopes.add(it) }
 
-        return ConsentRequiredAuthorizeResult(
-            client, session.account, tenant, scopes
+        return AuthorizeResult.ConsentRequired(
+            client, authentication.session.account, tenant, scopes
         )
     }
 
-    open inner class ConsentResult()
-    inner class InvalidConsentResult : ConsentResult()
-    inner class LoginRequiredConsentResult : ConsentResult()
-    inner class ConsentedConsentResult(val redirectUri: String) : ConsentResult()
+    open class ConsentResult {
+        class Unauthorized : ConsentResult()
+        class Invalid : ConsentResult()
+        class Consented(val redirectUri: String) : ConsentResult()
+    }
 
     open fun consent(
-        sessionId: UUID,
-        sessionToken: String,
+        authentication: IAuthorizationContext,
         request: OAuth2Request
     ) : ConsentResult {
-        val session = getSession(sessionId, sessionToken)
-        if (session == null || Instant.now() > session.expiresAt)
-            return LoginRequiredConsentResult()
+        if (authentication !is ISessionAuthorizationContext)
+            return ConsentResult.Unauthorized()
 
         val tenant = (request as? TenantOAuth2Request)?.tenantId
             ?.let { tenantRepository.findById(it)
-                ?: return InvalidConsentResult() }
+                ?: return ConsentResult.Invalid() }
 
         val client = clientRepository.findById(request.clientId)
-            ?: return InvalidConsentResult()
+            ?: return ConsentResult.Invalid()
 
         val redirectUri = client.redirectUris.values.firstOrNull { it.toString() == request.redirectUri }
-            ?: return InvalidConsentResult()
+            ?: return ConsentResult.Invalid()
 
         val scopes = request.scope
             ?.split(" ")
@@ -128,7 +131,7 @@ open class OAuth2ControllerService(
 
             this.tenant = tenant
             this.client = client
-            this.session = session
+            this.session = authentication.session
 
             this.redirectUri = redirectUri
             this.scope = scopes.map { it.id }.joinToString(" ")
@@ -136,7 +139,8 @@ open class OAuth2ControllerService(
             this.code = code
         }
 
-        var redirect = redirectUri.toString() + "?code=" + code
+        val encodedCode = Base64.getEncoder().encodeToString("${delegatedSession.id}:${delegatedSession.code}".toByteArray())
+        var redirect = redirectUri.toString() + "?code=" + encodedCode
 
         if (request.state != null)
             redirect += "&state=${request.state}"
@@ -144,6 +148,116 @@ open class OAuth2ControllerService(
         if (scopes.isNotEmpty())
             redirect += "&scope=" + scopes.map { it.id }.joinToString(" ")
 
-        return ConsentedConsentResult(redirect)
+        return ConsentResult.Consented(redirect)
+    }
+
+    open class TokenWithCodeResult {
+        class InvalidClient : TokenWithCodeResult()
+        class Unauthorized : TokenWithCodeResult()
+        class InvalidRedirectUri : TokenWithCodeResult()
+        class InvalidCode : TokenWithCodeResult()
+        class Granted(val accessToken: String, val refreshToken: String, val expiresIn: Long, val refreshTokenExpiresIn: Long) : TokenWithCodeResult()
+    }
+
+    open fun getTokenWithCode(
+        authentication: IAuthorizationContext,
+        clientId: UUID,
+        redirectUri: String,
+        code: String
+    ) : TokenWithCodeResult {
+        if (authentication !is IClientAuthorizationContext)
+            return TokenWithCodeResult.Unauthorized()
+
+        if (authentication.client.id != clientId)
+            return TokenWithCodeResult.InvalidClient()
+
+        val client = clientRepository.findById(clientId)
+            ?: return TokenWithCodeResult.InvalidClient()
+
+        val redirectUri = client.redirectUris.values.firstOrNull { it.toString() == redirectUri }
+            ?: return TokenWithCodeResult.InvalidRedirectUri()
+
+        val decodedCode = Base64.getDecoder().decode(code).toString(Charsets.UTF_8).split(":")
+        if (decodedCode.size != 2)
+            return TokenWithCodeResult.InvalidCode()
+
+        val delegatedSessionId = runCatching { UUID.fromString(decodedCode[0]) }.getOrNull()
+            ?: return TokenWithCodeResult.InvalidCode()
+
+        val delegatedSessionCode = decodedCode[1]
+
+        val delegatedSession = delegatedSessionRepository.findById(delegatedSessionId)
+            ?: return TokenWithCodeResult.InvalidCode()
+
+        if (!delegatedSession.verify(delegatedSessionCode))
+            return TokenWithCodeResult.InvalidCode()
+
+        val accessTokenObj = JsonObject().apply {
+            addProperty("iss", "https://id.jasmine.software")
+            addProperty("sub", delegatedSession.session.account.id.toString())
+            addProperty("aud", clientId.toString())
+            addProperty("exp", Instant.now().plusSeconds(3600).epochSecond)
+            addProperty("scope", delegatedSession.scope)
+            addProperty("https://id.jasmine.software/session_id", delegatedSession.session.id.toString())
+
+            val tenant = delegatedSession.tenant
+            if (tenant != null)
+                addProperty("https://id.jasmine.software/tenant_id", tenant.id.toString())
+        }
+
+        val accessToken = jwtService.encode(accessTokenObj)
+
+        val refreshTokenObj = JsonObject().apply {
+            addProperty("iss", "https://id.jasmine.software")
+            addProperty("sub", delegatedSession.session.account.id.toString())
+            addProperty("aud", clientId.toString())
+            addProperty("exp", delegatedSession.session.expiresAt.epochSecond)
+            addProperty("scope", delegatedSession.scope)
+            addProperty("https://id.jasmine.software/session_id", delegatedSession.session.id.toString())
+        }
+
+        val refreshToken = jwtService.encode(refreshTokenObj)
+
+        return TokenWithCodeResult.Granted(
+            accessToken = accessToken,
+            refreshToken = refreshToken,
+            expiresIn = 3600,
+            refreshTokenExpiresIn = delegatedSession.session.expiresAt.epochSecond - Instant.now().epochSecond
+        )
+    }
+
+    open class TokenWithCredentialsResult {
+        class Unauthorized : TokenWithCredentialsResult()
+        class InvalidClient : TokenWithCredentialsResult()
+        class InvalidCredentials : TokenWithCredentialsResult()
+        class Granted(val accessToken: String, val expiresIn: Long) : TokenWithCredentialsResult()
+    }
+
+    open fun getTokenWithCredentials(
+        authentication: IAuthorizationContext,
+        scope: String?
+    ) : TokenWithCredentialsResult {
+        if (authentication !is IClientAuthorizationContext || authentication is IScopedAuthorizationContext)
+            return TokenWithCredentialsResult.Unauthorized()
+
+        var scopes: Set<IScope>
+        if (scope == null)
+            scopes = scopeRegistry.entries()
+        else scopes = scope.split(" ").mapNotNull { scopeRegistry.findById(it) }.toSet()
+
+        val accessTokenObj = JsonObject().apply {
+            addProperty("iss", "https://id.jasmine.software")
+            addProperty("sub", authentication.client.id.toString())
+            addProperty("aud", authentication.client.id.toString())
+            addProperty("exp", Instant.now().plus(1, ChronoUnit.HOURS).epochSecond)
+            addProperty("scope", scopes.map { it.id }.joinToString(" "))
+        }
+
+        val accessToken = jwtService.encode(accessTokenObj)
+
+        return TokenWithCredentialsResult.Granted(
+            accessToken = accessToken,
+            expiresIn = 1.hours.inWholeSeconds
+        )
     }
 }

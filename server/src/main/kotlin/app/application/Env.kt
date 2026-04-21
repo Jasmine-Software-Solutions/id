@@ -1,6 +1,7 @@
 package app.application
 
 import io.github.cdimascio.dotenv.dotenv
+import java.util.*
 
 object Env {
     private val dotenv = dotenv {
@@ -46,4 +47,7 @@ object Env {
     val MACHINE_ACCESS_TOKEN_LIFETIME = dotenv["MACHINE_ACCESS_TOKEN_LIFETIME"]?.toLongOrNull() ?: 300
 
     val EXTERNAL_BASE_URL = dotenv["EXTERNAL_BASE_URL"] ?: "http://localhost:$PORT"
+
+    val JWT_PUBLIC_KEY = dotenv["JWT_ENCODED_PUBLIC_KEY"]?.let { Base64.getDecoder().decode(it) }
+    val JWT_PRIVATE_KEY = dotenv["JWT_ENCODED_PRIVATE_KEY"]?.let { Base64.getDecoder().decode(it) }
 }

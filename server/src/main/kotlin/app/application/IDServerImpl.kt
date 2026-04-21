@@ -10,20 +10,19 @@ import app.infrastructure.services.AES256EncryptionFunction
 import app.infrastructure.services.Argon2HashFunction
 import app.infrastructure.services.EmailService
 import app.infrastructure.services.HmacSHA256SigningFunction
+import app.infrastructure.services.accounts.AsymmetricJWTService
 import app.infrastructure.services.accounts.EmailMagicLinkService
 import app.infrastructure.services.accounts.GoogleAuthenticatorTOTPService
 import com.google.gson.Gson
 import com.jasminesoftwaresolutions.id.domain.IDServer
 import com.jasminesoftwaresolutions.id.domain.models.account.*
 import com.jasminesoftwaresolutions.id.domain.models.authentication.IAuthenticationFlow
+import com.jasminesoftwaresolutions.id.domain.models.authorization.IScope
 import com.jasminesoftwaresolutions.id.domain.models.client.IClient
 import com.jasminesoftwaresolutions.id.domain.models.client.IHashedDelegatedSession
 import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenant
 import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenantMembership
-import com.jasminesoftwaresolutions.id.domain.registries.AuthenticationStepHandlerRegistry
-import com.jasminesoftwaresolutions.id.domain.registries.AuthenticationStepRegistry
-import com.jasminesoftwaresolutions.id.domain.registries.IAuthenticationStepHandlerRegistry
-import com.jasminesoftwaresolutions.id.domain.registries.IAuthenticationStepRegistry
+import com.jasminesoftwaresolutions.id.domain.registries.*
 import com.jasminesoftwaresolutions.id.domain.repositories.*
 import com.jasminesoftwaresolutions.id.domain.services.IEmailService
 import com.jasminesoftwaresolutions.id.domain.services.IEncryptionFunction
@@ -36,6 +35,7 @@ import com.jasminesoftwaresolutions.id.domain.services.authentication.steps.Ente
 import com.jasminesoftwaresolutions.id.domain.services.authentication.steps.EnterPasswordAuthenticationFlowStep
 import com.jasminesoftwaresolutions.id.domain.services.authentication.steps.EnterTOTPAuthenticationFlowStep
 import com.jasminesoftwaresolutions.id.domain.services.authentication.steps.PollMagicLinkAuthenticationFlowStep
+import com.jasminesoftwaresolutions.idinterfaces.application.IDJavalinApplicationInterface
 import com.jasminesoftwaresolutions.idinterfaces.user.IDJavalinUserInterface
 import com.zaxxer.hikari.HikariDataSource
 import gg.jte.ContentType
@@ -80,6 +80,7 @@ class IDServerImpl : IDServer {
 
     override var authenticationStepRegistry: IAuthenticationStepRegistry<IAuthenticationFlow> = AuthenticationStepRegistry()
     override var authenticationStepHandlerRegistry: IAuthenticationStepHandlerRegistry<IAuthenticationFlow> = AuthenticationStepHandlerRegistry()
+    override var scopeRegistry: IScopeRegistry<IScope> = ScopeRegistry()
 
     override var accountRepository: IAccountRepository<IAccount> = ExposedAccountRepository()
     override var passwordRepository: IPasswordRepository<IHashedPassword> = ExposedPasswordRepository(hashFunction, accountRepository)
@@ -107,9 +108,7 @@ class IDServerImpl : IDServer {
         Env.SMTP_EMAIL
     )
 
-    override var jwtService: IJWTService
-        get() = throw UnsupportedOperationException()
-        set(_) = throw UnsupportedOperationException()
+    override var jwtService: IJWTService = AsymmetricJWTService("RSA", Env.JWT_PUBLIC_KEY!!, Env.JWT_PRIVATE_KEY!!)
 
     override var magicLinkService: IMagicLinkService<IMagicLink> = EmailMagicLinkService(
         magicLinkRepository,
@@ -134,6 +133,7 @@ class IDServerImpl : IDServer {
     )
 
     var userInterface: IDJavalinUserInterface = IDJavalinUserInterface(this)
+    var applicationInterface: IDJavalinApplicationInterface = IDJavalinApplicationInterface(this)
 
     init {
         configureRegistries()
@@ -148,9 +148,11 @@ class IDServerImpl : IDServer {
             }
 
             userInterface.install(config)
+            applicationInterface.install(config)
         }
 
         userInterface.install(app)
+        applicationInterface.install(app)
     }
 
     override fun start(port: Int) {

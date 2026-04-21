@@ -42,14 +42,14 @@ open class ExposedAccountRepository
         override var lastName: String by column(Table.lastName)
 
         override val roles: Set<IPlatformRole> by column(Table.roles, ExposedColumnTransformer(
-            fromColumn = { it.split(",").mapNotNull {
+            fromColumn = { it.split(" ").mapNotNull {
                 if (it == PlatformAdministrator.id)
                     PlatformAdministrator
                 else if (it == PlatformMember.id)
                     PlatformMember
                 else null
             }.toSet() },
-            toColumn = { it.map { it.id }.joinToString(",") },
+            toColumn = { it.map { it.id }.joinToString(" ") },
         ))
     }
 

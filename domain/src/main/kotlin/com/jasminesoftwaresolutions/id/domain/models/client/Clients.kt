@@ -2,6 +2,7 @@ package com.jasminesoftwaresolutions.id.domain.models.client
 
 import com.jasminesoftwaresolutions.id.domain.models.ICreated
 import com.jasminesoftwaresolutions.id.domain.models.IIdentified
+import com.jasminesoftwaresolutions.id.domain.models.authorization.IPlatformRole
 import java.net.URI
 
 interface IClient : IIdentified,
@@ -14,6 +15,8 @@ interface IClient : IIdentified,
     val redirectUris: IClientRedirectUris
 
     var secret: String
+
+    val roles: Set<IPlatformRole>
 
     fun verify(secret: String): Boolean
 }

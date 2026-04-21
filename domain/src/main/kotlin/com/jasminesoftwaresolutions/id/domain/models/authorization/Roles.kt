@@ -19,6 +19,20 @@ object PlatformAdministrator : IPlatformRole {
     )
 }
 
+object PlatformClient : IPlatformRole {
+    override var id: String = "platform_client"
+    override var description: String = "Platform Client"
+    override var privileges: List<IPrivilege> = emptyList()
+}
+
+object PlatformTrustedClient : IPlatformRole {
+    override var id: String = "platform_trusted_client"
+    override var description: String = "Platform Trusted Client"
+    override var privileges: List<IPrivilege> = listOf(
+        *PlatformPrivilege.all()
+    )
+}
+
 object PlatformMember : IPlatformRole {
     override var id: String = "platform_member"
     override var description: String = "Platform Member"

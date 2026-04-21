@@ -20,12 +20,12 @@ import io.javalin.config.JavalinConfig
 import io.javalin.http.Context
 import java.util.*
 
-open class IDJavalinUserInterface(server: IDServer) : IDJavalinInterface {
+open class IDJavalinUserInterface(server: IDServer) : IDJavalinInterface(server) {
     var loginControllerService
         = LoginControllerService(server.authenticationStepRegistry, server.authenticationFlowRepository, server.authenticationService, server.signingFunction)
 
     var oAuth2ControllerService
-        = OAuth2ControllerService(server.sessionRepository, server.clientRepository, server.tenantRepository, server.tenantMembershipRepository, server.delegatedSessionRepository, server.encryptionFunction)
+        = OAuth2ControllerService(server.sessionRepository, server.clientRepository, server.tenantRepository, server.tenantMembershipRepository, server.delegatedSessionRepository, server.encryptionFunction, server.jwtService, authorizationService, server.scopeRegistry)
 
     open var authenticationStepRendererRegistry = AuthenticationStepRendererRegistry<IAuthenticationFlow>().apply {
         register(
@@ -49,7 +49,7 @@ open class IDJavalinUserInterface(server: IDServer) : IDJavalinInterface {
 
     override fun install(config: JavalinConfig) {
         val loginController = AjaxLoginController(authenticationStepRendererRegistry, loginControllerService)
-        val oauth2Controller = AjaxOAuth2Controller(oAuth2ControllerService)
+        val oauth2Controller = AjaxOAuth2Controller(oAuth2ControllerService, authorizationService)
 
         config.router.mount(AnnotatedRouting) {
             it.registerEndpoints(

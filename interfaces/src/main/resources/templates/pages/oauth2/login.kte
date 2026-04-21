@@ -17,9 +17,8 @@
     iframe.addEventListener("load", () => {
         const currentPath = iframe.contentWindow.location.pathname;
 
-        if (currentPath === "/") {
+        if (currentPath !== "/login")
             window.location.reload()
-        }
     });
 </script>
 </body>
