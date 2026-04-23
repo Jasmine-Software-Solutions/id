@@ -165,18 +165,19 @@ class IDServerImpl : IDServer {
 
     private fun configureRegistries() {
         authenticationStepRegistry.apply {
-            register(EnterEmailAddressAuthenticationFlowStep)
-            /*            register(
-                            step = PollMagicLinkAuthenticationFlowStep,
-                            after = EnterEmailAddressAuthenticationFlowStep
-                        )*/
+            register(EnterEmailAddressAuthenticationFlowStep, null)
             register(
-                step = EnterPasswordAuthenticationFlowStep,
+                step = PollMagicLinkAuthenticationFlowStep,
                 after = EnterEmailAddressAuthenticationFlowStep,
             )
             register(
+                step = EnterPasswordAuthenticationFlowStep,
+                after = EnterEmailAddressAuthenticationFlowStep,
+                priority = 1,
+            )
+            register(
                 step = EnterTOTPAuthenticationFlowStep,
-                after = EnterPasswordAuthenticationFlowStep,
+                afterAnyOf = setOf(PollMagicLinkAuthenticationFlowStep, EnterPasswordAuthenticationFlowStep),
                 condition = {
                     it.account != null && totpConfigurationRepository.findByAccount(it.account!!.id).enabled
                 }
