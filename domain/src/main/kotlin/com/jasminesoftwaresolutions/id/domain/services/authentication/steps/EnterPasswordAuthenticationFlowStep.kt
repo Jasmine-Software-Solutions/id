@@ -12,11 +12,13 @@ import com.jasminesoftwaresolutions.id.domain.services.authentication.*
 
 object EnterPasswordAuthenticationFlowStep : AuthenticationFlowStep(
     "com.jasminesoftwaresolutions.id:enter_password",
-    alternatives = setOf(PollMagicLinkAuthenticationFlowStep),
     level = 1
 ) {
     object Request
     data class Response(val email: String?, val password: String?)
+
+    override fun alternatives(): Set<AuthenticationFlowStep>
+            = setOf(PollMagicLinkAuthenticationFlowStep)
 
     class Handler<Flow : IAuthenticationFlow, TAccount : IAccount, TPassword : IPassword>(
         val accountRepository: IAccountRepository<TAccount>,

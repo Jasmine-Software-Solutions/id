@@ -34,6 +34,8 @@ open class StandardMagicLinkService<T : IMagicLink>(
         return finish(account, repository.create {
             this.expiresAt = Instant.now().plus(lifetime.inWholeMilliseconds, ChronoUnit.MILLIS)
 
+            this.account = account
+
             this.acceptanceToken = acceptanceToken
             this.decisionToken = decisionToken
             create(account, function)

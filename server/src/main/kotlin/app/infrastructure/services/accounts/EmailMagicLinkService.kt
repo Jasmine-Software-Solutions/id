@@ -17,7 +17,7 @@ class EmailMagicLinkService<T : IMagicLink>(
     private val externalBaseUrl: String
 ) : StandardMagicLinkService<T>(repository, lifetime) {
     override fun finish(account: IAccount, entity: T): T {
-        val decisionUrl = externalBaseUrl + "/magic_links/" + entity.decisionToken
+        val decisionUrl = externalBaseUrl + "/magic_links/" + entity.id + "?token=" + entity.decisionToken
 
         val content = StringOutput()
         templateEngine.render("emails/magic_link/issued.kte",

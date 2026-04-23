@@ -83,4 +83,23 @@ class AjaxLoginController<T : IAuthenticationFlow>(
             }
         }
     }
+
+    @Post("/login/instead")
+    fun renderOtherStep(
+        ctx: Context,
+        @Form("flow_id") flowId: UUID,
+        @Form("step") stepFqdn: String
+    ) {
+        val result = service.instead(flowId, stepFqdn)
+        when (result) {
+            is LoginControllerService.ContinueFlowInsteadResult -> {
+                val renderer = htmlRendererRegistry.find(Context::class, result.step)
+                        as AuthenticationFlowStepRenderer<T, Context, Any>
+
+                renderer.render(ctx, result.flow, result.step, result.request as SignedValue<Any>, ContinueAuthenticationFlowStepResult)
+            }
+
+            else -> throw BadRequestResponse()
+        }
+    }
 }

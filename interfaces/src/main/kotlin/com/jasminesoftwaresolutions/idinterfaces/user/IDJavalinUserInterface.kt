@@ -6,13 +6,17 @@ import com.jasminesoftwaresolutions.id.domain.registries.AuthenticationStepRende
 import com.jasminesoftwaresolutions.id.domain.services.authentication.steps.EnterEmailAddressAuthenticationFlowStep
 import com.jasminesoftwaresolutions.id.domain.services.authentication.steps.EnterPasswordAuthenticationFlowStep
 import com.jasminesoftwaresolutions.id.domain.services.authentication.steps.EnterTOTPAuthenticationFlowStep
+import com.jasminesoftwaresolutions.id.domain.services.authentication.steps.PollMagicLinkAuthenticationFlowStep
 import com.jasminesoftwaresolutions.idinterfaces.IDJavalinInterface
 import com.jasminesoftwaresolutions.idinterfaces.services.LoginControllerService
+import com.jasminesoftwaresolutions.idinterfaces.services.MagicLinkControllerService
 import com.jasminesoftwaresolutions.idinterfaces.services.OAuth2ControllerService
 import com.jasminesoftwaresolutions.idinterfaces.user.authentication.AjaxLoginController
+import com.jasminesoftwaresolutions.idinterfaces.user.authentication.AjaxMagicLinkController
 import com.jasminesoftwaresolutions.idinterfaces.user.authentication.renderers.HTMLEnterEmailAddressAuthenticationFlowRenderer
 import com.jasminesoftwaresolutions.idinterfaces.user.authentication.renderers.HTMLEnterPasswordAuthenticationFlowRenderer
 import com.jasminesoftwaresolutions.idinterfaces.user.authentication.renderers.HTMLEnterTOTPAuthenticationFlowRenderer
+import com.jasminesoftwaresolutions.idinterfaces.user.authentication.renderers.HTMLPollMagicLinkAuthenticationFlowRenderer
 import com.jasminesoftwaresolutions.idinterfaces.user.authorization.AjaxOAuth2Controller
 import io.javalin.Javalin
 import io.javalin.community.routing.annotations.AnnotatedRouting
@@ -26,6 +30,9 @@ open class IDJavalinUserInterface(server: IDServer) : IDJavalinInterface(server)
 
     var oAuth2ControllerService
         = OAuth2ControllerService(server.sessionRepository, server.clientRepository, server.tenantRepository, server.tenantMembershipRepository, server.delegatedSessionRepository, server.encryptionFunction, server.jwtService, authorizationService, server.scopeRegistry)
+
+    var magicLinkService
+        = MagicLinkControllerService(server.magicLinkRepository)
 
     open var authenticationStepRendererRegistry = AuthenticationStepRendererRegistry<IAuthenticationFlow>().apply {
         register(
@@ -42,6 +49,12 @@ open class IDJavalinUserInterface(server: IDServer) : IDJavalinInterface(server)
 
         register(
             agentType = Context::class,
+            step = PollMagicLinkAuthenticationFlowStep,
+            renderer = HTMLPollMagicLinkAuthenticationFlowRenderer()
+        )
+
+        register(
+            agentType = Context::class,
             step = EnterTOTPAuthenticationFlowStep,
             renderer = HTMLEnterTOTPAuthenticationFlowRenderer()
         )
@@ -50,11 +63,13 @@ open class IDJavalinUserInterface(server: IDServer) : IDJavalinInterface(server)
     override fun install(config: JavalinConfig) {
         val loginController = AjaxLoginController(authenticationStepRendererRegistry, loginControllerService)
         val oauth2Controller = AjaxOAuth2Controller(oAuth2ControllerService, authorizationService)
+        val magicLinkController = AjaxMagicLinkController(magicLinkService)
 
         config.router.mount(AnnotatedRouting) {
             it.registerEndpoints(
                 loginController,
-                oauth2Controller
+                oauth2Controller,
+                magicLinkController
             )
         }
 

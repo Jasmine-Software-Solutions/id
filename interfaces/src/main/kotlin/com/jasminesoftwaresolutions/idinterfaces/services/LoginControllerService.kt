@@ -84,10 +84,10 @@ open class LoginControllerService<T : IAuthenticationFlow>(
     }
 
     open inner class InsteadResult
-    inner class ContinueFlowInsteadResult(val flow: IAuthenticationFlow, val step: AuthenticationFlowStep, val request: SignedValue<*>) : InsteadResult()
+    inner class ContinueFlowInsteadResult(val flow: T, val step: AuthenticationFlowStep, val request: SignedValue<*>) : InsteadResult()
     inner class FlowNotFoundInsteadResult : InsteadResult()
-    inner class StepNotFoundInsteadResult(val flow: IAuthenticationFlow) : InsteadResult()
-    inner class IllegalStepInsteadResult(val flow: IAuthenticationFlow) : InsteadResult()
+    inner class StepNotFoundInsteadResult(val flow: T) : InsteadResult()
+    inner class IllegalStepInsteadResult(val flow: T) : InsteadResult()
 
     open fun instead(flowId: UUID, fqdn: String): InsteadResult {
         val flow = repository.findById(flowId)

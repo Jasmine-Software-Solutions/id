@@ -14,7 +14,7 @@ class EmailService(
     private val enableStartTLS: Boolean,
     private val host: String,
     private val port: Int,
-    private val enableSSLTrust: Boolean,
+    private val sslTrust: String,
     private val username: String,
     private val password: String,
     private val from: String,
@@ -27,7 +27,7 @@ class EmailService(
         prop["mail.smtp.starttls.enable"] = enableStartTLS.toString()
         prop["mail.smtp.host"] = host
         prop["mail.smtp.port"] = port.toString()
-        prop["mail.smtp.ssl.trust"] = enableSSLTrust.toString()
+        prop["mail.smtp.ssl.trust"] = sslTrust
 
         session = Session.getInstance(prop, object : Authenticator() {
             override fun getPasswordAuthentication(): PasswordAuthentication {

@@ -1,6 +1,9 @@
+import kotlin.io.path.Path
+
 plugins {
     kotlin("jvm")
 
+    id("gg.jte.gradle") version "3.2.4-jasmine.1-SNAPSHOT"
     id("com.github.johnrengelman.shadow") version "8.0.0"
 }
 
@@ -62,6 +65,15 @@ dependencies {
     implementation("io.javalin.community.routing:routing-core:6.4.1-SNAPSHOT")
     implementation("io.javalin.community.routing:routing-annotated:6.4.1-SNAPSHOT")
     implementation("io.javalin.community.routing:routing-coroutines:6.4.1-SNAPSHOT")
+}
+
+jte {
+    sourceDirectory.set(Path("src/main/resources/templates"))
+    targetDirectory.set(Path("build/generated-sources/jte"))
+    contentType.set(gg.jte.ContentType.Html)
+    packageName.set("gg.jte.generated.precompiled")
+
+    generate()
 }
 
 tasks.test {

@@ -1,0 +1,38 @@
+@import com.jasminesoftwaresolutions.id.domain.services.authentication.steps.EnterPasswordAuthenticationFlowStep
+
+@import com.jasminesoftwaresolutions.id.domain.models.SignedValue
+@import com.jasminesoftwaresolutions.id.domain.models.account.IMagicLink
+@import java.util.UUID
+
+@param sender: String
+
+@param flowId: UUID
+@param request: SignedValue<*>
+
+<div id="modal"
+     class="w-full bg-white rounded-lg shadow dark:border md:mt-0 sm:max-w-md xl:p-0 dark:bg-gray-800 dark:border-gray-700">
+    <div class="p-6 space-y-4 md:space-y-6 sm:p-8">
+        <h1 class="text-xl font-bold leading-tight tracking-tight text-gray-900 md:text-2xl dark:text-white">
+            Sent your magic link
+        </h1>
+
+        <p class="text-sm font-light text-gray-500 dark:text-gray-400">
+            Open your email, then open the link sent by <span class="text-pink-400 font-bold">${sender}</span>.
+            Be sure to check your spam folder.
+        </p>
+
+        <form class="space-y-4 md:space-y-6" hx-post="/login/next" hx-select="#modal" hx-target="#modal" hx-swap="outerHTML" hx-trigger="every 2s">
+            <!--suppress HtmlFormInputWithoutLabel -->
+            <input class="hidden" id="flow_id" name="flow_id" value="${flowId.toString()}" />
+            <input class="hidden" id="request" name="request" value="${request.toString()}" />
+        </form>
+
+        <form class="m-0 p-0" hx-post="/login/instead" hx-select="#modal" hx-target="#modal" hx-swap="outerHTML">
+            <input class="hidden" id="flow_id" name="flow_id" value="${flowId.toString()}" />
+            <input class="hidden" id="step" name="step" value="${EnterPasswordAuthenticationFlowStep.fqdn}" />
+            <p class="text-sm font-light text-gray-500 dark:text-gray-400">
+                I didn't get anything, <a href="/login" class="cursor-pointer font-medium text-primary-600 hover:underline dark:text-primary-500">send me another email</a> or <button type="submit" class="cursor-pointer font-medium text-primary-600 hover:underline dark:text-primary-500">try with my password</button>.
+            </p>
+        </form>
+    </div>
+</div>

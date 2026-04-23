@@ -40,7 +40,7 @@
                             email</label>
                         <input type="email" name="response.email" id="email"
                                class="bg-gray-50 border border-gray-300 text-gray-900 rounded-lg focus:ring-primary-600 focus:border-primary-600 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
-                               placeholder="name@company.com" required="" hx-preserve>
+                               placeholder="name@company.com" required="">
                     </div>
 
                     @if (usingPassword)
@@ -60,7 +60,27 @@
                     </button>
                 </form>
             </div>
+
+            <script>
+                (() => {
+                    let search = new URLSearchParams(window.location.search);
+                    if (search.has('email')) {
+                        document.getElementById('email').value = search.get('email');
+                    }
+                })();
+            </script>
         </div>
     </div>
 </section>
+
+<script>
+    document.getElementById("email").addEventListener("keyup", function(event) {
+        const url = new URL(window.location);
+        const params = new URLSearchParams(url.search);
+
+        params.set('email', document.getElementById("email").value);
+
+        window.history.replaceState({}, '', url.pathname + "?" + params.toString());
+    })
+</script>
 </body>

@@ -5,9 +5,10 @@ import kotlin.reflect.KClass
 
 open class AuthenticationFlowStep(
     val fqdn: String,
-    val alternatives: Set<AuthenticationFlowStep> = emptySet(),
     val level: Int = 0
-)
+) {
+    open fun alternatives(): Set<AuthenticationFlowStep> = setOf()
+}
 
 abstract class AuthenticationFlowStepHandler<TFlow : IAuthenticationFlow, TRequest : Any, TResponse : Any>(
     val requestClass: KClass<TRequest>,

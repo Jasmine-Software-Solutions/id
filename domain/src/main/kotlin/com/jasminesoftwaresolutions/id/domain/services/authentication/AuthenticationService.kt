@@ -50,7 +50,7 @@ open class StandardAuthenticationService<TFlow : IAuthenticationFlow, TSession: 
 
     override fun TFlow.instead(step: AuthenticationFlowStep): Boolean {
         val current = steps.current()
-        if (current.alternatives.none { it.fqdn == step.fqdn })
+        if (current.alternatives().none { it.fqdn == step.fqdn })
             return false
 
         flowRepository.update(this) {

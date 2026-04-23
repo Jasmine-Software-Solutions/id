@@ -75,10 +75,10 @@ class HTMLPollMagicLinkAuthenticationFlowRenderer<T : IAuthenticationFlow> : Aut
         source: AuthenticationFlowStepResult
     ) {
         agent.renderWithContext(
-            "components/magic_link/issued.kte",
-            "email" to flow.account?.email,
-            "magicLinkId" to request.value.id,
-            "magicLinkToken" to request.value.acceptanceToken
+            "components/login/magic_link/issued.kte",
+            "sender" to request.value.sender,
+            "flowId" to flow.id,
+            "request" to request,
         )
     }
 }

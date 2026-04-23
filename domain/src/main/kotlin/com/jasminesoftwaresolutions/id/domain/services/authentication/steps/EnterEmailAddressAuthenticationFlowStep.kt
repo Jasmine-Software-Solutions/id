@@ -9,11 +9,13 @@ import com.jasminesoftwaresolutions.id.domain.repositories.ITenantMembershipRepo
 import com.jasminesoftwaresolutions.id.domain.services.authentication.*
 
 object EnterEmailAddressAuthenticationFlowStep : AuthenticationFlowStep(
-    "com.jasminesoftwaresolutions.id:enter_email_address",
-    alternatives = setOf()
+    "com.jasminesoftwaresolutions.id:enter_email_address"
 ) {
     object Request
     data class Response(val email: String?)
+
+    override fun alternatives(): Set<AuthenticationFlowStep>
+        = setOf(EnterPasswordAuthenticationFlowStep)
 
     class Handler<Flow : IAuthenticationFlow, TAccount : IAccount, TTenantMembership : ITenantMembership>(
         val accountRepository: IAccountRepository<TAccount>,

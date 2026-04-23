@@ -101,8 +101,8 @@ class IDServerImpl : IDServer {
         Env.SMTP_AUTH,
         Env.SMTP_STARTTLS_ENABLE,
         Env.SMTP_HOST,
-        Env.PORT,
-        Env.SMTP_STARTTLS_ENABLE,
+        Env.SMTP_PORT,
+        Env.SMTP_SSL_TRUST,
         Env.SMTP_USERNAME,
         Env.SMTP_PASSWORD,
         Env.SMTP_EMAIL
@@ -169,11 +169,11 @@ class IDServerImpl : IDServer {
             register(
                 step = PollMagicLinkAuthenticationFlowStep,
                 after = EnterEmailAddressAuthenticationFlowStep,
+                priority = 1,
             )
             register(
                 step = EnterPasswordAuthenticationFlowStep,
                 after = EnterEmailAddressAuthenticationFlowStep,
-                priority = 1,
             )
             register(
                 step = EnterTOTPAuthenticationFlowStep,
@@ -208,7 +208,8 @@ class IDServerImpl : IDServer {
                 step = PollMagicLinkAuthenticationFlowStep,
                 handler = PollMagicLinkAuthenticationFlowStep.Handler<IAuthenticationFlow, IMagicLink>(
                     magicLinkRepository,
-                    magicLinkService
+                    magicLinkService,
+                    sender = Env.SMTP_EMAIL,
                 )
             )
 
