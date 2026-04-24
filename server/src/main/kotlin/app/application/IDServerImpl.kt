@@ -4,6 +4,7 @@ import app.infrastructure.repositories.accounts.*
 import app.infrastructure.repositories.authentication.ExposedAuthenticationFlowRepository
 import app.infrastructure.repositories.clients.ExposedClientRepository
 import app.infrastructure.repositories.clients.ExposedDelegatedSessionRepository
+import app.infrastructure.repositories.scopes.ExposedScopeRepository
 import app.infrastructure.repositories.tenants.ExposedTenantMembershipRepository
 import app.infrastructure.repositories.tenants.ExposedTenantRepository
 import app.infrastructure.services.AES256EncryptionFunction
@@ -17,6 +18,7 @@ import com.google.gson.Gson
 import com.jasminesoftwaresolutions.id.domain.IDServer
 import com.jasminesoftwaresolutions.id.domain.models.account.*
 import com.jasminesoftwaresolutions.id.domain.models.authentication.IAuthenticationFlow
+import com.jasminesoftwaresolutions.id.domain.models.authorization.IRegisteredScope
 import com.jasminesoftwaresolutions.id.domain.models.authorization.IScope
 import com.jasminesoftwaresolutions.id.domain.models.client.IClient
 import com.jasminesoftwaresolutions.id.domain.models.client.IHashedDelegatedSession
@@ -89,6 +91,7 @@ class IDServerImpl : IDServer {
     override var sessionRepository: ISessionRepository<IHashedSession> = ExposedSessionRepository(hashFunction, accountRepository)
 
     override var clientRepository: IClientRepository<IClient> = ExposedClientRepository(hashFunction)
+    override var scopeRepository: IScopeRepository<IRegisteredScope> = ExposedScopeRepository(clientRepository)
 
     override var tenantRepository: ITenantRepository<ITenant> = ExposedTenantRepository()
     override var tenantMembershipRepository: ITenantMembershipRepository<ITenantMembership> = ExposedTenantMembershipRepository(tenantRepository, accountRepository)

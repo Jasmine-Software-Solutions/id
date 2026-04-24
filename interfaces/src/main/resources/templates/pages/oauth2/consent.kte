@@ -2,8 +2,6 @@
 @import com.jasminesoftwaresolutions.id.domain.models.account.IAccount
 @import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenant
 @import com.jasminesoftwaresolutions.id.domain.models.authorization.IScope
-@import com.jasminesoftwaresolutions.id.domain.models.authorization.TenantScope
-@import com.jasminesoftwaresolutions.id.domain.models.authorization.PlatformScope
 
 @param client: IClient
 @param account: IAccount
@@ -11,12 +9,20 @@
 @param scopes: List<IScope>
 
 !{
-    val tenantScopes = scopes.stream()
-        .filter { it is TenantScope }
+    val sortedScopes = scopes.stream()
+        .sorted(
+            compareByDescending<IScope> { it.client?.id == client.id }
+                .thenBy { it.client?.name ?: "" }
+                .thenBy { it.description.lowercase() }
+        )
         .toList();
 
-    val platformScopes = scopes.stream()
-        .filter { it is PlatformScope }
+    val tenantScopes = sortedScopes.stream()
+        .filter { it.isByTenant }
+        .toList();
+
+    val platformScopes = sortedScopes.stream()
+        .filter { !it.isByTenant }
         .toList();
 }
 
@@ -46,7 +52,7 @@
 
                 <div class="text-sm text-gray-700 dark:text-gray-300">
                     <p>
-                        ${client.name} is requesting the ability to perform the following actions as you.
+                        ${client.name} can perform the same actions that you can, if you permit it now. Please review the privileges you grant by clicking "Approve."
                     </p>
                 </div>
 
@@ -61,6 +67,10 @@
                                     <input type="checkbox" checked disabled
                                            class="mt-1 w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded">
                                     <span class="text-sm text-gray-700 dark:text-gray-300">
+                                        @if (scope.client != null)
+                                            <span class="font-medium">In ${scope.client!!.name}<span class="text-gray-500 dark:text-gray-400">:</span></span>
+                                        @endif
+
                                         ${scope.description}
                                     </span>
                                 </li>
@@ -80,6 +90,11 @@
                                     <input type="checkbox" checked disabled
                                            class="mt-1 w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded">
                                     <span class="text-sm text-gray-700 dark:text-gray-300">
+                                        @if (scope.client != null)
+                                            <span class="font-medium">${scope.client!!.name}</span>
+                                            <span class="text-gray-500 dark:text-gray-400">:</span>
+                                        @endif
+
                                         ${scope.description}
                                     </span>
                                 </li>

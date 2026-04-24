@@ -3,6 +3,7 @@ package com.jasminesoftwaresolutions.id.domain
 import com.google.gson.Gson
 import com.jasminesoftwaresolutions.id.domain.models.account.*
 import com.jasminesoftwaresolutions.id.domain.models.authentication.IAuthenticationFlow
+import com.jasminesoftwaresolutions.id.domain.models.authorization.IRegisteredScope
 import com.jasminesoftwaresolutions.id.domain.models.authorization.IScope
 import com.jasminesoftwaresolutions.id.domain.models.client.IClient
 import com.jasminesoftwaresolutions.id.domain.models.client.IHashedDelegatedSession
@@ -42,6 +43,7 @@ interface IDServer {
 
     var clientRepository: IClientRepository<IClient>
     var delegatedSessionRepository: IDelegatedSessionRepository<IHashedDelegatedSession>
+    var scopeRepository: IScopeRepository<IRegisteredScope>
 
     var tenantRepository: ITenantRepository<ITenant>
     var tenantMembershipRepository: ITenantMembershipRepository<ITenantMembership>

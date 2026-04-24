@@ -22,7 +22,9 @@ object PlatformAdministrator : IPlatformRole {
 object PlatformClient : IPlatformRole {
     override var id: String = "platform_client"
     override var description: String = "Platform Client"
-    override var privileges: List<IPrivilege> = emptyList()
+    override var privileges: List<IPrivilege> = listOf(
+        ClientScopesWritePrivilege
+    )
 }
 
 object PlatformTrustedClient : IPlatformRole {

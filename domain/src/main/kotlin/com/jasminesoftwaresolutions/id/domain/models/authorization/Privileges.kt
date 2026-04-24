@@ -11,6 +11,8 @@ sealed class PlatformPrivilege(override var id: String, override var description
     companion object {
         fun all() = arrayOf(
             OAuth2IntrospectPrivilege,
+            OAuth2ImplicitConsentPrivilege,
+            ClientScopesWritePrivilege,
             AccountsListPrivilege, AccountsReadPrivilege, AccountsWritePrivilege,
             TenantsListPrivilege, TenantsReadPrivilege, TenantsWritePrivilege,
             MembersListPrivilege, MembersReadPrivilege, MembersWritePrivilege
@@ -20,6 +22,7 @@ sealed class PlatformPrivilege(override var id: String, override var description
 
 object OAuth2IntrospectPrivilege : PlatformPrivilege("introspect", "Introspect authentication tokens")
 object OAuth2ImplicitConsentPrivilege : PlatformPrivilege("implicit-consent", "Skip consent screen for grant flows")
+object ClientScopesWritePrivilege : PlatformPrivilege("clients:scopes:write", "Manage client scope registrations")
 
 object AccountsListPrivilege : PlatformPrivilege("account:list", "List all accounts")
 object AccountsReadPrivilege : PlatformPrivilege("accounts:read", "Read account information")

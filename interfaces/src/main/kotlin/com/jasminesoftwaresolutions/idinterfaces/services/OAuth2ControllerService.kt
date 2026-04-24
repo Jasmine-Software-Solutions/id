@@ -29,7 +29,23 @@ open class OAuth2ControllerService(
     protected val jwtService: IJWTService,
     protected val authorizationService: IAuthorizationService<*, out IAuthorizationContext>,
     protected val scopeRegistry: IScopeRegistry<out IScope>,
+    protected val scopeRepository: IScopeRepository<out IRegisteredScope>,
 ) {
+    private fun findScopeById(id: String): IScope? =
+        scopeRegistry.findById(id) ?: scopeRepository.findById(id)
+
+    private fun parseRequestedScopes(scope: String?): MutableList<IScope> {
+        return scope
+            ?.split(" ")
+            ?.mapNotNull(::findScopeById)
+            ?.distinctBy { it.id }
+            ?.toMutableList()
+            ?: mutableListOf()
+    }
+
+    private fun allKnownScopes(): Set<IScope> =
+        scopeRegistry.entries() + scopeRepository.entries()
+
     open class OAuth2Request(
         val clientId: UUID,
         val redirectUri: String,
@@ -52,6 +68,7 @@ open class OAuth2ControllerService(
         class InvalidTenant : AuthorizeResult()
         class SelectTenant(val account: IAccount, val tenants: List<ITenant>) : AuthorizeResult()
         class ConsentRequired(val client: IClient, val account: IAccount, val tenant: ITenant?, val scopes: List<IScope>) : AuthorizeResult()
+        class Granted(val redirectUri: String) : AuthorizeResult()
     }
 
     open fun authorize(
@@ -85,9 +102,15 @@ open class OAuth2ControllerService(
         if (tenant != null && tenant.id !in linkedTenants.map(ITenant::id))
             return AuthorizeResult.InvalidTenant()
 
-        val scopes = mutableListOf<IScope>()
-        for (scope in request.scope?.split(" ") ?: emptyList())
-            StaticScope.all().firstOrNull { it.id == scope }?.let { scopes.add(it) }
+        val scopes = parseRequestedScopes(request.scope)
+
+        if (client.roles.flatMap { it.privileges }.contains(OAuth2ImplicitConsentPrivilege)) {
+            val consentResult = consent(authentication, request)
+            if (consentResult is ConsentResult.Consented) {
+                val redirectUri = consentResult.redirectUri
+                return AuthorizeResult.Granted(redirectUri)
+            }
+        }
 
         return AuthorizeResult.ConsentRequired(
             client, authentication.session.account, tenant, scopes
@@ -117,13 +140,10 @@ open class OAuth2ControllerService(
         val redirectUri = client.redirectUris.values.firstOrNull { it.toString() == request.redirectUri }
             ?: return ConsentResult.Invalid()
 
-        val scopes = request.scope
-            ?.split(" ")
-            ?.mapNotNull { scope -> StaticScope.all().firstOrNull { it.id == scope } }
-            ?.toMutableList() ?: mutableListOf<IScope>()
+        val scopes = parseRequestedScopes(request.scope)
 
         if (tenant == null)
-            scopes.removeIf { it !is PlatformScope }
+            scopes.removeIf { it is TenantScope }
 
         val code = SecureToken()
         val delegatedSession = delegatedSessionRepository.create {
@@ -240,10 +260,11 @@ open class OAuth2ControllerService(
         if (authentication !is IClientAuthorizationContext || authentication is IScopedAuthorizationContext)
             return TokenWithCredentialsResult.Unauthorized()
 
-        var scopes: Set<IScope>
-        if (scope == null)
-            scopes = scopeRegistry.entries()
-        else scopes = scope.split(" ").mapNotNull { scopeRegistry.findById(it) }.toSet()
+        val scopes = if (scope == null) {
+            allKnownScopes()
+        } else {
+            scope.split(" ").mapNotNull(::findScopeById).toSet()
+        }
 
         val accessTokenObj = JsonObject().apply {
             addProperty("iss", "https://id.jasmine.software")

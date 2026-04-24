@@ -7,10 +7,7 @@ import com.jasminesoftwaresolutions.id.domain.models.client.IClient
 import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenant
 import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenantMembership
 import com.jasminesoftwaresolutions.id.domain.registries.IScopeRegistry
-import com.jasminesoftwaresolutions.id.domain.repositories.IClientRepository
-import com.jasminesoftwaresolutions.id.domain.repositories.ISessionRepository
-import com.jasminesoftwaresolutions.id.domain.repositories.ITenantMembershipRepository
-import com.jasminesoftwaresolutions.id.domain.repositories.ITenantRepository
+import com.jasminesoftwaresolutions.id.domain.repositories.*
 import com.jasminesoftwaresolutions.id.domain.services.accounts.IJWT
 import com.jasminesoftwaresolutions.id.domain.services.accounts.IJWTService
 import com.jasminesoftwaresolutions.id.domain.services.authorization.IAuthorizationService
@@ -27,7 +24,11 @@ class JavalinAuthorizationService(
     val tenantMembershipRepository: ITenantMembershipRepository<out ITenantMembership>,
     val jwtService: IJWTService,
     val scopeRegistry: IScopeRegistry<out IScope>,
+    val scopeRepository: IScopeRepository<out IRegisteredScope>,
 ) : IAuthorizationService<Context, IAuthorizationContext> {
+    private fun findScopeById(id: String): IScope? =
+        scopeRegistry.findById(id) ?: scopeRepository.findById(id)
+
     inner class AccountAuthorizationContext(override val account: IAccount) : IAccountAuthorizationContext {
         override val roles: Set<IRole>
             get() = account.roles + tenantMembershipRepository.findByAccount(account).flatMap { it.roles }
@@ -45,7 +46,7 @@ class JavalinAuthorizationService(
 
     inner class DelegatedSessionAuthorizationContext(override val session: ISession, override val tenant: ITenant?, override val token: IJWT) : IDelegatedSessionAuthorizationContext {
         override val scopes: Set<IScope>
-            get() = token.scope()?.split(" ")?.mapNotNull { scopeRegistry.findById(it) }?.toSet() ?: setOf()
+            get() = token.scope()?.split(" ")?.mapNotNull(::findScopeById)?.toSet() ?: setOf()
 
         override val roles: Set<IRole>
             get() {
@@ -62,7 +63,7 @@ class JavalinAuthorizationService(
 
     inner class ServiceSessionAuthorizationContext(override val client: IClient, override val token: IJWT) : IServiceSessionAuthorizationContext {
         override val scopes: Set<IScope>
-            get() = token.scope()?.split(" ")?.mapNotNull { scopeRegistry.findById(it) }?.toSet() ?: setOf()
+            get() = token.scope()?.split(" ")?.mapNotNull(::findScopeById)?.toSet() ?: setOf()
 
         override val roles: Set<IRole>
             get() = client.roles
@@ -170,7 +171,7 @@ sealed class InterfacePolicy : Policy<IAuthorizationContext> {
             if (context !is IScopedAuthorizationContext)
                 return PolicyResult.Pass(this, context)
 
-            if (context.scopes.contains(scope))
+            if (context.scopes.any { it.id == scope.id })
                 return PolicyResult.Pass(this, context)
 
             return PolicyResult.Fail()

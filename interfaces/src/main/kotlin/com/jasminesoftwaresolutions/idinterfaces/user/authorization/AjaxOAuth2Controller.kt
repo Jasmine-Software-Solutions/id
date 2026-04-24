@@ -76,6 +76,10 @@ class AjaxOAuth2Controller(val service: OAuth2ControllerService, val authorizati
                 )
             }
 
+            is OAuth2ControllerService.AuthorizeResult.Granted -> {
+                ctx.redirect(result.redirectUri)
+            }
+
             else -> throw BadRequestResponse()
         }
     }

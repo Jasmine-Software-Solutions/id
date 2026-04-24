@@ -2,13 +2,9 @@ package app.infrastructure.repositories.clients
 
 import app.infrastructure.entities.ExposedIdentifiedEntity
 import app.infrastructure.repositories.ExposedIdentifiedEntityRepository
-import app.infrastructure.repositories.accounts.ExposedAccountRepository
 import app.infrastructure.util.ExposedColumnTransformer
 import app.infrastructure.util.InstantTransformer
-import com.jasminesoftwaresolutions.id.domain.models.authorization.IPlatformRole
-import com.jasminesoftwaresolutions.id.domain.models.authorization.PlatformAdministrator
-import com.jasminesoftwaresolutions.id.domain.models.authorization.PlatformClient
-import com.jasminesoftwaresolutions.id.domain.models.authorization.PlatformMember
+import com.jasminesoftwaresolutions.id.domain.models.authorization.*
 import com.jasminesoftwaresolutions.id.domain.models.client.IClient
 import com.jasminesoftwaresolutions.id.domain.models.client.IClientRedirectUris
 import com.jasminesoftwaresolutions.id.domain.models.client.IHashedClient
@@ -123,10 +119,12 @@ class ExposedClientRepository(
             }
 
         override val roles: Set<IPlatformRole> by column(
-            ExposedAccountRepository.Table.roles, ExposedColumnTransformer(
+            Table.roles, ExposedColumnTransformer(
             fromColumn = { it.split(" ").mapNotNull {
                 if (it == PlatformAdministrator.id)
                     PlatformAdministrator
+                else if (it == PlatformTrustedClient.id)
+                    PlatformTrustedClient
                 else if (it == PlatformClient.id)
                     PlatformClient
                 else if (it == PlatformMember.id)
@@ -149,8 +147,6 @@ class ExposedClientRepository(
         val confidential = bool("confidential")
 
         val secretHash = text("argon2_secret_hash")
-
-        val scope = text("scope").nullable()
 
         val roles = text("roles").clientDefault { PlatformClient.id }
     }

@@ -29,7 +29,7 @@ open class IDJavalinUserInterface(server: IDServer) : IDJavalinInterface(server)
         = LoginControllerService(server.authenticationStepRegistry, server.authenticationFlowRepository, server.authenticationService, server.signingFunction)
 
     var oAuth2ControllerService
-        = OAuth2ControllerService(server.sessionRepository, server.clientRepository, server.tenantRepository, server.tenantMembershipRepository, server.delegatedSessionRepository, server.encryptionFunction, server.jwtService, authorizationService, server.scopeRegistry)
+        = OAuth2ControllerService(server.sessionRepository, server.clientRepository, server.tenantRepository, server.tenantMembershipRepository, server.delegatedSessionRepository, server.encryptionFunction, server.jwtService, authorizationService, server.scopeRegistry, server.scopeRepository)
 
     var magicLinkService
         = MagicLinkControllerService(server.magicLinkRepository)
