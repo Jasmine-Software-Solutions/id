@@ -44,6 +44,10 @@ object ProfileScope : PlatformScope("profile", "Know your first and last name")
 object TenantsScope : PlatformScope("tenants", "Know what organizations you are a member of")
 object PermissionsScope : PlatformScope("permissions", "Know what roles and groups you are a member of")
 
+object AccountsListScope : PlatformScope("account:list", "List all accounts")
+object AccountsReadScope : PlatformScope("accounts:read", "Read account information")
+object AccountsWriteScope : PlatformScope("accounts:write", "Update accounts")
+
 sealed class TenantScope(id: String, description: String) : StaticScope("tenant:$id", description) {
     override var isByTenant: Boolean = true
 

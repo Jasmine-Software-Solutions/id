@@ -24,10 +24,6 @@ dependencies {
 
     api("io.github.cdimascio:dotenv-kotlin:6.4.1")
 
-    api("io.jsonwebtoken:jjwt-api:0.11.5")
-    runtimeOnly("io.jsonwebtoken:jjwt-impl:0.11.5")
-    runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.11.5")
-
     api("com.mysql:mysql-connector-j:9.3.0")
     api("org.postgresql:postgresql:42.7.4")
     api("com.zaxxer:HikariCP:4.0.3")
