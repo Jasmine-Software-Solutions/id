@@ -34,7 +34,7 @@ abstract class StaticScope(override final val id: String, override final val des
 sealed class PlatformScope(id: String, description: String) : StaticScope(id, description) {
     companion object {
         fun all() = arrayOf(
-            EmailScope, ProfileScope, TenantsScope
+            EmailScope, ProfileScope, TenantsScope, PermissionsScope
         )
     }
 }
@@ -42,6 +42,7 @@ sealed class PlatformScope(id: String, description: String) : StaticScope(id, de
 object EmailScope : PlatformScope("email", "Know your email address")
 object ProfileScope : PlatformScope("profile", "Know your first and last name")
 object TenantsScope : PlatformScope("tenants", "Know what organizations you are a member of")
+object PermissionsScope : PlatformScope("permissions", "Know what roles and groups you are a member of")
 
 sealed class TenantScope(id: String, description: String) : StaticScope("tenant:$id", description) {
     override var isByTenant: Boolean = true

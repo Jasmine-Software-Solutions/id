@@ -50,8 +50,9 @@ class RestOAuth2Controller(val service: OAuth2ControllerService, val authorizati
 
         else if (grantType == "client_credentials") {
             val scope = ctx.queryParam("scope")
+            val tenantId = ctx.queryParam("tenant_id")?.let { runCatching { UUID.fromString(it) }.getOrNull() }
 
-            val result = service.getTokenWithCredentials(authentication, scope)
+            val result = service.getTokenWithCredentials(authentication, tenantId, scope)
 
             when (result) {
                 is OAuth2ControllerService.TokenWithCredentialsResult.Granted -> ctx.json(

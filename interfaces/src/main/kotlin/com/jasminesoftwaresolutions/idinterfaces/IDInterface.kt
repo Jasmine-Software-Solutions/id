@@ -9,7 +9,7 @@ interface IDInterface
 
 abstract class IDJavalinInterface(protected val server: IDServer) : IDInterface {
     protected var authorizationService
-        = JavalinAuthorizationService(server.sessionRepository, server.clientRepository, server.tenantRepository, server.tenantMembershipRepository, server.jwtService, server.scopeRegistry, server.scopeRepository)
+        = JavalinAuthorizationService(server.sessionRepository, server.clientRepository, server.tenantRepository, server.tenantMembershipRepository, server.tokenService, server.scopeRegistry, server.scopeRepository)
 
     abstract fun install(config: JavalinConfig)
     abstract fun install(app: Javalin)

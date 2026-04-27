@@ -18,10 +18,9 @@ import com.google.gson.Gson
 import com.jasminesoftwaresolutions.id.domain.IDServer
 import com.jasminesoftwaresolutions.id.domain.models.account.*
 import com.jasminesoftwaresolutions.id.domain.models.authentication.IAuthenticationFlow
-import com.jasminesoftwaresolutions.id.domain.models.authorization.IRegisteredScope
-import com.jasminesoftwaresolutions.id.domain.models.authorization.IScope
+import com.jasminesoftwaresolutions.id.domain.models.authorization.*
 import com.jasminesoftwaresolutions.id.domain.models.client.IClient
-import com.jasminesoftwaresolutions.id.domain.models.client.IHashedDelegatedSession
+import com.jasminesoftwaresolutions.id.domain.models.client.IDelegatedSession
 import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenant
 import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenantMembership
 import com.jasminesoftwaresolutions.id.domain.registries.*
@@ -37,6 +36,8 @@ import com.jasminesoftwaresolutions.id.domain.services.authentication.steps.Ente
 import com.jasminesoftwaresolutions.id.domain.services.authentication.steps.EnterPasswordAuthenticationFlowStep
 import com.jasminesoftwaresolutions.id.domain.services.authentication.steps.EnterTOTPAuthenticationFlowStep
 import com.jasminesoftwaresolutions.id.domain.services.authentication.steps.PollMagicLinkAuthenticationFlowStep
+import com.jasminesoftwaresolutions.id.domain.services.authorization.ITokenService
+import com.jasminesoftwaresolutions.id.domain.services.authorization.JWTTokenService
 import com.jasminesoftwaresolutions.idinterfaces.application.IDJavalinApplicationInterface
 import com.jasminesoftwaresolutions.idinterfaces.user.IDJavalinUserInterface
 import com.zaxxer.hikari.HikariDataSource
@@ -98,7 +99,7 @@ class IDServerImpl : IDServer {
 
     override var authenticationFlowRepository: IAuthenticationFlowRepository<IAuthenticationFlow> = ExposedAuthenticationFlowRepository(authenticationStepRegistry, tenantRepository, accountRepository)
 
-    override var delegatedSessionRepository: IDelegatedSessionRepository<IHashedDelegatedSession> = ExposedDelegatedSessionRepository(hashFunction, sessionRepository, clientRepository, tenantRepository)
+    override var delegatedSessionRepository: IDelegatedSessionRepository<IDelegatedSession> = ExposedDelegatedSessionRepository(hashFunction, sessionRepository, clientRepository, tenantRepository, scopeRepository, scopeRegistry)
 
     override var emailService: IEmailService = EmailService(
         Env.SMTP_AUTH,
@@ -111,7 +112,7 @@ class IDServerImpl : IDServer {
         Env.SMTP_EMAIL
     )
 
-    override var jwtService: IJWTService = AsymmetricJWTService("RSA", Env.JWT_PUBLIC_KEY!!, Env.JWT_PRIVATE_KEY!!)
+    override var jwtService: IJWTService = AsymmetricJWTService("RSA", Env.JWT_PUBLIC_KEY!!, Env.JWT_PRIVATE_KEY!!, "https://id.jasmine.software")
 
     override var magicLinkService: IMagicLinkService<IMagicLink> = EmailMagicLinkService(
         magicLinkRepository,
@@ -133,6 +134,20 @@ class IDServerImpl : IDServer {
         flowRepository = authenticationFlowRepository,
         sessionService = sessionService,
         lifetime = 1.hours
+    )
+
+    override var tokenService: ITokenService<IDelegatedSessionAccessToken, IDelegatedSessionRefreshToken, IServiceSessionAccessToken> = JWTTokenService(
+        jwtService,
+        accountRepository,
+        clientRepository,
+        tenantRepository,
+        tenantMembershipRepository,
+        delegatedSessionRepository,
+        sessionRepository,
+        scopeRepository,
+        scopeRegistry,
+        accessTokenLifetime = 5.minutes,
+        refreshTokenLifetime = 3.hours
     )
 
     var userInterface: IDJavalinUserInterface = IDJavalinUserInterface(this)

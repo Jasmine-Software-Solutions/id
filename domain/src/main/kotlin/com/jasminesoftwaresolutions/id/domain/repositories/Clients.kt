@@ -9,5 +9,6 @@ interface IClientRepository<T : IClient> :
 
 interface IDelegatedSessionRepository<T : IDelegatedSession> :
     IIdentifiedRepository<T>
+
 interface IServiceSessionRepository<T : IServiceSession> :
     IIdentifiedRepository<T>

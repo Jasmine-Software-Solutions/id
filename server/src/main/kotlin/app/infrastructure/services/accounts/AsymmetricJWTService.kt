@@ -2,10 +2,8 @@ package app.infrastructure.services.accounts
 
 import com.google.gson.Gson
 import com.google.gson.JsonObject
-import com.jasminesoftwaresolutions.id.domain.services.accounts.IJWT
 import com.jasminesoftwaresolutions.id.domain.services.accounts.IJWTService
 import com.jasminesoftwaresolutions.id.domain.services.accounts.JWTDecodeException
-import io.jsonwebtoken.Jws
 import io.jsonwebtoken.JwtException
 import io.jsonwebtoken.Jwts
 import java.security.KeyFactory
@@ -18,7 +16,8 @@ import java.time.Instant
 class AsymmetricJWTService(
     private val keyAlgorithm: String,
     private val publicKeyData: ByteArray,
-    private val privateKeyData: ByteArray
+    private val privateKeyData: ByteArray,
+    val issueAs: String
 ) : IJWTService {
     companion object {
         const val RSA_KEY_ALGORITHM = "RSA"
@@ -39,6 +38,12 @@ class AsymmetricJWTService(
     }
 
     override fun encode(payload: JsonObject): String {
+        if (!payload.has("iat"))
+            payload.addProperty("iat", Instant.now().epochSecond)
+
+        if (!payload.has("iss"))
+            payload.addProperty("iss", issueAs)
+
         val content = gson.toJson(payload)
             .toByteArray()
 
@@ -49,34 +54,33 @@ class AsymmetricJWTService(
         return builder.compact()
     }
 
-    override fun decode(token: String): IJWT {
+    override fun decode(jwt: String): JsonObject {
         try {
             val parser = Jwts.parser()
                 .verifyWith(publicKey)
                 .build()
 
-            val jws = parser.parseSignedContent(token)
-            val jwt = JWT(jws)
+            val jws = parser.parseSignedContent(jwt)
 
-            if (!jwt.validAt(Instant.now()))
-                throw JWTDecodeException("JWT token is not valid at this time")
-
-            return jwt
-        } catch (ex: JwtException) {
-            throw JWTDecodeException("Invalid JWT token")
-        }
-    }
-
-    class JWT(private val jws: Jws<ByteArray>) : IJWT {
-        companion object {
-            private val gson = Gson()
-        }
-
-        override fun payload(): JsonObject {
             val ba = jws.payload
             val str = String(ba)
-            val jo = gson.fromJson(str, JsonObject::class.java)
-            return jo
+            val payload = gson.fromJson(str, JsonObject::class.java)
+
+            val issuedAt = payload.getAsJsonPrimitive("iat").asLong
+            val expiresAt = payload.getAsJsonPrimitive("exp").asLong
+            val notBefore = payload.getAsJsonPrimitive("nbf").asLong
+
+            if (Instant.now() > Instant.ofEpochSecond(expiresAt)
+                || Instant.now() < Instant.ofEpochSecond(notBefore)
+                || Instant.ofEpochSecond(issuedAt) > Instant.now())
+                throw JWTDecodeException("JWT token is not valid at this time")
+
+            if (payload.getAsJsonPrimitive("iss").asString != issueAs)
+                throw JWTDecodeException("JWT token issuer is not valid")
+
+            return payload
+        } catch (ex: JwtException) {
+            throw JWTDecodeException("Invalid JWT token")
         }
     }
 }

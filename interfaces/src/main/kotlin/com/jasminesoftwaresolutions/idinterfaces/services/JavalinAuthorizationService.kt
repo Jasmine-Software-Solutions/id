@@ -8,21 +8,21 @@ import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenant
 import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenantMembership
 import com.jasminesoftwaresolutions.id.domain.registries.IScopeRegistry
 import com.jasminesoftwaresolutions.id.domain.repositories.*
-import com.jasminesoftwaresolutions.id.domain.services.accounts.IJWT
-import com.jasminesoftwaresolutions.id.domain.services.accounts.IJWTService
 import com.jasminesoftwaresolutions.id.domain.services.authorization.IAuthorizationService
+import com.jasminesoftwaresolutions.id.domain.services.authorization.ITokenService
 import com.jasminesoftwaresolutions.id.domain.services.authorization.Policy
 import com.jasminesoftwaresolutions.id.domain.services.authorization.PolicyResult
 import io.javalin.http.Context
 import java.time.Instant
 import java.util.*
+import kotlin.reflect.KClass
 
 class JavalinAuthorizationService(
     val sessionRepository: ISessionRepository<out ISession>,
     val clientRepository: IClientRepository<out IClient>,
     val tenantRepository: ITenantRepository<out ITenant>,
     val tenantMembershipRepository: ITenantMembershipRepository<out ITenantMembership>,
-    val jwtService: IJWTService,
+    val tokenService: ITokenService<out IDelegatedSessionAccessToken, out IDelegatedSessionRefreshToken, out IServiceSessionAccessToken>,
     val scopeRegistry: IScopeRegistry<out IScope>,
     val scopeRepository: IScopeRepository<out IRegisteredScope>,
 ) : IAuthorizationService<Context, IAuthorizationContext> {
@@ -44,12 +44,15 @@ class JavalinAuthorizationService(
             get() = client.roles
     }
 
-    inner class DelegatedSessionAuthorizationContext(override val session: ISession, override val tenant: ITenant?, override val token: IJWT) : IDelegatedSessionAuthorizationContext {
+    inner class DelegatedSessionAuthorizationContext(override val session: ISession, override val tenant: ITenant?, override val token: IDelegatedSessionAccessToken) : IDelegatedSessionAuthorizationContext {
         override val scopes: Set<IScope>
-            get() = token.scope()?.split(" ")?.mapNotNull(::findScopeById)?.toSet() ?: setOf()
+            get() = token.scopes
 
         override val roles: Set<IRole>
             get() {
+                if (token.roles != null)
+                    return token.roles!!
+
                 val platformRoles = account.roles
 
                 val tenantRoles = if (tenant == null) setOf()
@@ -61,9 +64,9 @@ class JavalinAuthorizationService(
             }
     }
 
-    inner class ServiceSessionAuthorizationContext(override val client: IClient, override val token: IJWT) : IServiceSessionAuthorizationContext {
-        override val scopes: Set<IScope>
-            get() = token.scope()?.split(" ")?.mapNotNull(::findScopeById)?.toSet() ?: setOf()
+    inner class ServiceSessionAuthorizationContext(override val client: IClient, override val token: IServiceSessionAccessToken) : IServiceSessionAuthorizationContext {
+        override val scopes: Set<IScope>?
+            get() = token.scopes
 
         override val roles: Set<IRole>
             get() = client.roles
@@ -124,35 +127,15 @@ class JavalinAuthorizationService(
         if (type != "Bearer")
             return null
 
-        val decodedToken = jwtService.decode(token)
+        val decodedToken = tokenService.decode(token)
 
-        sessionId = decodedToken.claim("https://id.jasmine.software/session_id")?.let {
-            runCatching { UUID.fromString(it.asString) }.getOrNull()
-        }
+        if (decodedToken is IServiceSessionAccessToken)
+            return ServiceSessionAuthorizationContext(decodedToken.subject as IClient, decodedToken)
 
-        if (sessionId == null) {
-            val clientId = decodedToken.subject()?.let { runCatching { UUID.fromString(it) }.getOrNull() }
-                ?: return null
+        if (decodedToken is IDelegatedSessionAccessToken)
+            return DelegatedSessionAuthorizationContext(decodedToken.session, decodedToken.tenant, decodedToken)
 
-            val client = clientRepository.findById(clientId)
-                ?: return null
-
-            return ServiceSessionAuthorizationContext(client, decodedToken)
-        }
-
-        val session = sessionRepository.findById(sessionId)
-            ?: return null
-
-        if (session.expiresAt < Instant.now())
-            return null
-
-        val tenantId = decodedToken.claim("https://id.jasmine.software/tenant_id")?.let {
-            runCatching { UUID.fromString(it.asString) }.getOrNull()
-        }
-
-        val tenant = tenantId?.let { tenantRepository.findById(it) }
-
-        return DelegatedSessionAuthorizationContext(session, tenant, decodedToken)
+        return null
     }
 }
 
@@ -171,7 +154,16 @@ sealed class InterfacePolicy : Policy<IAuthorizationContext> {
             if (context !is IScopedAuthorizationContext)
                 return PolicyResult.Pass(this, context)
 
-            if (context.scopes.any { it.id == scope.id })
+            if (context.scopes == null || context.scopes!!.any { it.id == scope.id })
+                return PolicyResult.Pass(this, context)
+
+            return PolicyResult.Fail()
+        }
+    }
+
+    class Is<T : IAuthorizationContext>(val type: KClass<T>) : InterfacePolicy() {
+        override fun evaluate(context: IAuthorizationContext): PolicyResult<IAuthorizationContext> {
+            if (type.isInstance(context))
                 return PolicyResult.Pass(this, context)
 
             return PolicyResult.Fail()

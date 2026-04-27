@@ -5,9 +5,11 @@ import com.jasminesoftwaresolutions.id.domain.models.client.IClient
 import com.jasminesoftwaresolutions.id.domain.registries.IScopeRegistry
 import com.jasminesoftwaresolutions.id.domain.repositories.IClientRepository
 import com.jasminesoftwaresolutions.id.domain.repositories.IScopeRepository
+import com.jasminesoftwaresolutions.id.domain.services.authorization.IAuthorizationService
 import java.util.*
 
 open class ClientScopesControllerService<T : IRegisteredScope>(
+    protected val authorizationService: IAuthorizationService<*, out IAuthorizationContext>,
     protected val clientRepository: IClientRepository<out IClient>,
     protected val scopeRepository: IScopeRepository<T>,
     protected val scopeRegistry: IScopeRegistry<out IScope>,

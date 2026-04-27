@@ -1,6 +1,5 @@
 package com.jasminesoftwaresolutions.idinterfaces.services
 
-import com.google.gson.JsonObject
 import com.jasminesoftwaresolutions.id.domain.models.SecureToken
 import com.jasminesoftwaresolutions.id.domain.models.account.IAccount
 import com.jasminesoftwaresolutions.id.domain.models.account.ISession
@@ -12,12 +11,10 @@ import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenantMembership
 import com.jasminesoftwaresolutions.id.domain.registries.IScopeRegistry
 import com.jasminesoftwaresolutions.id.domain.repositories.*
 import com.jasminesoftwaresolutions.id.domain.services.IEncryptionFunction
-import com.jasminesoftwaresolutions.id.domain.services.accounts.IJWTService
 import com.jasminesoftwaresolutions.id.domain.services.authorization.IAuthorizationService
+import com.jasminesoftwaresolutions.id.domain.services.authorization.ITokenService
 import java.time.Instant
-import java.time.temporal.ChronoUnit
 import java.util.*
-import kotlin.time.Duration.Companion.hours
 
 open class OAuth2ControllerService(
     protected val sessionRepository: ISessionRepository<out ISession>,
@@ -26,7 +23,7 @@ open class OAuth2ControllerService(
     protected val tenantMembershipRepository: ITenantMembershipRepository<out ITenantMembership>,
     protected val delegatedSessionRepository: IDelegatedSessionRepository<out IDelegatedSession>,
     protected val encryptionFunction: IEncryptionFunction,
-    protected val jwtService: IJWTService,
+    protected val tokenService: ITokenService<out IDelegatedSessionAccessToken, out IDelegatedSessionRefreshToken, out IServiceSessionAccessToken>,
     protected val authorizationService: IAuthorizationService<*, out IAuthorizationContext>,
     protected val scopeRegistry: IScopeRegistry<out IScope>,
     protected val scopeRepository: IScopeRepository<out IRegisteredScope>,
@@ -154,9 +151,9 @@ open class OAuth2ControllerService(
             this.session = authentication.session
 
             this.redirectUri = redirectUri
-            this.scope = scopes.map { it.id }.joinToString(" ")
+            this.scopes = scopes.toSet()
 
-            this.code = code
+            this.code.code = code
         }
 
         val encodedCode = Base64.getEncoder().encodeToString("${delegatedSession.id}:${delegatedSession.code}".toByteArray())
@@ -209,39 +206,19 @@ open class OAuth2ControllerService(
         val delegatedSession = delegatedSessionRepository.findById(delegatedSessionId)
             ?: return TokenWithCodeResult.InvalidCode()
 
-        if (!delegatedSession.verify(delegatedSessionCode))
+        if (!delegatedSession.code.verify(delegatedSessionCode))
             return TokenWithCodeResult.InvalidCode()
 
-        val accessTokenObj = JsonObject().apply {
-            addProperty("iss", "https://id.jasmine.software")
-            addProperty("sub", delegatedSession.session.account.id.toString())
-            addProperty("aud", clientId.toString())
-            addProperty("exp", Instant.now().plusSeconds(3600).epochSecond)
-            addProperty("scope", delegatedSession.scope)
-            addProperty("https://id.jasmine.software/session_id", delegatedSession.session.id.toString())
+        val accessToken = tokenService.generateDelegatedSessionAccessToken(delegatedSession)
+            ?: return TokenWithCodeResult.Unauthorized()
 
-            val tenant = delegatedSession.tenant
-            if (tenant != null)
-                addProperty("https://id.jasmine.software/tenant_id", tenant.id.toString())
-        }
-
-        val accessToken = jwtService.encode(accessTokenObj)
-
-        val refreshTokenObj = JsonObject().apply {
-            addProperty("iss", "https://id.jasmine.software")
-            addProperty("sub", delegatedSession.session.account.id.toString())
-            addProperty("aud", clientId.toString())
-            addProperty("exp", delegatedSession.session.expiresAt.epochSecond)
-            addProperty("scope", delegatedSession.scope)
-            addProperty("https://id.jasmine.software/session_id", delegatedSession.session.id.toString())
-        }
-
-        val refreshToken = jwtService.encode(refreshTokenObj)
+        val refreshToken = tokenService.generateDelegatedSessionRefreshToken(delegatedSession)
+            ?: return TokenWithCodeResult.Unauthorized()
 
         return TokenWithCodeResult.Granted(
-            accessToken = accessToken,
-            refreshToken = refreshToken,
-            expiresIn = 3600,
+            accessToken = accessToken.token,
+            refreshToken = refreshToken.token,
+            expiresIn = accessToken.expiresAt.epochSecond - Instant.now().epochSecond,
             refreshTokenExpiresIn = delegatedSession.session.expiresAt.epochSecond - Instant.now().epochSecond
         )
     }
@@ -255,30 +232,27 @@ open class OAuth2ControllerService(
 
     open fun getTokenWithCredentials(
         authentication: IAuthorizationContext,
+        tenantId: UUID?,
         scope: String?
     ) : TokenWithCredentialsResult {
         if (authentication !is IClientAuthorizationContext || authentication is IScopedAuthorizationContext)
             return TokenWithCredentialsResult.Unauthorized()
 
-        val scopes = if (scope == null) {
-            allKnownScopes()
-        } else {
+        val tenant = tenantId?.let { tenantRepository.findById(it) }
+
+        val scopes = if (scope != null) {
             scope.split(" ").mapNotNull(::findScopeById).toSet()
-        }
+        } else null
 
-        val accessTokenObj = JsonObject().apply {
-            addProperty("iss", "https://id.jasmine.software")
-            addProperty("sub", authentication.client.id.toString())
-            addProperty("aud", authentication.client.id.toString())
-            addProperty("exp", Instant.now().plus(1, ChronoUnit.HOURS).epochSecond)
-            addProperty("scope", scopes.map { it.id }.joinToString(" "))
-        }
-
-        val accessToken = jwtService.encode(accessTokenObj)
+        val accessToken = tokenService.generateServiceSessionAccessToken(
+            authentication.client,
+            tenant,
+            scopes
+        ) ?: return TokenWithCredentialsResult.Unauthorized()
 
         return TokenWithCredentialsResult.Granted(
-            accessToken = accessToken,
-            expiresIn = 1.hours.inWholeSeconds
+            accessToken = accessToken.token,
+            expiresIn = accessToken.expiresAt.epochSecond - Instant.now().epochSecond
         )
     }
 }

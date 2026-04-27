@@ -4,7 +4,6 @@ import com.jasminesoftwaresolutions.id.domain.models.account.IAccount
 import com.jasminesoftwaresolutions.id.domain.models.account.ISession
 import com.jasminesoftwaresolutions.id.domain.models.client.IClient
 import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenant
-import com.jasminesoftwaresolutions.id.domain.services.accounts.IJWT
 import java.time.Instant
 
 interface IExpiringAuthorizationContext : IAuthorizationContext {
@@ -12,7 +11,7 @@ interface IExpiringAuthorizationContext : IAuthorizationContext {
 }
 
 interface IScopedAuthorizationContext : IAuthorizationContext {
-    val scopes: Set<IScope>
+    val scopes: Set<IScope>?
 }
 
 interface IAuthorizationContext {
@@ -42,15 +41,15 @@ interface IClientAuthorizationContext : IAuthorizationContext {
 
 interface IDelegatedSessionAuthorizationContext : ISessionAuthorizationContext, IScopedAuthorizationContext {
     val tenant: ITenant?
-    val token: IJWT
+    val token: IDelegatedSessionAccessToken
 
-    override val expiresAt: Instant
-        get() = token.expiresAt() ?: throw IllegalArgumentException()
+    override val expiresAt
+        get() = token.expiresAt
 }
 
 interface IServiceSessionAuthorizationContext : IClientAuthorizationContext, IScopedAuthorizationContext, IExpiringAuthorizationContext {
-    val token: IJWT
+    val token: IServiceSessionAccessToken
 
     override val expiresAt: Instant
-        get() = token.expiresAt() ?: throw IllegalArgumentException()
+        get() = token.expiresAt
 }
