@@ -69,6 +69,29 @@ class RestOAuth2Controller(val service: OAuth2ControllerService, val authorizati
             }
         }
 
+        else if (grantType == "refresh_token") {
+            val refreshToken = ctx.queryParam("refresh_token")
+                ?: throw BadRequestResponse()
+
+            val result = service.getTokenWithRefreshToken(authentication, refreshToken)
+
+            when (result) {
+                is OAuth2ControllerService.TokenWithRefreshTokenResult.Granted -> ctx.json(
+                    mapOf(
+                        "token_type" to "Bearer",
+                        "access_token" to result.accessToken,
+                        "expires_in" to result.expiresIn,
+                        "refresh_token" to result.refreshToken,
+                        "refresh_token_expires_in" to result.refreshTokenExpiresIn,
+                    )
+                )
+
+                is OAuth2ControllerService.TokenWithRefreshTokenResult.Unauthorized -> throw ForbiddenResponse()
+
+                else -> throw BadRequestResponse()
+            }
+        }
+
         else throw BadRequestResponse()
     }
 }

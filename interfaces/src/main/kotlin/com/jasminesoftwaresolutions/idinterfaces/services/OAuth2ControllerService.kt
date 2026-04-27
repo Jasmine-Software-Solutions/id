@@ -23,7 +23,7 @@ open class OAuth2ControllerService(
     protected val tenantMembershipRepository: ITenantMembershipRepository<out ITenantMembership>,
     protected val delegatedSessionRepository: IDelegatedSessionRepository<out IDelegatedSession>,
     protected val encryptionFunction: IEncryptionFunction,
-    protected val tokenService: ITokenService<out IDelegatedSessionAccessToken, out IDelegatedSessionRefreshToken, out IServiceSessionAccessToken>,
+    protected val tokenService: ITokenService<out IDelegatedSessionAccessToken, IDelegatedSessionRefreshToken, out IServiceSessionAccessToken>,
     protected val authorizationService: IAuthorizationService<*, out IAuthorizationContext>,
     protected val scopeRegistry: IScopeRegistry<out IScope>,
     protected val scopeRepository: IScopeRepository<out IRegisteredScope>,
@@ -253,6 +253,39 @@ open class OAuth2ControllerService(
         return TokenWithCredentialsResult.Granted(
             accessToken = accessToken.token,
             expiresIn = accessToken.expiresAt.epochSecond - Instant.now().epochSecond
+        )
+    }
+
+    open class TokenWithRefreshTokenResult {
+        class Unauthorized : TokenWithRefreshTokenResult()
+        class InvalidRefreshToken : TokenWithRefreshTokenResult()
+        class Granted(val accessToken: String, val refreshToken: String, val expiresIn: Long, val refreshTokenExpiresIn: Long) : TokenWithRefreshTokenResult()
+    }
+
+    open fun getTokenWithRefreshToken(
+        authentication: IAuthorizationContext,
+        refreshToken: String
+    ) : TokenWithRefreshTokenResult {
+        if (authentication !is IClientAuthorizationContext || authentication is IScopedAuthorizationContext)
+            return TokenWithRefreshTokenResult.Unauthorized()
+
+        if (!authentication.client.confidential)
+            return TokenWithRefreshTokenResult.Unauthorized()
+
+        val refreshToken = tokenService.decode(refreshToken) as? IDelegatedSessionRefreshToken
+            ?: return TokenWithRefreshTokenResult.InvalidRefreshToken()
+
+        val accessToken = tokenService.renewDelegatedSessionAccessToken(refreshToken)
+        val newRefreshToken = tokenService.generateDelegatedSessionRefreshToken(refreshToken.delegatedSession)
+
+        if (accessToken == null || newRefreshToken == null)
+            return TokenWithRefreshTokenResult.Unauthorized()
+
+        return TokenWithRefreshTokenResult.Granted(
+            accessToken = accessToken.token,
+            refreshToken = newRefreshToken.token,
+            expiresIn = accessToken.expiresAt.epochSecond - Instant.now().epochSecond,
+            refreshTokenExpiresIn = newRefreshToken.expiresAt.epochSecond - Instant.now().epochSecond
         )
     }
 }
