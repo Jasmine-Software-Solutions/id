@@ -1,4 +1,4 @@
-package com.jasminesoftwaresolutions.idinterfaces.services
+package com.jasminesoftwaresolutions.idinterfaces.services.account
 
 import com.jasminesoftwaresolutions.id.domain.models.account.IAccount
 import com.jasminesoftwaresolutions.id.domain.models.authorization.*
@@ -11,16 +11,18 @@ import java.util.*
 import java.util.stream.Collectors
 
 open class AccountControllerService(
-    protected val accountRepository: IAccountRepository<out IAccount>,
+    protected val accountRepository: IAccountRepository<IAccount>,
     protected val tenantMembershipRepository: ITenantMembershipRepository<out ITenantMembership>,
 ) {
     data class RoleDTO(
+        @Transient val role: IRole,
         val id: String,
         val description: String,
         val tenantId: UUID?
     )
 
-    data class AccountDTO(
+    class AccountDTO(
+        @Transient val account: IAccount,
         val id: UUID,
         val email: String?,
         val firstName: String?,
@@ -28,14 +30,10 @@ open class AccountControllerService(
         val roles: List<RoleDTO>?
     )
 
-    data class CreateAccountRequest(
-        val email: String,
-        val firstName: String,
-        val lastName: String
-    )
-
     open class GetAccountResult {
-        data class Success(val account: AccountDTO) : GetAccountResult()
+        data class Success(
+            val account: AccountDTO
+        ) : GetAccountResult()
         object Forbidden : GetAccountResult()
         object NotFound : GetAccountResult()
     }
@@ -43,6 +41,13 @@ open class AccountControllerService(
     open class CreateAccountResult {
         data class Success(val account: AccountDTO, val created: Boolean) : CreateAccountResult()
         object Forbidden : CreateAccountResult()
+    }
+
+    open class UpdateProfileResult {
+        data class Success(val account: IAccount) : UpdateProfileResult()
+        data class Invalid(val message: String) : UpdateProfileResult()
+        object Forbidden : UpdateProfileResult()
+        object NotFound : UpdateProfileResult()
     }
 
     private fun hasScope(authentication: IAuthorizationContext, scope: IScope): Boolean {
@@ -74,9 +79,10 @@ open class AccountControllerService(
         includeProfile: Boolean = true,
         includePermissions: Boolean = true
     ): AccountDTO {
-        val memberships = if (includePermissions) tenantMembershipRepository.findByAccount(account.id) else emptyList()
+        val memberships = tenantMembershipRepository.findByAccount(account.id)
 
         return AccountDTO(
+            account,
             id = account.id,
             email = if (includeEmail) account.email else null,
             firstName = if (includeProfile) account.firstName else null,
@@ -86,37 +92,44 @@ open class AccountControllerService(
                 val tenantRoles = memberships.flatMap { it.roles }
 
                 Streams.concat(platformRoles.stream(), tenantRoles.stream())
-                    .map { RoleDTO(it.id, it.description, (it as? ITenantRole)?.tenant?.id) }
+                    .map { RoleDTO(it, it.id, it.name, (it as? ITenantRole)?.tenant?.id) }
                     .collect(Collectors.toList())
             } else null
         )
     }
 
-    open fun getMe(authentication: IAuthorizationContext): GetAccountResult {
-        if (authentication !is IAccountAuthorizationContext)
-            return GetAccountResult.Forbidden
-
-        val limitedByScope = authentication is IScopedAuthorizationContext && authentication.scopes != null
-
-        val includeEmail = !limitedByScope || hasScope(authentication, EmailScope)
-        val includeProfile = !limitedByScope || hasScope(authentication, ProfileScope)
-        val includePermissions = !limitedByScope || hasScope(authentication, PermissionsScope)
-
-        return GetAccountResult.Success(
-            toAccountDTO(
-                account = authentication.account,
-                includeEmail = includeEmail,
-                includeProfile = includeProfile,
-                includePermissions = includePermissions
+    open fun get(authentication: IAuthorizationContext, accountId: UUID?): GetAccountResult {
+        if (accountId == null && authentication is IAccountAuthorizationContext)
+            return GetAccountResult.Success(
+                toAccountDTO(
+                    account = authentication.account,
+                    includeEmail = hasScope(authentication, EmailScope),
+                    includeProfile = hasScope(authentication, ProfileScope),
+                    includePermissions = hasScope(authentication, PermissionsScope)
+                )
             )
-        )
-    }
 
-    open fun getById(authentication: IAuthorizationContext, accountId: UUID): GetAccountResult {
-        val account = accountRepository.findById(accountId)
+        val account = accountId?.let(accountRepository::findById)
             ?: return GetAccountResult.NotFound
 
         when (authentication) {
+            is ISessionAuthorizationContext -> {
+                val memberships = tenantMembershipRepository.findByAccount(account)
+                if (!hasPrivilege(authentication, AccountsReadPrivilege)) {
+                    if (!memberships.any { hasTenantPrivilege(authentication, TenantMembersReadPrivilege(it.tenant), it.tenant) })
+                        return GetAccountResult.Forbidden
+                }
+
+                return GetAccountResult.Success(
+                    toAccountDTO(
+                        account,
+                        includeEmail = true,
+                        includeProfile = true,
+                        includePermissions = true
+                    )
+                )
+            }
+
             is IDelegatedSessionAuthorizationContext -> {
                 val canReadAnyAccount = hasPrivilege(authentication, AccountsReadPrivilege) &&
                     hasScope(authentication, AccountsReadScope)
@@ -153,17 +166,22 @@ open class AccountControllerService(
         }
     }
 
-    open fun create(authentication: IAuthorizationContext, request: CreateAccountRequest): CreateAccountResult {
+    open fun create(
+        authentication: IAuthorizationContext,
+        email: String,
+        firstName: String,
+        lastName: String
+    ): CreateAccountResult {
         if (!hasPrivilege(authentication, AccountsWritePrivilege))
             return CreateAccountResult.Forbidden
         if (!hasScope(authentication, AccountsWriteScope))
             return CreateAccountResult.Forbidden
 
-        val existingAccount = accountRepository.findByEmail(request.email)
+        val existingAccount = accountRepository.findByEmail(email)
         val account = existingAccount ?: accountRepository.create {
-            this.email = request.email
-            this.firstName = request.firstName
-            this.lastName = request.lastName
+            this.email = email
+            this.firstName = firstName
+            this.lastName = lastName
         }
 
         val tenant = when (authentication) {
@@ -187,8 +205,58 @@ open class AccountControllerService(
         }
 
         return CreateAccountResult.Success(
-            account = toAccountDTO(account),
+            account = toAccountDTO(
+                account,
+                includeEmail = existingAccount == null,
+                includeProfile = existingAccount == null,
+                includePermissions = existingAccount == null
+            ),
             created = existingAccount == null
         )
+    }
+
+    open fun updateProfile(
+        authentication: IAuthorizationContext,
+        accountId: UUID?,
+        email: String,
+        firstName: String,
+        lastName: String
+    ): UpdateProfileResult {
+        val activeAccount = (authentication as? IAccountAuthorizationContext)
+            ?.takeIf { authentication !is IScopedAuthorizationContext }
+            ?.account
+
+        val targetAccount = if (accountId == null) {
+            activeAccount ?: return UpdateProfileResult.Forbidden
+        } else {
+            accountRepository.findById(accountId)
+                ?: return UpdateProfileResult.NotFound
+        }
+
+        val isAdmin = hasPrivilege(authentication, AccountsWritePrivilege)
+        val isSelf = activeAccount?.id == targetAccount.id
+
+        if (!isSelf && !isAdmin)
+            return UpdateProfileResult.Forbidden
+
+        if (!isAdmin && email != targetAccount.email)
+            return UpdateProfileResult.Forbidden
+
+        if (isAdmin) {
+            val existingByEmail = accountRepository.findByEmail(email)
+            if (existingByEmail != null && existingByEmail.id != targetAccount.id)
+                return UpdateProfileResult.Invalid("Email is already in use")
+        }
+
+        accountRepository.update(targetAccount) {
+            if (isAdmin) {
+                this.email = email
+            }
+
+            this.firstName = firstName
+            this.lastName = lastName
+        }
+
+        return UpdateProfileResult.Success(targetAccount)
     }
 }

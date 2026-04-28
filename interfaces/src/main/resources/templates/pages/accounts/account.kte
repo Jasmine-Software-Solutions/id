@@ -1,0 +1,110 @@
+@import com.jasminesoftwaresolutions.id.domain.models.account.IAccount
+@import com.jasminesoftwaresolutions.id.domain.models.account.IPassword
+@import com.jasminesoftwaresolutions.id.domain.models.account.ISession
+@import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenantMembership
+@import com.jasminesoftwaresolutions.id.domain.models.account.ITOTPConfiguration
+@import com.jasminesoftwaresolutions.id.domain.models.authorization.IPlatformRole
+
+@param account: IAccount
+@param activeSession: ISession?
+@param isSelf: Boolean
+
+@param sessions: List<ISession>
+@param totpConfiguration: ITOTPConfiguration
+@param totpQrCodeUri: String?
+@param password: IPassword?
+
+@param memberships: List<ITenantMembership>
+
+@param allowUpdateEmail: Boolean
+@param allowUpdateProfile: Boolean
+@param allowUpdatePassword: Boolean
+@param allowUpdateTotp: Boolean
+@param allowRevokeSessions: Boolean
+@param allowUpdateRoles: Boolean
+@param allowUpdateMemberships: Boolean
+@param allRoles: List<IPlatformRole>
+
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Account Settings</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;display=swap"
+          rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+          rel="stylesheet"/>
+    @template.scripts.htmx()
+    @template.scripts.tailwind()
+    <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background font-body-md text-on-background min-h-screen antialiased">
+<header class="fixed top-0 right-0 left-64 border-b z-10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-slate-200 dark:border-slate-800 shadow-sm flex justify-between items-center h-16 px-8">
+    <div class="font-semibold">@if (isSelf) My Account @else Account Management @endif</div>
+    <div class="flex items-center gap-3">
+        @if (isSelf)
+            <a href="/login" class="text-sm text-slate-600 hover:text-indigo-600">Logout</a>
+        @else
+            <a href="/accounts" class="text-sm text-slate-600 hover:text-indigo-600">Accounts</a>
+        @endif
+    </div>
+</header>
+
+<aside class="fixed left-0 top-0 h-screen w-64 border-r bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 flex flex-col py-6 font-manrope antialiased">
+    <div class="px-6 mb-8 flex items-center gap-3">
+        <div class="h-8 w-8 bg-primary rounded-lg flex items-center justify-center">
+            <span class="material-symbols-outlined text-white text-xl" style="font-variation-settings: 'FILL' 1;">terminal</span>
+        </div>
+        <span class="text-xl font-bold text-indigo-600 dark:text-indigo-400">Jasmine Identity</span>
+    </div>
+    <div class="px-6 mb-6">
+        <h1 class="text-label-caps text-outline uppercase">Settings</h1>
+        <p class="text-label-sm text-secondary">Manage account</p>
+    </div>
+    <nav class="flex-1 px-2 space-y-1">
+        <a class="flex items-center gap-3 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 border-l-4 border-indigo-600 px-4 py-3 font-semibold"
+           href="#profile">
+            <span class="material-symbols-outlined">person</span>
+            <span class="text-body-md">Profile</span>
+        </a>
+        <a class="flex items-center gap-3 text-slate-500 dark:text-slate-400 px-4 py-3 hover:text-indigo-600 transition-colors hover:bg-slate-100"
+           href="#security">
+            <span class="material-symbols-outlined">lock</span>
+            <span class="text-body-md">Security</span>
+        </a>
+        <a class="flex items-center gap-3 text-slate-500 dark:text-slate-400 px-4 py-3 hover:text-indigo-600 transition-colors hover:bg-slate-100"
+           href="#sessions">
+            <span class="material-symbols-outlined">devices</span>
+            <span class="text-body-md">Sessions</span>
+        </a>
+        <a class="flex items-center gap-3 text-slate-500 dark:text-slate-400 px-4 py-3 hover:text-indigo-600 transition-colors hover:bg-slate-100"
+           href="#roles">
+            <span class="material-symbols-outlined">badge</span>
+            <span class="text-body-md">Platform Roles</span>
+        </a>
+        <a class="flex items-center gap-3 text-slate-500 dark:text-slate-400 px-4 py-3 hover:text-indigo-600 transition-colors hover:bg-slate-100"
+           href="#organizations">
+            <span class="material-symbols-outlined" data-icon="corporate_fare">corporate_fare</span>
+            <span class="text-body-md">Organizations</span>
+        </a>
+    </nav>
+</aside>
+
+<main class="ml-64 pt-24 pb-12 px-8 min-h-screen">
+    <div class="max-w-[1120px] mx-auto space-y-6">
+        <div class="grid grid-cols-12 gap-gutter">
+            @template.components.accounts.account.profile(account = account, isSelf = isSelf, allowUpdateEmail = allowUpdateEmail, allowUpdateProfile = allowUpdateProfile)
+            @template.components.accounts.account.security(account = account, password = password, totpConfiguration = totpConfiguration, totpQrCodeUri = totpQrCodeUri, allowUpdatePassword = allowUpdatePassword, allowUpdateTotp = allowUpdateTotp, isSelf = isSelf)
+            @template.components.accounts.account.sessions(account = account, sessions = sessions, activeSession = activeSession, isSelf = isSelf)
+            @template.components.accounts.account.roles(account = account, allRoles = allRoles, allowUpdateRoles = allowUpdateRoles)
+            @template.components.accounts.account.organizations(account = account, memberships = memberships, allowUpdateMemberships = allowUpdateMemberships, isSelf = isSelf)
+        </div>
+    </div>
+</main>
+
+<script src="/local-datetime.js"></script>
+</body>

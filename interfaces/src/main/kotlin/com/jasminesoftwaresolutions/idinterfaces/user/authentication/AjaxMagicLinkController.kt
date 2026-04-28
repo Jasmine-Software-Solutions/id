@@ -2,7 +2,7 @@ package com.jasminesoftwaresolutions.idinterfaces.user.authentication
 
 import com.jasminesoftwaresolutions.id.domain.models.account.IMagicLink
 import com.jasminesoftwaresolutions.idinterfaces.renderWithContext
-import com.jasminesoftwaresolutions.idinterfaces.services.MagicLinkControllerService
+import com.jasminesoftwaresolutions.idinterfaces.services.account.MagicLinkControllerService
 import io.javalin.community.routing.annotations.Get
 import io.javalin.community.routing.annotations.Param
 import io.javalin.community.routing.annotations.Post

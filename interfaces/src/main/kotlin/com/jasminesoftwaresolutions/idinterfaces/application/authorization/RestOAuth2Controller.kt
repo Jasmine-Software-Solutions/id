@@ -1,7 +1,7 @@
 package com.jasminesoftwaresolutions.idinterfaces.application.authorization
 
-import com.jasminesoftwaresolutions.idinterfaces.services.JavalinAuthorizationService
-import com.jasminesoftwaresolutions.idinterfaces.services.OAuth2ControllerService
+import com.jasminesoftwaresolutions.idinterfaces.services.auth.JavalinAuthorizationService
+import com.jasminesoftwaresolutions.idinterfaces.services.client.OAuth2ControllerService
 import io.javalin.community.routing.annotations.Post
 import io.javalin.http.BadRequestResponse
 import io.javalin.http.Context

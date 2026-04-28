@@ -41,6 +41,13 @@ class ExposedTenantMembershipRepository(
         return@transaction memberships
     }
 
+    override fun findByTenant(id: UUID): List<ITenantMembership> = transaction {
+        Table.select { Table.tenant eq id }
+            .orderBy(Table.createdAt, org.jetbrains.exposed.sql.SortOrder.ASC)
+            .map { read(it, null, null) }
+            .toList()
+    }
+
     open inner class TenantMembership(
         row: ResultRow? = null,
         insert: InsertStatement<Number>? = null,
@@ -54,7 +61,7 @@ class ExposedTenantMembershipRepository(
         override var account: IAccount by column(Table.account,
             EntityTransformer(ExposedAccountRepository.Table, accountRepository))
 
-        override val roles: Set<ITenantRole> by column(
+        override var roles: Set<ITenantRole> by column(
             Table.roles, ExposedColumnTransformer(
             fromColumn = { it.split(",").mapNotNull {
                 if (it == TenantAdministrator.id)

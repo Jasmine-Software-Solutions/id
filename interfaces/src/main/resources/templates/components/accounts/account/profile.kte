@@ -1,0 +1,49 @@
+@import com.jasminesoftwaresolutions.id.domain.models.account.IAccount
+
+@param account: IAccount
+@param isSelf: Boolean
+@param allowUpdateEmail: Boolean
+@param allowUpdateProfile: Boolean
+
+<section class="col-span-12 lg:col-span-8 bg-white border border-slate-200 rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-gutter">
+    <div class="flex items-center gap-6 mb-8 pb-8 border-b border-slate-100">
+        <div class="relative group">
+            <img alt="User Profile Picture" class="h-24 w-24 rounded-2xl object-cover ring-4 ring-primary-fixed" data-alt="headshot of a confident tech professional, soft lighting, clean professional background, modern aesthetic" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDBS5GuK5D-RmrMifFq1UhcX_o-w86JIvGORK-SpL6BmlnGTuYNW21dVE0WML1xuVbJRknHageOk2vVlV20-_-zE_A4XKOw-ARA9HXjlAbuzgRpy_fgzPu8_jIhYRzHx1-x9fXWpqIK89KepHO4-HPpB3SKlMhA37kYs5CtJnvqgtbbrYnTQP-8ZkR7L3RQhYfQPXoO2WuIvQhDbVIhbB4_qlKKAvWrK9FlfSLST0wc-DPinB75ocvqiZt7Uqd0J4Q8tMp7SCBJF00">
+            <button class="absolute -bottom-2 -right-2 bg-primary text-white p-2 rounded-lg shadow-lg hover:bg-primary-container transition-all">
+                <span class="material-symbols-outlined text-sm" data-icon="edit">edit</span>
+            </button>
+        </div>
+        <div>
+            <h3 class="font-h3 text-h3">${account.firstName} ${account.lastName}</h3>
+            <p class="text-body-md text-secondary">${account.email}</p>
+            <div class="mt-2 flex gap-2">
+                @for (role in account.roles)
+                    <span class="px-2 py-1 bg-surface-container-high text-primary text-label-sm rounded-md">${role.name}</span>
+                @endfor
+            </div>
+        </div>
+    </div>
+    <form class="space-y-stack-md" method="post" action="${if (isSelf) "/account/profile" else "/accounts/${account.id.toString()}/profile"}">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-stack-md">
+            <div class="flex flex-col gap-2">
+                <label class="text-label-caps text-outline ml-1 uppercase">First Name</label>
+                <input class="bg-slate-50 border-none rounded-lg px-4 py-3 text-body-md" type="text" name="first_name" value="${account.firstName}" readonly="${!allowUpdateProfile}">
+            </div>
+            <div class="flex flex-col gap-2">
+                <label class="text-label-caps text-outline ml-1 uppercase">Last Name</label>
+                <input class="bg-slate-50 border-none rounded-lg px-4 py-3 text-body-md" type="text" name="last_name" value="${account.lastName}" readonly="${!allowUpdateProfile}">
+            </div>
+        </div>
+        <div class="flex flex-col gap-2">
+            <label class="text-label-caps text-outline ml-1 uppercase">Email</label>
+            <input class="bg-slate-50 border-none rounded-lg px-4 py-3 text-body-md" type="email" name="email" value="${account.email}" readonly="${!allowUpdateEmail}">
+        </div>
+        @if (allowUpdateProfile || allowUpdateEmail)
+            <div class="flex justify-end">
+                <button class="w-full bg-indigo-600 text-white py-2 rounded-lg font-bold text-body-md hover:bg-indigo-500 transition-colors" type="submit">
+                    Save Changes
+                </button>
+            </div>
+        @endif
+    </form>
+</section>

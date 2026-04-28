@@ -1,0 +1,37 @@
+@import com.jasminesoftwaresolutions.id.domain.models.account.IAccount
+@import com.jasminesoftwaresolutions.id.domain.models.account.ISession
+
+@param account: IAccount
+@param sessions: List<ISession>
+@param activeSession: ISession?
+@param isSelf: Boolean
+
+<section class="col-span-12 bg-white border border-slate-200 rounded-xl shadow-sm p-gutter">
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h3 class="font-h3 text-h3">Active Sessions</h3>
+            <p class="text-body-md text-secondary">Logged in devices and browser sessions</p>
+        </div>
+        <form method="post" action="${if (isSelf) "/account" else "/accounts/${account.id}"}/sessions/revoke-all">
+            <button class="text-error text-label-sm font-bold border border-error/20 px-4 py-2 rounded-lg hover:bg-error/5 transition-colors" type="submit">Log out all sessions</button>
+        </form>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-left">
+            <thead class="border-b border-slate-100">
+            <tr>
+                <th class="pb-4 text-label-caps text-outline uppercase font-bold px-2">Device</th>
+                <th class="pb-4 text-label-caps text-outline uppercase font-bold px-2">Location</th>
+                <th class="pb-4 text-label-caps text-outline uppercase font-bold px-2">IP Address</th>
+                <th class="pb-4 text-label-caps text-outline uppercase font-bold px-2">Status</th>
+                <th class="pb-4 text-label-caps text-outline uppercase font-bold px-2 text-right">Action</th>
+            </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-50">
+            @for (session in sessions)
+                @template.components.accounts.account.session(session = session, active = activeSession != null && session.id == activeSession.id, revokeAction = "${if (isSelf) "/account" else "/accounts/${account.id}"}/sessions/revoke")
+            @endfor
+            </tbody>
+        </table>
+    </div>
+</section>

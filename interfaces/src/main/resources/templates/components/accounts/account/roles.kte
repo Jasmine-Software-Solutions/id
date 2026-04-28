@@ -1,0 +1,20 @@
+@import com.jasminesoftwaresolutions.id.domain.models.account.IAccount
+@import com.jasminesoftwaresolutions.id.domain.models.authorization.IPlatformRole
+
+@param account: IAccount
+@param allRoles: List<IPlatformRole>
+@param allowUpdateRoles: Boolean
+
+<div class="col-span-12 lg:col-span-6" id="roles">
+    <section class="bg-white border border-slate-200 rounded-xl shadow-sm p-gutter h-full">
+        <div class="flex items-center gap-3 mb-6">
+            <span class="p-2 bg-indigo-50 text-indigo-600 rounded-lg material-symbols-outlined" data-icon="badge">badge</span>
+            <h3 class="font-h3 text-h3">Platform Roles</h3>
+        </div>
+        <div class="space-y-4">
+            @for (role in allRoles)
+                @template.components.accounts.account.role(role = role, assigned = role in account.roles, allowUpdateRoles = allowUpdateRoles)
+            @endfor
+        </div>
+    </section>
+</div>

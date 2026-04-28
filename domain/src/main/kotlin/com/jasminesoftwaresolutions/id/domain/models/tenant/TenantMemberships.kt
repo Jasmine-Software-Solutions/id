@@ -8,5 +8,5 @@ import com.jasminesoftwaresolutions.id.domain.models.authorization.ITenantRole
 interface ITenantMembership : IIdentified, ICreated {
     var tenant: ITenant
     var account: IAccount
-    val roles: Set<ITenantRole>
+    var roles: Set<ITenantRole>
 }

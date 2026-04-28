@@ -1,8 +1,8 @@
 package com.jasminesoftwaresolutions.idinterfaces.application.account
 
 import com.fasterxml.jackson.annotation.JsonProperty
-import com.jasminesoftwaresolutions.idinterfaces.services.AccountControllerService
-import com.jasminesoftwaresolutions.idinterfaces.services.JavalinAuthorizationService
+import com.jasminesoftwaresolutions.idinterfaces.services.account.AccountControllerService
+import com.jasminesoftwaresolutions.idinterfaces.services.auth.JavalinAuthorizationService
 import io.javalin.community.routing.annotations.Get
 import io.javalin.community.routing.annotations.Post
 import io.javalin.http.*
@@ -23,7 +23,7 @@ class RestAccountController(
         val authentication = authorizationService.authenticate(ctx)
             ?: throw UnauthorizedResponse()
 
-        when (val result = service.getMe(authentication)) {
+        when (val result = service.get(authentication, null)) {
             is AccountControllerService.GetAccountResult.Success -> ctx.json(result.account)
             is AccountControllerService.GetAccountResult.Forbidden -> throw ForbiddenResponse()
             is AccountControllerService.GetAccountResult.NotFound -> throw NotFoundResponse("Account not found")
@@ -38,7 +38,7 @@ class RestAccountController(
         val accountId = runCatching { UUID.fromString(ctx.pathParam("id")) }.getOrNull()
             ?: throw BadRequestResponse("Invalid account id")
 
-        when (val result = service.getById(authentication, accountId)) {
+        when (val result = service.get(authentication, accountId)) {
             is AccountControllerService.GetAccountResult.Success -> ctx.json(result.account)
             is AccountControllerService.GetAccountResult.Forbidden -> throw ForbiddenResponse()
             is AccountControllerService.GetAccountResult.NotFound -> throw NotFoundResponse("Account not found")
@@ -60,7 +60,7 @@ class RestAccountController(
         val lastName = payload.lastName?.trim().takeUnless { it.isNullOrBlank() }
             ?: throw BadRequestResponse("Missing last_name")
 
-        when (val result = service.create(authentication, AccountControllerService.CreateAccountRequest(email, firstName, lastName))) {
+        when (val result = service.create(authentication, email, firstName, lastName)) {
             is AccountControllerService.CreateAccountResult.Success -> {
                 ctx.status(if (result.created) 201 else 200)
                 ctx.json(result.account)

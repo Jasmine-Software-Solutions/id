@@ -1,4 +1,4 @@
-package com.jasminesoftwaresolutions.idinterfaces.services
+package com.jasminesoftwaresolutions.idinterfaces.services.client
 
 import com.jasminesoftwaresolutions.id.domain.models.authorization.*
 import com.jasminesoftwaresolutions.id.domain.models.client.IClient
@@ -14,16 +14,13 @@ open class ClientScopesControllerService<T : IRegisteredScope>(
     protected val scopeRepository: IScopeRepository<T>,
     protected val scopeRegistry: IScopeRegistry<out IScope>,
 ) {
-    data class ScopeRegistration(val id: String, val description: String, val isByTenant: Boolean)
-    data class RegisteredScopeDTO(val id: String, val description: String, val isByTenant: Boolean)
-
     open class ReplaceResult {
         object Forbidden : ReplaceResult()
         object ClientNotFound : ReplaceResult()
         class InvalidScopeId(val id: String) : ReplaceResult()
         class ReservedScopeId(val id: String) : ReplaceResult()
         class ScopeOwnedByAnotherClient(val id: String) : ReplaceResult()
-        data class Success(val client: IClient, val scopes: List<RegisteredScopeDTO>) : ReplaceResult()
+        data class Success(val client: IClient, val scopes: List<IRegisteredScope>) : ReplaceResult()
     }
 
     private val scopeIdPattern = Regex("^[\\u0021\\u0023-\\u005B\\u005D-\\u007E]+$")
@@ -42,7 +39,7 @@ open class ClientScopesControllerService<T : IRegisteredScope>(
     open fun replace(
         authentication: IAuthorizationContext,
         clientId: UUID,
-        scopes: List<ScopeRegistration>
+        scopes: List<IScope>
     ): ReplaceResult {
         if (!canManageClientScopes(authentication, clientId))
             return ReplaceResult.Forbidden
@@ -50,7 +47,7 @@ open class ClientScopesControllerService<T : IRegisteredScope>(
         val client = clientRepository.findById(clientId)
             ?: return ReplaceResult.ClientNotFound
 
-        val desiredById = linkedMapOf<String, ScopeRegistration>()
+        val desiredById = linkedMapOf<String, IScope>()
         for (scope in scopes) {
             if (!scopeIdPattern.matches(scope.id))
                 return ReplaceResult.InvalidScopeId(scope.id)
@@ -96,7 +93,6 @@ open class ClientScopesControllerService<T : IRegisteredScope>(
 
         val updated = scopeRepository.findByClient(clientId)
             .sortedBy { it.id }
-            .map { RegisteredScopeDTO(it.id, it.description, it.isByTenant) }
 
         return ReplaceResult.Success(client, updated)
     }

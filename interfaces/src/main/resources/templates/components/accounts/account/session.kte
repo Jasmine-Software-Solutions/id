@@ -1,0 +1,35 @@
+@import com.jasminesoftwaresolutions.id.domain.models.account.ISession
+
+@param session: ISession
+@param active: Boolean
+@param revokeAction: String
+
+<tr class="hover:bg-slate-50/50 transition-colors">
+    <td class="py-4 px-2">
+        <div class="flex items-center gap-3">
+            <span class="material-symbols-outlined text-secondary" data-icon="laptop_mac">laptop_mac</span>
+            <div>
+                <p class="text-body-md font-semibold">${session.device ?: "Unknown Device"}</p>
+                <p class="text-label-sm text-secondary">At <span class="local-datetime" data-local-datetime="${session.createdAt.toEpochMilli()}"></span></p>
+            </div>
+        </div>
+    </td>
+    <td class="py-4 px-2 text-body-md">${session.location ?: "Unknown"}</td>
+    <td class="py-4 px-2 text-body-md font-mono text-slate-500">${session.ipAddress ?: "Unknown"}</td>
+    <td class="py-4 px-2">
+        @if (active)
+            <span class="inline-flex items-center gap-1.5 px-2 py-1 bg-tertiary-fixed text-on-tertiary-fixed text-label-sm rounded-full">
+                <span class="w-1.5 h-1.5 bg-tertiary-container rounded-full"></span>
+                Current
+            </span>
+        @else
+            <span class="text-label-sm text-secondary">Active</span>
+        @endif
+    </td>
+    <td class="py-4 px-2 text-right">
+        <form method="post" action="${revokeAction}">
+            <input type="hidden" name="session_id" value="${session.id.toString()}">
+            <button class="text-error text-label-sm font-semibold hover:underline" type="submit">Revoke</button>
+        </form>
+    </td>
+</tr>

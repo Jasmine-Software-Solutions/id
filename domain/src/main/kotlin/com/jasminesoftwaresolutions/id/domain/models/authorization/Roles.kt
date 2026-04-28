@@ -4,6 +4,7 @@ import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenant
 
 interface IRole {
     var id: String
+    var name: String
     var description: String
 
     var privileges: List<IPrivilege>
@@ -13,7 +14,17 @@ interface IPlatformRole : IRole
 
 object PlatformAdministrator : IPlatformRole {
     override var id: String = "platform_administrator"
-    override var description: String = "Platform Administrator"
+    override var name: String = "Platform Administrator"
+    override var description: String = "Full access to all resources"
+    override var privileges: List<IPrivilege> = listOf(
+        *PlatformPrivilege.all()
+    )
+}
+
+object PlatformTrustedClient : IPlatformRole {
+    override var id: String = "platform_trusted_client"
+    override var name: String = "Platform Trusted Client"
+    override var description: String = "Full access for applications"
     override var privileges: List<IPrivilege> = listOf(
         *PlatformPrivilege.all()
     )
@@ -21,23 +32,17 @@ object PlatformAdministrator : IPlatformRole {
 
 object PlatformClient : IPlatformRole {
     override var id: String = "platform_client"
-    override var description: String = "Platform Client"
+    override var name: String = "Platform Client"
+    override var description: String = "Limited access for applications"
     override var privileges: List<IPrivilege> = listOf(
         ClientScopesWritePrivilege
     )
 }
 
-object PlatformTrustedClient : IPlatformRole {
-    override var id: String = "platform_trusted_client"
-    override var description: String = "Platform Trusted Client"
-    override var privileges: List<IPrivilege> = listOf(
-        *PlatformPrivilege.all()
-    )
-}
-
 object PlatformMember : IPlatformRole {
     override var id: String = "platform_member"
-    override var description: String = "Platform Member"
+    override var name: String = "Platform Member"
+    override var description: String = "Limited access"
     override var privileges: List<IPrivilege> = emptyList()
 }
 
@@ -51,7 +56,8 @@ class TenantAdministrator(override var tenant: ITenant) : ITenantRole {
     }
 
     override var id: String = Companion.id
-    override var description: String = "Administrator"
+    override var name: String = "Administrator"
+    override var description: String = "Full access to organization resources"
     override var privileges: List<IPrivilege> = listOf(
         *TenantPrivilege.all(tenant)
     )
@@ -63,7 +69,8 @@ class TenantMember(override var tenant: ITenant) : ITenantRole {
     }
 
     override var id: String = Companion.id
-    override var description: String = "Member"
+    override var name: String = "Member"
+    override var description: String = "Limited access to organization resources"
     override var privileges: List<IPrivilege> = listOf(
         TenantReadPrivilege(tenant),
         TenantMembersListPrivilege(tenant),

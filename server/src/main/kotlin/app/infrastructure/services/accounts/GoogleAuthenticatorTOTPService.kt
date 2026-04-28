@@ -6,10 +6,8 @@ import com.jasminesoftwaresolutions.id.domain.models.account.ITOTPConfiguration
 import com.jasminesoftwaresolutions.id.domain.repositories.ITOTPConfigurationRepository
 import com.jasminesoftwaresolutions.id.domain.services.accounts.ITOTPService
 import com.jasminesoftwaresolutions.id.domain.services.accounts.TOTPVerificationResult
-import dev.turingcomplete.kotlinonetimepassword.GoogleAuthenticator
-import dev.turingcomplete.kotlinonetimepassword.HmacAlgorithm
-import dev.turingcomplete.kotlinonetimepassword.HmacOneTimePasswordGenerator
-import dev.turingcomplete.kotlinonetimepassword.TimeBasedOneTimePasswordConfig
+import dev.turingcomplete.kotlinonetimepassword.*
+import org.apache.commons.codec.binary.Base32
 import java.time.Instant
 import java.util.*
 import java.util.concurrent.TimeUnit
@@ -18,9 +16,10 @@ import kotlin.time.Duration.Companion.seconds
 
 class GoogleAuthenticatorTOTPService(
     private val repository: ITOTPConfigurationRepository<*>,
+    private val issuer: String,
     private val defaultAlgorithm: HmacAlgorithm = HmacAlgorithm.SHA1,
     private val defaultPeriod: Duration = 30.seconds,
-    private val defaultDigits: Int = 6
+    private val defaultDigits: Int = 6,
 ) : ITOTPService<ISetTOTPConfiguration> {
     companion object {
         private fun <T : ITOTPConfiguration> update(repository: ITOTPConfigurationRepository<T>, account: IAccount, function: T.() -> Unit) =
@@ -58,7 +57,8 @@ class GoogleAuthenticatorTOTPService(
     }
 
     override fun generate(config: ISetTOTPConfiguration, period: Long): Int {
-        val totpSecret = config.secret.clone()
+        val base32Secret = config.secret.clone()
+        val decodedSecret = Base32().decode(base32Secret)
 
         try {
             val generatorConfig = TimeBasedOneTimePasswordConfig(
@@ -68,12 +68,13 @@ class GoogleAuthenticatorTOTPService(
                 config.algorithm
             )
 
-            val hotpGenerator = HmacOneTimePasswordGenerator(totpSecret, generatorConfig)
+            val hotpGenerator = HmacOneTimePasswordGenerator(decodedSecret, generatorConfig)
             val code = hotpGenerator.generate(period)
 
             return Integer.valueOf(code)
         } finally {
-            Arrays.fill(totpSecret, 0)
+            Arrays.fill(base32Secret, 0)
+            Arrays.fill(decodedSecret, 0)
         }
     }
 
@@ -103,4 +104,14 @@ class GoogleAuthenticatorTOTPService(
 
     override fun period(config: ISetTOTPConfiguration, instant: Instant): Long
             = instant.epochSecond / config.period.inWholeSeconds
+
+    override fun uri(config: ISetTOTPConfiguration): String
+        = OtpAuthUriBuilder
+            .forTotp(config.secret)
+            .label(config.account.email, issuer)
+            .issuer(issuer)
+            .algorithm(config.algorithm)
+            .digits(config.digits)
+            .period(config.period.inWholeSeconds, TimeUnit.SECONDS)
+            .buildToString()
 }

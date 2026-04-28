@@ -1,0 +1,20 @@
+@import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenantMembership
+
+@param membership: ITenantMembership
+@param unassignAction: String
+
+<div class="flex items-center justify-between group">
+    <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-surface-container-high rounded-lg flex items-center justify-center font-bold text-primary">${membership.tenant.name.first()}</div>
+        <div>
+            <p class="text-body-md font-bold">${membership.tenant.name}</p>
+            <p class="text-label-sm text-secondary">${membership.roles.map { it.name }.joinToString(", ")}</p>
+        </div>
+    </div>
+    <form method="post" action="${unassignAction}">
+        <input type="hidden" name="tenant_id" value="${membership.tenant.id.toString()}">
+        <button class="p-2 hover:bg-slate-50 rounded-lg transition-colors text-error text-label-sm" type="submit">
+            Remove
+        </button>
+    </form>
+</div>

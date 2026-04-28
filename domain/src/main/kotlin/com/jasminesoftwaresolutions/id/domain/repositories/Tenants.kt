@@ -6,4 +6,7 @@ import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenantMembership
 interface ITenantRepository<T : ITenant> :
     IIdentifiedRepository<T>
 interface ITenantMembershipRepository<T : ITenantMembership> : IIdentifiedRepository<T>,
-    IRepositoryRelatedToAccount<List<T>>
+    IRepositoryRelatedToAccount<List<T>> {
+    fun findByTenant(tenant: ITenant): List<T> = findByTenant(tenant.id)
+    fun findByTenant(id: java.util.UUID): List<T>
+}

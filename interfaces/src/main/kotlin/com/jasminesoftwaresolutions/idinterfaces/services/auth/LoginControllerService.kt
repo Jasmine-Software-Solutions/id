@@ -1,4 +1,4 @@
-package com.jasminesoftwaresolutions.idinterfaces.services
+package com.jasminesoftwaresolutions.idinterfaces.services.auth
 
 import com.google.gson.Gson
 import com.google.gson.JsonObject

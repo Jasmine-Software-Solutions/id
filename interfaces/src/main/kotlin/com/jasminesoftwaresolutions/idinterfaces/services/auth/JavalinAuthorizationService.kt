@@ -1,6 +1,7 @@
-package com.jasminesoftwaresolutions.idinterfaces.services
+package com.jasminesoftwaresolutions.idinterfaces.services.auth
 
 import com.jasminesoftwaresolutions.id.domain.models.account.IAccount
+import com.jasminesoftwaresolutions.id.domain.models.account.IHashedSession
 import com.jasminesoftwaresolutions.id.domain.models.account.ISession
 import com.jasminesoftwaresolutions.id.domain.models.authorization.*
 import com.jasminesoftwaresolutions.id.domain.models.client.IClient
@@ -18,7 +19,7 @@ import java.util.*
 import kotlin.reflect.KClass
 
 class JavalinAuthorizationService(
-    val sessionRepository: ISessionRepository<out ISession>,
+    val sessionRepository: ISessionRepository<IHashedSession>,
     val clientRepository: IClientRepository<out IClient>,
     val tenantRepository: ITenantRepository<out ITenant>,
     val tenantMembershipRepository: ITenantMembershipRepository<out ITenantMembership>,
@@ -88,8 +89,14 @@ class JavalinAuthorizationService(
             val session = sessionRepository.findById(sessionId)
                 ?: return null
 
-            if (session.verify(sessionToken) && session.expiresAt > Instant.now())
+            if (session.verify(sessionToken) && session.expiresAt > Instant.now()) {
+                sessionRepository.update(session) {
+                    this.userAgent = request.userAgent()
+                    this.ipAddress = request.ip()
+                }
+
                 return SessionAuthorizationContext(session)
+            }
 
             return null
         }

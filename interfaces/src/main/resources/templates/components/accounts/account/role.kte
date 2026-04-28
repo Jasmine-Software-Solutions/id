@@ -1,0 +1,16 @@
+@import com.jasminesoftwaresolutions.id.domain.models.authorization.IRole
+
+@param role: IRole
+@param assigned: Boolean
+@param allowUpdateRoles: Boolean
+
+<div class="p-4 ${if (assigned) "bg-slate-50" else ""} rounded-xl border border-slate-100 flex items-center justify-between ${if (allowUpdateRoles) "cursor-pointer" else ""}">
+    <div>
+        <p class="text-body-md font-bold">${role.name}</p>
+        <p class="text-label-sm text-secondary">${role.description}</p>
+    </div>
+
+    @if (assigned)
+        <span class="material-symbols-outlined text-primary" data-icon="check_circle" data-weight="fill" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+    @endif
+</div>

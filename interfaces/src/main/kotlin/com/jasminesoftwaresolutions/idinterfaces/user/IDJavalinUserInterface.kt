@@ -8,9 +8,10 @@ import com.jasminesoftwaresolutions.id.domain.services.authentication.steps.Ente
 import com.jasminesoftwaresolutions.id.domain.services.authentication.steps.EnterTOTPAuthenticationFlowStep
 import com.jasminesoftwaresolutions.id.domain.services.authentication.steps.PollMagicLinkAuthenticationFlowStep
 import com.jasminesoftwaresolutions.idinterfaces.IDJavalinInterface
-import com.jasminesoftwaresolutions.idinterfaces.services.LoginControllerService
-import com.jasminesoftwaresolutions.idinterfaces.services.MagicLinkControllerService
-import com.jasminesoftwaresolutions.idinterfaces.services.OAuth2ControllerService
+import com.jasminesoftwaresolutions.idinterfaces.services.account.*
+import com.jasminesoftwaresolutions.idinterfaces.services.auth.LoginControllerService
+import com.jasminesoftwaresolutions.idinterfaces.services.client.OAuth2ControllerService
+import com.jasminesoftwaresolutions.idinterfaces.user.account.AjaxAccountController
 import com.jasminesoftwaresolutions.idinterfaces.user.authentication.AjaxLoginController
 import com.jasminesoftwaresolutions.idinterfaces.user.authentication.AjaxMagicLinkController
 import com.jasminesoftwaresolutions.idinterfaces.user.authentication.renderers.HTMLEnterEmailAddressAuthenticationFlowRenderer
@@ -33,6 +34,21 @@ open class IDJavalinUserInterface(server: IDServer) : IDJavalinInterface(server)
 
     var magicLinkService
         = MagicLinkControllerService(server.magicLinkRepository)
+
+    var accountControllerService
+        = AccountControllerService(server.accountRepository, server.tenantMembershipRepository)
+
+    var sessionControllerService
+        = SessionControllerService(server.sessionRepository, server.accountRepository, server.tenantMembershipRepository)
+
+    var totpConfigurationControllerService
+        = TOTPConfigurationControllerService(server.totpService, server.totpConfigurationRepository, server.accountRepository, server.tenantMembershipRepository)
+
+    var passwordService
+        = PasswordService(server.passwordRepository, server.accountRepository, server.tenantMembershipRepository)
+
+    var tenantMembershipControllerService
+        = TenantMembershipControllerService(server.tenantMembershipRepository, server.tenantRepository, server.accountRepository)
 
     open var authenticationStepRendererRegistry = AuthenticationStepRendererRegistry<IAuthenticationFlow>().apply {
         register(
@@ -64,12 +80,21 @@ open class IDJavalinUserInterface(server: IDServer) : IDJavalinInterface(server)
         val loginController = AjaxLoginController(authenticationStepRendererRegistry, loginControllerService)
         val oauth2Controller = AjaxOAuth2Controller(oAuth2ControllerService, authorizationService)
         val magicLinkController = AjaxMagicLinkController(magicLinkService)
+        val accountController = AjaxAccountController(
+            authorizationService,
+            accountControllerService,
+            sessionControllerService,
+            totpConfigurationControllerService,
+            passwordService,
+            tenantMembershipControllerService
+        )
 
         config.router.mount(AnnotatedRouting) {
             it.registerEndpoints(
                 loginController,
                 oauth2Controller,
-                magicLinkController
+                magicLinkController,
+                accountController
             )
         }
 
@@ -77,6 +102,10 @@ open class IDJavalinUserInterface(server: IDServer) : IDJavalinInterface(server)
     }
 
     override fun install(app: Javalin) {
+        app.error(400) { ctx -> ctx.render("pages/status/4xx.kte") }
+        app.error(404) { ctx -> ctx.render("pages/status/4xx.kte") }
 
+        app.error(401) { ctx -> ctx.redirect("/login") }
+        app.error(403) { ctx -> ctx.redirect("/login") }
     }
 }

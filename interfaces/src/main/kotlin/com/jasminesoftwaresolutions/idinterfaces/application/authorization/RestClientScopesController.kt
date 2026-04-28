@@ -2,13 +2,15 @@ package com.jasminesoftwaresolutions.idinterfaces.application.authorization
 
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.jasminesoftwaresolutions.id.domain.models.authorization.IRegisteredScope
-import com.jasminesoftwaresolutions.idinterfaces.services.ClientScopesControllerService
-import com.jasminesoftwaresolutions.idinterfaces.services.JavalinAuthorizationService
+import com.jasminesoftwaresolutions.id.domain.models.authorization.IScope
+import com.jasminesoftwaresolutions.id.domain.models.client.IClient
+import com.jasminesoftwaresolutions.idinterfaces.services.auth.JavalinAuthorizationService
+import com.jasminesoftwaresolutions.idinterfaces.services.client.ClientScopesControllerService
 import io.javalin.community.routing.annotations.Put
 import io.javalin.http.*
 import java.util.*
 
-class RestClientScopesControllerService<T : IRegisteredScope>(
+class RestClientScopesController<T : IRegisteredScope>(
     private val service: ClientScopesControllerService<T>,
     private val authorizationService: JavalinAuthorizationService
 ) {
@@ -21,6 +23,16 @@ class RestClientScopesControllerService<T : IRegisteredScope>(
     data class ReplaceRequest(
         @get:JsonProperty("scopes") val scopes: List<ScopePayload>?
     )
+
+    data class UnregisteredScope(
+        override val id: String,
+        override val description: String,
+        override val isByTenant: Boolean
+    ) : IScope {
+        override var client: IClient?
+            get() = throw UnsupportedOperationException()
+            set(_) = throw UnsupportedOperationException()
+    }
 
     @Put("/api/v1/clients/{client_id}/scopes")
     fun put(ctx: Context) {
@@ -41,7 +53,7 @@ class RestClientScopesControllerService<T : IRegisteredScope>(
                     ?: throw BadRequestResponse("Missing scope description")
                 val isByTenant = scope.isByTenant ?: false
 
-                ClientScopesControllerService.ScopeRegistration(id, description, isByTenant)
+                UnregisteredScope(id, description, isByTenant)
             } ?: throw BadRequestResponse("Missing scopes")
 
         when (val result = service.replace(authentication, clientId, scopes)) {

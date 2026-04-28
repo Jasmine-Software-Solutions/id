@@ -7,7 +7,7 @@ import com.jasminesoftwaresolutions.id.domain.registries.IAuthenticationStepRend
 import com.jasminesoftwaresolutions.id.domain.services.authentication.AuthenticationFlowStepRenderer
 import com.jasminesoftwaresolutions.id.domain.services.authentication.ContinueAuthenticationFlowStepResult
 import com.jasminesoftwaresolutions.id.domain.services.authentication.RetryAuthenticationFlowStepResult
-import com.jasminesoftwaresolutions.idinterfaces.services.LoginControllerService
+import com.jasminesoftwaresolutions.idinterfaces.services.auth.LoginControllerService
 import io.javalin.community.routing.annotations.Form
 import io.javalin.community.routing.annotations.Get
 import io.javalin.community.routing.annotations.Post
@@ -23,6 +23,9 @@ class AjaxLoginController<T : IAuthenticationFlow>(
 ) {
     @Get("/login")
     fun renderLogin(ctx: Context) {
+        ctx.removeCookie("session_id")
+        ctx.removeCookie("session_token")
+
         val result = service.login()
         val renderer = htmlRendererRegistry.find(Context::class, result.step)
             as AuthenticationFlowStepRenderer<T, Context, Any>

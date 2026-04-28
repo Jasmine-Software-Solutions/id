@@ -21,4 +21,6 @@ interface ITOTPService<T : ITOTPConfiguration> :
     fun verify(config: T, code: Int): TOTPVerificationResult
 
     fun period(config: T, instant: Instant): Long
+
+    fun uri(config: T): String
 }

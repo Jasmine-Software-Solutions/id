@@ -9,5 +9,5 @@ interface IAccount : IIdentified, ICreated {
     var firstName: String
     var lastName: String
 
-    val roles: Set<IPlatformRole>
+    var roles: Set<IPlatformRole>
 }

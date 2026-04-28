@@ -1,0 +1,108 @@
+@import com.jasminesoftwaresolutions.id.domain.models.account.IAccount
+@import com.jasminesoftwaresolutions.id.domain.models.account.IPassword
+@import com.jasminesoftwaresolutions.id.domain.models.account.ITOTPConfiguration
+@import com.jasminesoftwaresolutions.id.domain.models.account.ISetTOTPConfiguration
+
+@param account: IAccount
+@param password: IPassword?
+@param totpConfiguration: ITOTPConfiguration
+@param totpQrCodeUri: String?
+@param allowUpdatePassword: Boolean
+@param allowUpdateTotp: Boolean
+@param isSelf: Boolean
+
+!{ val setupTotp = totpConfiguration.enabled && (totpConfiguration as? ISetTOTPConfiguration)?.confirmedAt == null }
+
+<section class="col-span-12 lg:col-span-4 flex flex-col gap-gutter relative" id="security">
+    <div class="bg-indigo-600 rounded-xl p-gutter text-white shadow-xl relative overflow-hidden ${if (setupTotp) "z-20" else ""}">
+        <div class="absolute -right-8 -top-8 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
+        <h3 class="font-h3 text-h3 mb-2">Account Security</h3>
+
+        @if (totpConfiguration.enabled && (totpConfiguration as? ISetTOTPConfiguration)?.confirmedAt != null)
+            <p class="text-label-sm opacity-90 mb-6">Your security score is looking great! No issues found.</p>
+            <div class="flex items-center gap-2 mb-6 w-full bg-white text-indigo-600 py-2 rounded-lg font-bold text-body-md px-3">
+                <span class="material-symbols-outlined" data-icon="verified_user" data-weight="fill" style="font-variation-settings: 'FILL' 1;">verified_user</span>
+                <span class="text-body-md font-bold">No Security Recommendations</span>
+            </div>
+        @elseif (setupTotp)
+            <p class="text-label-sm opacity-90 mb-4">Scan and confirm Google Authenticator to finish setup.</p>
+            @if (totpQrCodeUri != null)
+                <img src="${totpQrCodeUri}" alt="TOTP QR code" class="w-full rounded-lg bg-white p-2 mb-4"/>
+            @endif
+            <form method="post" action="${if (isSelf) "/account/totp/confirm" else "/accounts/${account.id}/totp/confirm"}" class="mb-3">
+                <label class="sr-only" for="totp">TOTP Code</label>
+                <input id="totp" name="totp" type="text" inputmode="numeric" pattern="[0-9]*" placeholder="123456" class="w-full text-slate-900 rounded-lg px-3 py-2 mb-2"/>
+                <button class="w-full bg-white text-indigo-600 py-2 rounded-lg font-bold text-body-md hover:bg-slate-50 transition-colors" type="submit">Confirm TOTP</button>
+            </form>
+            <form method="post" action="${if (isSelf) "/account/totp/disable" else "/accounts/${account.id}/totp/disable"}">
+                <button class="w-full border border-white/30 text-white py-2 rounded-lg font-bold text-body-md hover:bg-white/10 transition-colors" disabled="${!allowUpdateTotp}" type="submit">Cancel Setup</button>
+            </form>
+        @else
+            <p class="text-label-sm opacity-90 mb-6">Your account could use some additional protection. Enable two-factor authentication.</p>
+            <div class="flex items-center gap-2 mb-6">
+                <span class="material-symbols-outlined" data-icon="verified_user" data-weight="fill" style="font-variation-settings: 'FILL' 1;">verified_user</span>
+                <span class="text-body-md font-bold">Minor Security Recommendations</span>
+            </div>
+
+            <form method="post" action="${if (isSelf) "/account/totp/enable" else "/accounts/${account.id}/totp/enable"}">
+                <button class="w-full bg-white text-indigo-600 py-2 rounded-lg font-bold text-body-md hover:bg-slate-50 transition-colors" disabled="${!allowUpdateTotp}" type="submit">
+                    <span class="text-body-md font-bold">Setup Google Authenticator</span>
+                </button>
+            </form>
+        @endif
+    </div>
+    <div class="bg-white border border-slate-200 rounded-xl p-gutter shadow-sm ${if (setupTotp) "-mt-80" else ""}">
+        <h3 class="font-h3 text-h3 mb-4 flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary" data-icon="security">security</span>
+            Sign-On Methods
+        </h3>
+        <div class="space-y-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <span class="material-symbols-outlined text-secondary" data-icon="mail">mail</span>
+                    <span class="text-body-md">Magic Link</span>
+                </div>
+                <div class="w-10 h-5 bg-primary rounded-full relative">
+                    <div class="absolute right-0.5 top-0.5 w-4 h-4 bg-white rounded-full"></div>
+                </div>
+            </div>
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <span class="material-symbols-outlined text-secondary" data-icon="password">password</span>
+                    <span class="text-body-md">Password</span>
+                </div>
+                <div class="w-10 h-5 bg-${if (password == null) "slate-200" else "primary"} rounded-full relative">
+                    <div class="absolute ${if (password == null) "left" else "right"}-0.5 top-0.5 w-4 h-4 bg-white rounded-full"></div>
+                </div>
+            </div>
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <span class="material-symbols-outlined text-secondary" data-icon="smartphone">smartphone</span>
+                    <span class="text-body-md">Google Authenticator</span>
+                </div>
+
+                !{ val totpEnableUrl = if (isSelf) "/account/totp/enable" else "/accounts/${account.id}/totp/enable" }
+                !{ val totpDisableUrl = if (isSelf) "/account/totp/disable" else "/accounts/${account.id}/totp/disable" }
+
+                <form hx-post="${if (totpConfiguration.enabled) totpDisableUrl else totpEnableUrl}" hx-trigger="click" hx-target="body" hx-swap="outerHTML">
+                    <div class="w-10 h-5 bg-${if (!totpConfiguration.enabled) "slate-200" else "primary"} rounded-full relative cursor-pointer">
+                        <div class="absolute ${if (!totpConfiguration.enabled) "left" else "right"}-0.5 top-0.5 w-4 h-4 bg-white rounded-full"></div>
+                    </div>
+                </form>
+            </div>
+
+            @if (allowUpdatePassword)
+                <form method="post" action="${if (isSelf) "/account/password" else "/accounts/${account.id}/password"}" class="space-y-2">
+                    <input name="password" type="password" placeholder="New password" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-body-md" required>
+                    <button class="w-full bg-indigo-600 text-white py-2 rounded-lg font-bold text-body-md hover:bg-indigo-500 transition-colors" type="submit">
+                        @if (password != null)
+                            Update Password
+                        @else
+                            Create Password
+                        @endif
+                    </button>
+                </form>
+            @endif
+        </div>
+    </div>
+</section>

@@ -1,0 +1,31 @@
+@import com.jasminesoftwaresolutions.id.domain.models.account.IAccount
+@import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenantMembership
+
+@param account: IAccount
+@param memberships: List<ITenantMembership>
+@param allowUpdateMemberships: Boolean
+@param isSelf: Boolean
+
+<div class="col-span-12 lg:col-span-6" id="organizations">
+    <section class="bg-white border border-slate-200 rounded-xl shadow-sm p-gutter h-full">
+        <div class="flex items-center gap-3 mb-6">
+            <span class="p-2 bg-slate-50 text-slate-600 rounded-lg material-symbols-outlined" data-icon="corporate_fare">corporate_fare</span>
+            <h3 class="font-h3 text-h3">Organizations</h3>
+        </div>
+        <div class="space-y-4">
+            @for (membership in memberships)
+                @template.components.accounts.account.organization(
+                    membership = membership,
+                    unassignAction = "${if (isSelf) "/account/memberships/unassign" else "/accounts/${account.id.toString()}/memberships/unassign"}"
+                )
+            @endfor
+
+            @if (allowUpdateMemberships)
+                <form method="post" action="${if (isSelf) "/account/memberships/assign" else "/accounts/${account.id.toString()}/memberships/assign"}" class="flex items-center gap-2">
+                    <input name="tenant_id" type="text" placeholder="Tenant UUID" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-label-sm" required>
+                    <button class="px-3 py-2 border border-slate-300 rounded-lg text-label-sm font-semibold hover:bg-slate-50" type="submit">Assign</button>
+                </form>
+            @endif
+        </div>
+    </section>
+</div>

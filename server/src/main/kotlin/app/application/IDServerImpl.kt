@@ -125,7 +125,8 @@ class IDServerImpl : IDServer {
     override var sessionService: ISessionService<ISession> = StandardSessionService(sessionRepository, 1.hours)
 
     override var totpService: ITOTPService<ISetTOTPConfiguration> = GoogleAuthenticatorTOTPService(
-        totpConfigurationRepository
+        totpConfigurationRepository,
+        issuer = "Jasmine ID"
     )
 
     override var authenticationService: IAuthenticationService<IAuthenticationFlow> = StandardAuthenticationService(

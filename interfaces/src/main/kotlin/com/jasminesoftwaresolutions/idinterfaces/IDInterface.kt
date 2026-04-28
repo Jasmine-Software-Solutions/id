@@ -1,7 +1,7 @@
 package com.jasminesoftwaresolutions.idinterfaces
 
 import com.jasminesoftwaresolutions.id.domain.IDServer
-import com.jasminesoftwaresolutions.idinterfaces.services.JavalinAuthorizationService
+import com.jasminesoftwaresolutions.idinterfaces.services.auth.JavalinAuthorizationService
 import io.javalin.Javalin
 import io.javalin.config.JavalinConfig
 

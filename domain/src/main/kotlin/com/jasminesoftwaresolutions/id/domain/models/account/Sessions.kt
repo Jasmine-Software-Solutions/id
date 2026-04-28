@@ -13,6 +13,12 @@ interface ISession : IIdentified,
 
     var token: String
 
+    val device: String?
+        get() = null
+
+    val location: String?
+        get() = null
+
     fun verify(token: String): Boolean
 }
 

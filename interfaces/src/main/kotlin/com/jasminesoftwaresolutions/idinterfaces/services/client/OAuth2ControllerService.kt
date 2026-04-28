@@ -1,4 +1,4 @@
-package com.jasminesoftwaresolutions.idinterfaces.services
+package com.jasminesoftwaresolutions.idinterfaces.services.client
 
 import com.jasminesoftwaresolutions.id.domain.models.SecureToken
 import com.jasminesoftwaresolutions.id.domain.models.account.IAccount

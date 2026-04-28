@@ -88,7 +88,7 @@ open class JWTTokenService (
 
     private fun generateRoleInfo(role: IRole) = JsonObject().apply {
         addProperty("id", role.id)
-        addProperty("description", role.description)
+        addProperty("description", role.name)
 
         if (role is ITenantRole)
             addProperty("tenant_id", role.tenant.id.toString())
