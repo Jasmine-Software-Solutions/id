@@ -18,11 +18,6 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter")
 
     api("org.slf4j:slf4j-simple:2.0.3")
-    api("org.jetbrains.exposed:exposed-core:0.40.1")
-    api("org.jetbrains.exposed:exposed-dao:0.40.1")
-    api("org.jetbrains.exposed:exposed-jdbc:0.40.1")
-
-    api("io.github.cdimascio:dotenv-kotlin:6.4.1")
 
     api("com.mysql:mysql-connector-j:9.3.0")
     api("org.postgresql:postgresql:42.7.4")
@@ -42,11 +37,6 @@ dependencies {
     implementation("io.jsonwebtoken:jjwt-api:0.13.0")
     runtimeOnly("io.jsonwebtoken:jjwt-impl:0.13.0")
     runtimeOnly("io.jsonwebtoken:jjwt-gson:0.13.0")
-
-    implementation("gg.jte:jte:3.1.16")
-    implementation("gg.jte:jte-watcher:3.1.15")
-
-    implementation("gg.jte:jte-kotlin:3.1.15")
 
     implementation("io.javalin:javalin:6.6.0")
     implementation("io.javalin:javalin-rendering:6.4.0")

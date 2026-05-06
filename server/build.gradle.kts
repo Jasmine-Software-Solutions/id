@@ -15,6 +15,14 @@ repositories {
     mavenLocal()
 
     maven("https://maven.reposilite.com/snapshots")
+
+    maven {
+        url = uri("https://jasmine-software-solutions-435238036697.d.codeartifact.us-east-1.amazonaws.com/maven/jte/")
+        credentials {
+            username = "aws"
+            password = System.getenv("CODEARTIFACT_AUTH_TOKEN")
+        }
+    }
 }
 
 dependencies {
@@ -78,13 +86,11 @@ jte {
 
 tasks.test {
     useJUnitPlatform()
-
-    environment("ENV_FILE_PATH", "test.env")
 }
 
 tasks.withType<Jar> {
     manifest {
-        attributes["Main-Class"] = "app.ApplicationKt"
+        attributes["Main-Class"] = "app.application.ApplicationKt"
     }
 }
 

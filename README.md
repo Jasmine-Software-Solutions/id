@@ -107,6 +107,42 @@ ID uses a `.env` file for configuration via [cdimascio/dotenv-kotlin](https://gi
 4. **Access the application:**
    - Web UI: http://localhost:80
 
+## CodeArtifact
+
+`id` now supports consuming Gradle plugins and publishing module artifacts through AWS CodeArtifact.
+
+### Required environment variables
+
+| Variable | Purpose |
+|---|---|
+| `CODEARTIFACT_DOMAIN` | CodeArtifact domain name |
+| `CODEARTIFACT_DOMAIN_OWNER` | AWS account ID that owns the domain |
+| `CODEARTIFACT_REGION` | AWS region for CodeArtifact |
+| `CODEARTIFACT_PLUGIN_REPOSITORY` | Maven repository used for Gradle plugin resolution |
+| `CODEARTIFACT_MAVEN_REPOSITORY` | Maven repository used for publishing `domain`, `interfaces`, and `server` |
+| `CODEARTIFACT_AUTH_TOKEN` | CodeArtifact auth token (use username `aws`) |
+
+### Local publish example
+
+```bash
+export CODEARTIFACT_AUTH_TOKEN=$(aws codeartifact get-authorization-token \
+  --domain "$CODEARTIFACT_DOMAIN" \
+  --domain-owner "$CODEARTIFACT_DOMAIN_OWNER" \
+  --query authorizationToken \
+  --output text)
+
+./gradlew :domain:publish :interfaces:publish :server:publish
+```
+
+### CI deployment
+
+GitHub Actions workflow: `.github/workflows/publish-codeartifact.yml`
+
+Configure:
+
+- Repository variables: `CODEARTIFACT_DOMAIN`, `CODEARTIFACT_DOMAIN_OWNER`, `CODEARTIFACT_REGION`, `CODEARTIFACT_PLUGIN_REPOSITORY`, `CODEARTIFACT_MAVEN_REPOSITORY`
+- Repository secret: `AWS_ROLE_TO_ASSUME`
+
 ## License
 
 © Jasmine Software Solutions, LLC. All rights reserved.
