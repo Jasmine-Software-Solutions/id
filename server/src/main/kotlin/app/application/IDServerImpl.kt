@@ -9,8 +9,8 @@ import app.infrastructure.repositories.tenants.ExposedTenantMembershipRepository
 import app.infrastructure.repositories.tenants.ExposedTenantRepository
 import app.infrastructure.services.AES256EncryptionFunction
 import app.infrastructure.services.Argon2HashFunction
-import app.infrastructure.services.EmailService
 import app.infrastructure.services.HmacSHA256SigningFunction
+import app.infrastructure.services.ResendEmailService
 import app.infrastructure.services.accounts.AsymmetricJWTService
 import app.infrastructure.services.accounts.EmailMagicLinkService
 import app.infrastructure.services.accounts.GoogleAuthenticatorTOTPService
@@ -101,15 +101,9 @@ class IDServerImpl : IDServer {
 
     override var delegatedSessionRepository: IDelegatedSessionRepository<IDelegatedSession> = ExposedDelegatedSessionRepository(hashFunction, sessionRepository, clientRepository, tenantRepository, scopeRepository, scopeRegistry)
 
-    override var emailService: IEmailService = EmailService(
-        Env.SMTP_AUTH,
-        Env.SMTP_STARTTLS_ENABLE,
-        Env.SMTP_HOST,
-        Env.SMTP_PORT,
-        Env.SMTP_SSL_TRUST,
-        Env.SMTP_USERNAME,
-        Env.SMTP_PASSWORD,
-        Env.SMTP_EMAIL
+    override var emailService: IEmailService = ResendEmailService(
+        Env.RESEND_API_KEY,
+        Env.RESEND_SENDER,
     )
 
     override var jwtService: IJWTService = AsymmetricJWTService("RSA", Env.JWT_PUBLIC_KEY!!, Env.JWT_PRIVATE_KEY!!, "https://id.jasmine.software")
@@ -228,7 +222,7 @@ class IDServerImpl : IDServer {
                 handler = PollMagicLinkAuthenticationFlowStep.Handler<IAuthenticationFlow, IMagicLink>(
                     magicLinkRepository,
                     magicLinkService,
-                    sender = Env.SMTP_EMAIL,
+                    sender = Env.RESEND_SENDER.second,
                 )
             )
 

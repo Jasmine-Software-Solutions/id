@@ -26,19 +26,8 @@ object Env {
 
     val HOT_RELOAD_JTE_TEMPLATES = dotenv["HOT_RELOAD_JTE_TEMPLATES"]?.toBooleanStrictOrNull() ?: false
 
-    val SMTP_ENABLED = dotenv["SMTP_ENABLED"]?.toBooleanStrictOrNull() ?: false
-
-    val SMTP_AUTH = dotenv["SMTP_AUTH"]?.toBooleanStrictOrNull() ?: true
-    val SMTP_STARTTLS_ENABLE = dotenv["SMTP_STARTTLS_ENABLE"]?.toBooleanStrictOrNull() ?: true
-    val SMTP_HOST = dotenv["SMTP_HOST"]
-    val SMTP_PORT = dotenv["SMTP_PORT"]?.toIntOrNull() ?: 25
-    val SMTP_SSL_TRUST = dotenv["SMTP_SSL_TRUST"]
-
-    val SMTP_USERNAME = dotenv["SMTP_USERNAME"]
-    val SMTP_PASSWORD = dotenv["SMTP_PASSWORD"]
-    val SMTP_EMAIL = dotenv["SMTP_EMAIL"]
-
-    val SUPPORT_EMAIL = dotenv["SUPPORT_EMAIL"] ?: SMTP_EMAIL
+    val RESEND_API_KEY = dotenv["RESEND_API_KEY"] ?: ""
+    val RESEND_SENDER = (dotenv["RESEND_SENDER_NAME"] ?: "") to (dotenv["RESEND_SENDER_EMAIL"] ?: "")
 
     val ENCRYPTED_PARAMETER_SECRET = dotenv["ENCRYPTED_PARAMETER_SECRET"] ?: ""
     val ENCRYPTED_PARAMETER_SALT = dotenv["ENCRYPTED_PARAMETER_SALT"] ?: ""

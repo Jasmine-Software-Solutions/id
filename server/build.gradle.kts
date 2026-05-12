@@ -32,29 +32,29 @@ dependencies {
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
 
-    api("org.slf4j:slf4j-simple:2.0.3")
-    api("org.jetbrains.exposed:exposed-core:0.40.1")
-    api("org.jetbrains.exposed:exposed-dao:0.40.1")
-    api("org.jetbrains.exposed:exposed-jdbc:0.40.1")
+    implementation("org.slf4j:slf4j-simple:2.0.3")
+    implementation("org.jetbrains.exposed:exposed-core:0.40.1")
+    implementation("org.jetbrains.exposed:exposed-dao:0.40.1")
+    implementation("org.jetbrains.exposed:exposed-jdbc:0.40.1")
 
-    api("io.github.cdimascio:dotenv-kotlin:6.4.1")
+    implementation("io.github.cdimascio:dotenv-kotlin:6.4.1")
 
-    api("io.jsonwebtoken:jjwt-api:0.13.0")
+    implementation("io.jsonwebtoken:jjwt-api:0.13.0")
     runtimeOnly("io.jsonwebtoken:jjwt-impl:0.13.0")
     runtimeOnly("io.jsonwebtoken:jjwt-gson:0.13.0")
 
-    api("com.mysql:mysql-connector-j:9.3.0")
-    api("org.postgresql:postgresql:42.7.4")
-    api("com.zaxxer:HikariCP:4.0.3")
+    implementation("com.mysql:mysql-connector-j:9.3.0")
+    implementation("org.postgresql:postgresql:42.7.4")
+    implementation("com.zaxxer:HikariCP:4.0.3")
 
-    api("de.mkammerer:argon2-jvm:2.12")
+    implementation("de.mkammerer:argon2-jvm:2.12")
 
-    api("commons-codec:commons-codec:1.17.1")
-    api("dev.turingcomplete:kotlin-onetimepassword:2.4.1")
+    implementation("commons-codec:commons-codec:1.17.1")
+    implementation("dev.turingcomplete:kotlin-onetimepassword:2.4.1")
 
-    api("org.eclipse.angus:angus-mail:2.0.1")
+    implementation("org.eclipse.angus:angus-mail:2.0.1")
 
-    api("com.fasterxml.jackson.core:jackson-annotations:2.18.3")
+    implementation("com.fasterxml.jackson.core:jackson-annotations:2.18.3")
 
     implementation("com.google.code.gson:gson:2.13.2")
 
@@ -73,6 +73,8 @@ dependencies {
     implementation("io.javalin.community.routing:routing-core:6.4.1-SNAPSHOT")
     implementation("io.javalin.community.routing:routing-annotated:6.4.1-SNAPSHOT")
     implementation("io.javalin.community.routing:routing-coroutines:6.4.1-SNAPSHOT")
+
+    implementation("com.resend:resend-java:+")
 }
 
 jte {
