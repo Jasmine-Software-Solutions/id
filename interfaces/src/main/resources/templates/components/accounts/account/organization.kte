@@ -1,7 +1,14 @@
+@import com.jasminesoftwaresolutions.id.domain.models.account.IAccount
 @import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenantMembership
 
+@param account: IAccount
 @param membership: ITenantMembership
-@param unassignAction: String
+@param isSelf: Boolean
+
+!{ val action = if (isSelf)
+         "/account/memberships/unassign"
+     else "/accounts/${account.id.toString()}/memberships/unassign"
+}
 
 <div class="flex items-center justify-between group">
     <div class="flex items-center gap-3">
@@ -11,10 +18,14 @@
             <p class="text-label-sm text-secondary">${membership.roles.map { it.name }.joinToString(", ")}</p>
         </div>
     </div>
-    <form method="post" action="${unassignAction}">
+    <form method="post" action="${action}">
         <input type="hidden" name="tenant_id" value="${membership.tenant.id.toString()}">
         <button class="p-2 hover:bg-slate-50 rounded-lg transition-colors text-error text-label-sm" type="submit">
-            Remove
+            @if (isSelf)
+                Leave
+            @else
+                Remove
+            @endif
         </button>
     </form>
 </div>

@@ -44,8 +44,8 @@ open class IDJavalinUserInterface(server: IDServer) : IDJavalinInterface(server)
     var totpConfigurationControllerService
         = TOTPConfigurationControllerService(server.totpService, server.totpConfigurationRepository, server.accountRepository, server.tenantMembershipRepository)
 
-    var passwordService
-        = PasswordService(server.passwordRepository, server.accountRepository, server.tenantMembershipRepository)
+    var passwordControllerService
+        = PasswordControllerService(server.passwordRepository, server.accountRepository, server.tenantMembershipRepository)
 
     var tenantMembershipControllerService
         = TenantMembershipControllerService(server.tenantMembershipRepository, server.tenantRepository, server.accountRepository)
@@ -85,7 +85,7 @@ open class IDJavalinUserInterface(server: IDServer) : IDJavalinInterface(server)
             accountControllerService,
             sessionControllerService,
             totpConfigurationControllerService,
-            passwordService,
+            passwordControllerService,
             tenantMembershipControllerService
         )
 

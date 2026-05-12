@@ -2,11 +2,15 @@ package com.jasminesoftwaresolutions.idinterfaces.services.account
 
 import com.jasminesoftwaresolutions.id.domain.models.account.IAccount
 import com.jasminesoftwaresolutions.id.domain.models.account.ISession
-import com.jasminesoftwaresolutions.id.domain.models.authorization.*
+import com.jasminesoftwaresolutions.id.domain.models.authorization.AccountsReadPrivilege
+import com.jasminesoftwaresolutions.id.domain.models.authorization.AccountsWritePrivilege
+import com.jasminesoftwaresolutions.id.domain.models.authorization.IAccountAuthorizationContext
+import com.jasminesoftwaresolutions.id.domain.models.authorization.IAuthorizationContext
 import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenantMembership
 import com.jasminesoftwaresolutions.id.domain.repositories.IAccountRepository
 import com.jasminesoftwaresolutions.id.domain.repositories.ISessionRepository
 import com.jasminesoftwaresolutions.id.domain.repositories.ITenantMembershipRepository
+import com.jasminesoftwaresolutions.idinterfaces.services.auth.InterfacePolicy
 import java.time.Instant
 import java.util.*
 
@@ -43,87 +47,47 @@ open class SessionControllerService<T : ISession>(
         object NotFound : RevokeAllSessionsResult()
     }
 
-    private fun accountFrom(authentication: IAuthorizationContext) =
-        (authentication as? IAccountAuthorizationContext)
-            ?.takeIf { authentication !is IScopedAuthorizationContext }
-            ?.account
-
-    private fun hasAccountsWritePrivilege(authentication: IAuthorizationContext): Boolean =
-        authentication.privileges.any { it.id == AccountsWritePrivilege.id }
-
-    private fun hasMembersWritePrivilege(authentication: IAuthorizationContext): Boolean =
-        authentication.privileges.any { it.id == MembersWritePrivilege.id && it !is ITenantPrivilege }
-
-    private fun canReadAccount(authentication: IAuthorizationContext, account: IAccount): Boolean {
-        if (authentication.privileges.any { it.id == AccountsReadPrivilege.id })
-            return true
-        if (authentication.privileges.any { it.id == MembersReadPrivilege.id && it !is ITenantPrivilege })
-            return true
-
-        val readableTenantIds = authentication.privileges
-            .filterIsInstance<ITenantPrivilege>()
-            .filter { it.id == MembersReadPrivilege.id }
-            .map { it.tenant.id }
-            .toSet()
-        if (readableTenantIds.isEmpty())
-            return false
-
-        return tenantMembershipRepository.findByAccount(account.id)
-            .any { it.tenant.id in readableTenantIds }
-    }
-
     private fun resolveAccount(authentication: IAuthorizationContext, accountId: UUID?): ResolveAccountResult {
-        val activeAccount = accountFrom(authentication)
+        val activeAccount = (authentication as? IAccountAuthorizationContext)?.account
+            ?.takeIf { InterfacePolicy.IsUnscopedAccountContext.passes(authentication) }
             ?: return ResolveAccountResult.Unauthorized
 
-        if (accountId == null || accountId == activeAccount.id)
+        if (InterfacePolicy.IsSelf(accountId).passes(authentication))
             return ResolveAccountResult.Success(activeAccount)
+
+        if (accountId == null)
+            return ResolveAccountResult.Unauthorized
 
         val requestedAccount = accountRepository.findById(accountId)
             ?: return ResolveAccountResult.NotFound
 
-        if (!canReadAccount(authentication, requestedAccount))
+        if (!InterfacePolicy.HasPlatformPrivilege(AccountsReadPrivilege).passes(authentication))
             return ResolveAccountResult.Forbidden
 
         return ResolveAccountResult.Success(requestedAccount)
     }
 
-    private fun canRevokeWithTenantMembersWritePrivilege(authentication: IAuthorizationContext, account: IAccount): Boolean {
-        val writableTenantIds = authentication.privileges
-            .filterIsInstance<ITenantPrivilege>()
-            .filter { it.id == MembersWritePrivilege.id }
-            .map { it.tenant.id }
-            .toSet()
-        if (writableTenantIds.isEmpty())
-            return false
-
-        return tenantMembershipRepository.findByAccount(account.id)
-            .any { it.tenant.id in writableTenantIds }
-    }
-
     private fun resolveAccountForRevoke(authentication: IAuthorizationContext, accountId: UUID?): ResolveAccountResult {
-        val activeAccount = accountFrom(authentication)
+        val activeAccount = (authentication as? IAccountAuthorizationContext)?.account
+            ?.takeIf { InterfacePolicy.IsUnscopedAccountContext.passes(authentication) }
+            ?: return ResolveAccountResult.Unauthorized
 
-        if (accountId == null && activeAccount != null)
+        if (InterfacePolicy.IsSelf(accountId).passes(authentication))
             return ResolveAccountResult.Success(activeAccount)
 
-        if (accountId != null && activeAccount != null && accountId == activeAccount.id)
-            return ResolveAccountResult.Success(activeAccount)
+        if (accountId == null)
+            return ResolveAccountResult.Unauthorized
 
-        val targetId = accountId ?: return ResolveAccountResult.Unauthorized
-        val requestedAccount = accountRepository.findById(targetId)
+        val requestedAccount = accountRepository.findById(accountId)
             ?: return ResolveAccountResult.NotFound
 
-        if (hasAccountsWritePrivilege(authentication))
-            return ResolveAccountResult.Success(requestedAccount)
+        if (!InterfacePolicy.HasPlatformPrivilege(AccountsReadPrivilege).passes(authentication))
+            return ResolveAccountResult.Forbidden
 
-        if (hasMembersWritePrivilege(authentication))
-            return ResolveAccountResult.Success(requestedAccount)
+        if (!InterfacePolicy.HasPlatformPrivilege(AccountsWritePrivilege).passes(authentication))
+            return ResolveAccountResult.Forbidden
 
-        if (canRevokeWithTenantMembersWritePrivilege(authentication, requestedAccount))
-            return ResolveAccountResult.Success(requestedAccount)
-
-        return ResolveAccountResult.Forbidden
+        return ResolveAccountResult.Success(requestedAccount)
     }
 
     open fun getAll(authentication: IAuthorizationContext, accountId: UUID? = null): GetSessionsResult {

@@ -48,6 +48,7 @@ interface IDelegatedSessionAuthorizationContext : ISessionAuthorizationContext, 
 }
 
 interface IServiceSessionAuthorizationContext : IClientAuthorizationContext, IScopedAuthorizationContext, IExpiringAuthorizationContext {
+    val tenant: ITenant?
     val token: IServiceSessionAccessToken
 
     override val expiresAt: Instant

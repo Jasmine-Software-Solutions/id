@@ -19,7 +19,7 @@ class AjaxAccountController(
     private val accountService: AccountControllerService,
     private val sessionService: SessionControllerService<IHashedSession>,
     private val totpConfigurationService: TOTPConfigurationControllerService,
-    private val passwordService: PasswordService<IHashedPassword>,
+    private val passwordService: PasswordControllerService<IHashedPassword>,
     private val tenantMembershipService: TenantMembershipControllerService<ITenantMembership, ITenant>
 ) {
     private fun Context.requireSession(): ISessionAuthorizationContext {
@@ -63,10 +63,10 @@ class AjaxAccountController(
         }
 
         val password = when (val result = passwordService.last(authentication, targetAccountId)) {
-            is PasswordService.LastResult.Success -> result.password
-            is PasswordService.LastResult.Unauthorized -> throw UnauthorizedResponse()
-            is PasswordService.LastResult.Forbidden -> throw ForbiddenResponse()
-            is PasswordService.LastResult.NotFound -> throw NotFoundResponse("Account not found")
+            is PasswordControllerService.LastResult.Success -> result.password
+            is PasswordControllerService.LastResult.Unauthorized -> throw UnauthorizedResponse()
+            is PasswordControllerService.LastResult.Forbidden -> throw ForbiddenResponse()
+            is PasswordControllerService.LastResult.NotFound -> throw NotFoundResponse("Account not found")
             else -> throw BadRequestResponse()
         }
 
@@ -167,10 +167,10 @@ class AjaxAccountController(
             ?: throw BadRequestResponse("Missing password")
 
         when (passwordService.update(authentication, password)) {
-            is PasswordService.UpdateResult.Success -> redirectToAccount(ctx, null, "Password updated")
-            is PasswordService.UpdateResult.Unauthorized -> throw UnauthorizedResponse()
-            is PasswordService.UpdateResult.Forbidden -> throw ForbiddenResponse()
-            is PasswordService.UpdateResult.NotFound -> throw NotFoundResponse("Account not found")
+            is PasswordControllerService.UpdateResult.Success -> redirectToAccount(ctx, null, "Password updated")
+            is PasswordControllerService.UpdateResult.Unauthorized -> throw UnauthorizedResponse()
+            is PasswordControllerService.UpdateResult.Forbidden -> throw ForbiddenResponse()
+            is PasswordControllerService.UpdateResult.NotFound -> throw NotFoundResponse("Account not found")
         }
     }
 
@@ -181,10 +181,10 @@ class AjaxAccountController(
             ?: throw BadRequestResponse("Missing password")
 
         when (passwordService.update(authentication, password, id)) {
-            is PasswordService.UpdateResult.Success -> redirectToAccount(ctx, id, "Password updated")
-            is PasswordService.UpdateResult.Unauthorized -> throw UnauthorizedResponse()
-            is PasswordService.UpdateResult.Forbidden -> throw ForbiddenResponse()
-            is PasswordService.UpdateResult.NotFound -> throw NotFoundResponse("Account not found")
+            is PasswordControllerService.UpdateResult.Success -> redirectToAccount(ctx, id, "Password updated")
+            is PasswordControllerService.UpdateResult.Unauthorized -> throw UnauthorizedResponse()
+            is PasswordControllerService.UpdateResult.Forbidden -> throw ForbiddenResponse()
+            is PasswordControllerService.UpdateResult.NotFound -> throw NotFoundResponse("Account not found")
         }
     }
 

@@ -15,15 +15,22 @@
         <div class="space-y-4">
             @for (membership in memberships)
                 @template.components.accounts.account.organization(
+                    account = account,
                     membership = membership,
-                    unassignAction = "${if (isSelf) "/account/memberships/unassign" else "/accounts/${account.id.toString()}/memberships/unassign"}"
+                    isSelf = isSelf
                 )
             @endfor
 
             @if (allowUpdateMemberships)
                 <form method="post" action="${if (isSelf) "/account/memberships/assign" else "/accounts/${account.id.toString()}/memberships/assign"}" class="flex items-center gap-2">
                     <input name="tenant_id" type="text" placeholder="Tenant UUID" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-label-sm" required>
-                    <button class="px-3 py-2 border border-slate-300 rounded-lg text-label-sm font-semibold hover:bg-slate-50" type="submit">Assign</button>
+                    <button class="px-3 py-2 border border-slate-300 rounded-lg text-label-sm font-semibold hover:bg-slate-50" type="submit">
+                        @if (isSelf)
+                            Join
+                        @else
+                            Assign
+                        @endif
+                    </button>
                 </form>
             @endif
         </div>

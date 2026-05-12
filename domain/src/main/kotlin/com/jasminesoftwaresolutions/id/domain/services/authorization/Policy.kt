@@ -6,6 +6,8 @@ package com.jasminesoftwaresolutions.id.domain.services.authorization
 interface Policy<TContext> {
     fun evaluate(context: TContext): PolicyResult<TContext>
 
+    fun passes(context: TContext): Boolean = evaluate(context) is PolicyResult.Pass
+
     object Allow : Policy<Any> {
         override fun evaluate(context: Any): PolicyResult<Any> = PolicyResult.Pass(this, context)
     }

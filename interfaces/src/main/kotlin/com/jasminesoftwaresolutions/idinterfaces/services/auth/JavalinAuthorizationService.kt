@@ -65,7 +65,7 @@ class JavalinAuthorizationService(
             }
     }
 
-    inner class ServiceSessionAuthorizationContext(override val client: IClient, override val token: IServiceSessionAccessToken) : IServiceSessionAuthorizationContext {
+    inner class ServiceSessionAuthorizationContext(override val client: IClient, override val tenant: ITenant?, override val token: IServiceSessionAccessToken) : IServiceSessionAuthorizationContext {
         override val scopes: Set<IScope>?
             get() = token.scopes
 
@@ -137,7 +137,7 @@ class JavalinAuthorizationService(
         val decodedToken = tokenService.decode(token)
 
         if (decodedToken is IServiceSessionAccessToken)
-            return ServiceSessionAuthorizationContext(decodedToken.subject as IClient, decodedToken)
+            return ServiceSessionAuthorizationContext(decodedToken.subject as IClient, decodedToken.tenant, decodedToken)
 
         if (decodedToken is IDelegatedSessionAccessToken)
             return DelegatedSessionAuthorizationContext(decodedToken.session, decodedToken.tenant, decodedToken)
@@ -146,10 +146,101 @@ class JavalinAuthorizationService(
     }
 }
 
-sealed class InterfacePolicy : Policy<IAuthorizationContext> {
-    class HasPrivilege(val privilege: IPrivilege) : InterfacePolicy() {
+abstract class InterfacePolicy : Policy<IAuthorizationContext> {
+    data object IsUnscopedAccountContext : InterfacePolicy() {
         override fun evaluate(context: IAuthorizationContext): PolicyResult<IAuthorizationContext> {
-            if (context.privileges.contains(privilege))
+            if (context is IAccountAuthorizationContext && context !is IScopedAuthorizationContext)
+                return PolicyResult.Pass(this, context)
+
+            return PolicyResult.Fail()
+        }
+    }
+
+    class HasPlatformPrivilege(val privilege: PlatformPrivilege) : InterfacePolicy() {
+        override fun evaluate(context: IAuthorizationContext): PolicyResult<IAuthorizationContext> {
+            if (context.privileges.any { it.id == privilege.id && it !is ITenantPrivilege })
+                return PolicyResult.Pass(this, context)
+
+            return PolicyResult.Fail()
+        }
+    }
+
+    class HasTenantPrivilege(
+        val privilege: ITenantPrivilege
+    ) : InterfacePolicy() {
+        companion object {
+            fun inAnyLikeMembership(
+                membershipRepository: ITenantMembershipRepository<out ITenantMembership>,
+                privilege: UnassignedTenantPrivilege
+            ): InterfacePolicy {
+                return object : InterfacePolicy() {
+                    override fun evaluate(context: IAuthorizationContext): PolicyResult<IAuthorizationContext> {
+                        if (context !is IAccountAuthorizationContext)
+                            return PolicyResult.Fail()
+
+                        var memberships = membershipRepository.findByAccount(context.account)
+                        if (context is IDelegatedSessionAuthorizationContext)
+                            memberships = memberships.filter { it.tenant.id == context.tenant?.id }
+
+                        val policy = Policy.Or<IAuthorizationContext>(memberships.map {
+                            HasTenantPrivilege(TenantMembersReadPrivilege(it.tenant))
+                        })
+
+                        return policy.evaluate(context)
+                    }
+                }
+            }
+        }
+
+        override fun evaluate(context: IAuthorizationContext): PolicyResult<IAuthorizationContext> {
+            if (context.privileges.any {
+                    it.id == privilege.id &&
+                        it is ITenantPrivilege &&
+                        it.tenant.id == privilege.tenant.id
+                }) return PolicyResult.Pass(this, context)
+
+            return PolicyResult.Fail()
+        }
+    }
+
+    class HasPlatformPrivilegeOrTenantPrivilege(
+        val privilege: PlatformPrivilege,
+        val tenantPrivilege: ITenantPrivilege
+    ) : InterfacePolicy() {
+        companion object {
+            fun inAnyLikeMembership(
+                membershipRepository: ITenantMembershipRepository<out ITenantMembership>,
+                privilege: PlatformPrivilege,
+                tenantPrivilege: UnassignedTenantPrivilege
+            ): InterfacePolicy {
+                return object : InterfacePolicy() {
+                    override fun evaluate(context: IAuthorizationContext): PolicyResult<IAuthorizationContext> {
+                        if (context !is IAccountAuthorizationContext)
+                            return PolicyResult.Fail()
+
+                        var memberships = membershipRepository.findByAccount(context.account)
+                        if (context is IDelegatedSessionAuthorizationContext)
+                            memberships = memberships.filter { it.tenant.id == context.tenant?.id }
+
+                        val policy = Policy.Or<IAuthorizationContext>(memberships.map {
+                            HasTenantPrivilege(TenantMembersReadPrivilege(it.tenant))
+                        } + HasPlatformPrivilege(privilege))
+
+                        return policy.evaluate(context)
+                    }
+                }
+            }
+        }
+
+        override fun evaluate(context: IAuthorizationContext): PolicyResult<IAuthorizationContext> {
+            if (context.privileges.any { it.id == privilege.id && it !is ITenantPrivilege })
+                return PolicyResult.Pass(this, context)
+
+            if (context.privileges.any {
+                    it.id == tenantPrivilege.id &&
+                        it is ITenantPrivilege &&
+                        it.tenant.id == tenantPrivilege.tenant.id
+            })
                 return PolicyResult.Pass(this, context)
 
             return PolicyResult.Fail()
@@ -162,6 +253,18 @@ sealed class InterfacePolicy : Policy<IAuthorizationContext> {
                 return PolicyResult.Pass(this, context)
 
             if (context.scopes == null || context.scopes!!.any { it.id == scope.id })
+                return PolicyResult.Pass(this, context)
+
+            return PolicyResult.Fail()
+        }
+    }
+
+    class IsSelf(val accountId: UUID?) : InterfacePolicy() {
+        override fun evaluate(context: IAuthorizationContext): PolicyResult<IAuthorizationContext> {
+            if (context !is IAccountAuthorizationContext || context is IScopedAuthorizationContext)
+                return PolicyResult.Fail()
+
+            if (accountId == null || context.account.id == accountId)
                 return PolicyResult.Pass(this, context)
 
             return PolicyResult.Fail()

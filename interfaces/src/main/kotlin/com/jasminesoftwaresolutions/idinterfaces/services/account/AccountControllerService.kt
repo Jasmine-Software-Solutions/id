@@ -6,6 +6,9 @@ import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenant
 import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenantMembership
 import com.jasminesoftwaresolutions.id.domain.repositories.IAccountRepository
 import com.jasminesoftwaresolutions.id.domain.repositories.ITenantMembershipRepository
+import com.jasminesoftwaresolutions.id.domain.services.authorization.Policy
+import com.jasminesoftwaresolutions.id.domain.services.authorization.PolicyResult
+import com.jasminesoftwaresolutions.idinterfaces.services.auth.InterfacePolicy
 import org.jetbrains.kotlin.com.google.common.collect.Streams
 import java.util.*
 import java.util.stream.Collectors
@@ -50,26 +53,6 @@ open class AccountControllerService(
         object NotFound : UpdateProfileResult()
     }
 
-    private fun hasScope(authentication: IAuthorizationContext, scope: IScope): Boolean {
-        if (authentication !is IScopedAuthorizationContext)
-            return true
-
-        val scopes = authentication.scopes
-            ?: return true
-
-        return scopes.any { it.id == scope.id }
-    }
-
-    private fun hasPrivilege(authentication: IAuthorizationContext, privilege: IPrivilege): Boolean =
-        authentication.privileges.any { it.id == privilege.id }
-
-    private fun hasTenantPrivilege(authentication: IAuthorizationContext, privilege: IPrivilege, tenant: ITenant): Boolean =
-        authentication.privileges.any {
-            it.id == privilege.id &&
-                it is ITenantPrivilege &&
-                it.tenant.id == tenant.id
-        }
-
     private fun isMemberOfTenant(account: IAccount, tenant: ITenant): Boolean =
         tenantMembershipRepository.findByAccount(account.id).any { it.tenant.id == tenant.id }
 
@@ -103,9 +86,9 @@ open class AccountControllerService(
             return GetAccountResult.Success(
                 toAccountDTO(
                     account = authentication.account,
-                    includeEmail = hasScope(authentication, EmailScope),
-                    includeProfile = hasScope(authentication, ProfileScope),
-                    includePermissions = hasScope(authentication, PermissionsScope)
+                    includeEmail = InterfacePolicy.HasScope(EmailScope).evaluate(authentication) is PolicyResult.Pass,
+                    includeProfile = InterfacePolicy.HasScope(ProfileScope).evaluate(authentication) is PolicyResult.Pass,
+                    includePermissions = InterfacePolicy.HasScope(PermissionsScope).evaluate(authentication) is PolicyResult.Pass
                 )
             )
 
@@ -114,11 +97,14 @@ open class AccountControllerService(
 
         when (authentication) {
             is ISessionAuthorizationContext -> {
-                val memberships = tenantMembershipRepository.findByAccount(account)
-                if (!hasPrivilege(authentication, AccountsReadPrivilege)) {
-                    if (!memberships.any { hasTenantPrivilege(authentication, TenantMembersReadPrivilege(it.tenant), it.tenant) })
-                        return GetAccountResult.Forbidden
-                }
+                val policy = InterfacePolicy.HasPlatformPrivilegeOrTenantPrivilege.inAnyLikeMembership(
+                    tenantMembershipRepository,
+                    AccountsReadPrivilege,
+                    TenantMembersReadPrivilege
+                )
+
+                if (!policy.passes(authentication))
+                    return GetAccountResult.Forbidden
 
                 return GetAccountResult.Success(
                     toAccountDTO(
@@ -131,28 +117,34 @@ open class AccountControllerService(
             }
 
             is IDelegatedSessionAuthorizationContext -> {
-                val canReadAnyAccount = hasPrivilege(authentication, AccountsReadPrivilege) &&
-                    hasScope(authentication, AccountsReadScope)
+                val policy = Policy.Or<IAuthorizationContext>(listOf(
+                    Policy.And<IAuthorizationContext>(listOf(
+                        // Can read any account
+                        InterfacePolicy.HasPlatformPrivilege(AccountsReadPrivilege),
+                        InterfacePolicy.HasScope(AccountsReadScope)
+                    )),
+                    Policy.And<IAuthorizationContext>(listOf(
+                        InterfacePolicy.HasScope(TenantMembersScope),
+                        InterfacePolicy.HasTenantPrivilege.inAnyLikeMembership(
+                            tenantMembershipRepository,
+                            TenantMembersReadPrivilege,
+                        )
+                    ))
+                ))
 
-                if (!canReadAnyAccount) {
-                    val tenant = authentication.tenant
-                        ?: return GetAccountResult.Forbidden
-
-                    if (!hasTenantPrivilege(authentication, TenantMembersReadPrivilege(tenant), tenant))
-                        return GetAccountResult.Forbidden
-                    if (!hasScope(authentication, TenantMembersScope))
-                        return GetAccountResult.Forbidden
-                    if (!isMemberOfTenant(account, tenant))
-                        return GetAccountResult.NotFound
-                }
+                if (!policy.passes(authentication))
+                    return GetAccountResult.Forbidden
 
                 return GetAccountResult.Success(toAccountDTO(account))
             }
 
             is IServiceSessionAuthorizationContext -> {
-                if (!hasPrivilege(authentication, AccountsReadPrivilege))
-                    return GetAccountResult.Forbidden
-                if (!hasScope(authentication, AccountsReadScope))
+                val policy = Policy.And<IAuthorizationContext>(listOf(
+                    InterfacePolicy.HasScope(AccountsReadScope),
+                    InterfacePolicy.HasPlatformPrivilege(AccountsReadPrivilege)
+                ))
+
+                if (!policy.passes(authentication))
                     return GetAccountResult.Forbidden
 
                 val tenant = authentication.token.tenant
@@ -172,9 +164,12 @@ open class AccountControllerService(
         firstName: String,
         lastName: String
     ): CreateAccountResult {
-        if (!hasPrivilege(authentication, AccountsWritePrivilege))
-            return CreateAccountResult.Forbidden
-        if (!hasScope(authentication, AccountsWriteScope))
+        val policy = Policy.And<IAuthorizationContext>(listOf(
+            InterfacePolicy.HasScope(AccountsWriteScope),
+            InterfacePolicy.HasPlatformPrivilege(AccountsWritePrivilege)
+        ))
+
+        if (!policy.passes(authentication))
             return CreateAccountResult.Forbidden
 
         val existingAccount = accountRepository.findByEmail(email)
@@ -191,9 +186,12 @@ open class AccountControllerService(
         }
 
         if (tenant != null) {
-            if (!hasTenantPrivilege(authentication, TenantMembersWritePrivilege(tenant), tenant))
-                return CreateAccountResult.Forbidden
-            if (!hasScope(authentication, TenantMembersWriteScope))
+            val policy = Policy.And<IAuthorizationContext>(listOf(
+                InterfacePolicy.HasScope(TenantMembersWriteScope),
+                InterfacePolicy.HasTenantPrivilege(TenantMembersWritePrivilege(tenant))
+            ))
+
+            if (!policy.passes(authentication))
                 return CreateAccountResult.Forbidden
 
             if (!isMemberOfTenant(account, tenant)) {
@@ -223,7 +221,7 @@ open class AccountControllerService(
         lastName: String
     ): UpdateProfileResult {
         val activeAccount = (authentication as? IAccountAuthorizationContext)
-            ?.takeIf { authentication !is IScopedAuthorizationContext }
+            ?.takeIf { InterfacePolicy.IsUnscopedAccountContext.passes(authentication) }
             ?.account
 
         val targetAccount = if (accountId == null) {
@@ -233,8 +231,8 @@ open class AccountControllerService(
                 ?: return UpdateProfileResult.NotFound
         }
 
-        val isAdmin = hasPrivilege(authentication, AccountsWritePrivilege)
-        val isSelf = activeAccount?.id == targetAccount.id
+        val isAdmin = InterfacePolicy.HasPlatformPrivilege(AccountsWritePrivilege).passes(authentication)
+        val isSelf = InterfacePolicy.IsSelf(targetAccount.id).passes(authentication)
 
         if (!isSelf && !isAdmin)
             return UpdateProfileResult.Forbidden

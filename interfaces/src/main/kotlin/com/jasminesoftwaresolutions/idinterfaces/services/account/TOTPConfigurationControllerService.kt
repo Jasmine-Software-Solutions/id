@@ -3,12 +3,16 @@ package com.jasminesoftwaresolutions.idinterfaces.services.account
 import com.jasminesoftwaresolutions.id.domain.models.account.IAccount
 import com.jasminesoftwaresolutions.id.domain.models.account.ISetTOTPConfiguration
 import com.jasminesoftwaresolutions.id.domain.models.account.ITOTPConfiguration
-import com.jasminesoftwaresolutions.id.domain.models.authorization.*
+import com.jasminesoftwaresolutions.id.domain.models.authorization.AccountsReadPrivilege
+import com.jasminesoftwaresolutions.id.domain.models.authorization.AccountsWritePrivilege
+import com.jasminesoftwaresolutions.id.domain.models.authorization.IAccountAuthorizationContext
+import com.jasminesoftwaresolutions.id.domain.models.authorization.IAuthorizationContext
 import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenantMembership
 import com.jasminesoftwaresolutions.id.domain.repositories.IAccountRepository
 import com.jasminesoftwaresolutions.id.domain.repositories.ITOTPConfigurationRepository
 import com.jasminesoftwaresolutions.id.domain.repositories.ITenantMembershipRepository
 import com.jasminesoftwaresolutions.id.domain.services.accounts.ITOTPService
+import com.jasminesoftwaresolutions.idinterfaces.services.auth.InterfacePolicy
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.time.Instant
@@ -60,63 +64,44 @@ open class TOTPConfigurationControllerService(
         object Invalid : ConfirmResult()
     }
 
-    private fun accountFrom(authentication: IAuthorizationContext): IAccount? =
-        (authentication as? IAccountAuthorizationContext)
-            ?.takeIf { authentication !is IScopedAuthorizationContext }
-            ?.account
-
-    private fun hasAccountsWritePrivilege(authentication: IAuthorizationContext): Boolean =
-        authentication.privileges.any { it.id == AccountsWritePrivilege.id }
-
-    private fun canReadAccount(authentication: IAuthorizationContext, account: IAccount): Boolean {
-        if (authentication.privileges.any { it.id == AccountsReadPrivilege.id })
-            return true
-        if (authentication.privileges.any { it.id == MembersReadPrivilege.id && it !is ITenantPrivilege })
-            return true
-
-        val readableTenantIds = authentication.privileges
-            .filterIsInstance<ITenantPrivilege>()
-            .filter { it.id == MembersReadPrivilege.id }
-            .map { it.tenant.id }
-            .toSet()
-        if (readableTenantIds.isEmpty())
-            return false
-
-        return tenantMembershipRepository.findByAccount(account.id)
-            .any { it.tenant.id in readableTenantIds }
-    }
-
     private fun resolveAccount(authentication: IAuthorizationContext, accountId: UUID?): ResolveAccountResult {
-        val activeAccount = accountFrom(authentication)
+        val activeAccount = (authentication as? IAccountAuthorizationContext)
+            ?.takeIf { InterfacePolicy.IsUnscopedAccountContext.passes(authentication) }
+            ?.account
             ?: return ResolveAccountResult.Unauthorized
 
-        if (accountId == null || accountId == activeAccount.id)
+        if (InterfacePolicy.IsSelf(accountId).passes(authentication))
             return ResolveAccountResult.Success(activeAccount)
+
+        if (accountId == null)
+            return ResolveAccountResult.Unauthorized
 
         val requestedAccount = accountRepository.findById(accountId)
             ?: return ResolveAccountResult.NotFound
 
-        if (!canReadAccount(authentication, requestedAccount))
+        if (!InterfacePolicy.HasPlatformPrivilege(AccountsReadPrivilege).passes(authentication))
             return ResolveAccountResult.Forbidden
 
         return ResolveAccountResult.Success(requestedAccount)
     }
 
     private fun resolveAccountForUpdate(authentication: IAuthorizationContext, accountId: UUID?): ResolveAccountResult {
-        val activeAccount = accountFrom(authentication)
+        val activeAccount = (authentication as? IAccountAuthorizationContext)
+            ?.takeIf { InterfacePolicy.IsUnscopedAccountContext.passes(authentication) }
+            ?.account
+            ?: return ResolveAccountResult.Unauthorized
 
-        if (accountId == null && activeAccount != null)
+        if (InterfacePolicy.IsSelf(accountId).passes(authentication))
             return ResolveAccountResult.Success(activeAccount)
 
-        if (accountId != null && activeAccount != null && accountId == activeAccount.id)
-            return ResolveAccountResult.Success(activeAccount)
+        if (accountId == null)
+            return ResolveAccountResult.Unauthorized
 
-        if (!hasAccountsWritePrivilege(authentication))
-            return if (accountId == null) ResolveAccountResult.Unauthorized else ResolveAccountResult.Forbidden
-
-        val targetId = accountId ?: return ResolveAccountResult.Unauthorized
-        val requestedAccount = accountRepository.findById(targetId)
+        val requestedAccount = accountRepository.findById(accountId)
             ?: return ResolveAccountResult.NotFound
+
+        if (!InterfacePolicy.HasPlatformPrivilege(AccountsWritePrivilege).passes(authentication))
+            return ResolveAccountResult.Forbidden
 
         return ResolveAccountResult.Success(requestedAccount)
     }

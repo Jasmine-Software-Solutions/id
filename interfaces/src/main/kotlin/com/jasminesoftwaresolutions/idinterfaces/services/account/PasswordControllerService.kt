@@ -8,9 +8,11 @@ import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenantMembership
 import com.jasminesoftwaresolutions.id.domain.repositories.IAccountRepository
 import com.jasminesoftwaresolutions.id.domain.repositories.IPasswordRepository
 import com.jasminesoftwaresolutions.id.domain.repositories.ITenantMembershipRepository
+import com.jasminesoftwaresolutions.id.domain.services.authorization.PolicyResult
+import com.jasminesoftwaresolutions.idinterfaces.services.auth.InterfacePolicy
 import java.util.*
 
-open class PasswordService<T : IHashedPassword>(
+open class PasswordControllerService<T : IHashedPassword>(
     protected val passwordRepository: IPasswordRepository<T>,
     protected val accountRepository: IAccountRepository<out IAccount>,
     protected val tenantMembershipRepository: ITenantMembershipRepository<out ITenantMembership>,
@@ -38,36 +40,28 @@ open class PasswordService<T : IHashedPassword>(
 
     private fun accountFrom(authentication: IAuthorizationContext): IAccount? =
         (authentication as? IAccountAuthorizationContext)
-            ?.takeIf { authentication !is IScopedAuthorizationContext }
+            ?.takeIf { InterfacePolicy.IsUnscopedAccountContext.passes(authentication) }
             ?.account
 
-    private fun hasAccountsWritePrivilege(authentication: IAuthorizationContext): Boolean =
-        authentication.privileges.any { it.id == AccountsWritePrivilege.id }
-
     private fun canReadAccount(authentication: IAuthorizationContext, account: IAccount): Boolean {
-        if (authentication.privileges.any { it.id == AccountsReadPrivilege.id })
+        if (InterfacePolicy.HasPlatformPrivilege(AccountsReadPrivilege).passes(authentication))
             return true
-        if (authentication.privileges.any { it.id == MembersReadPrivilege.id && it !is ITenantPrivilege })
+        if (InterfacePolicy.HasPlatformPrivilege(MembersReadPrivilege).passes(authentication))
             return true
-
-        val readableTenantIds = authentication.privileges
-            .filterIsInstance<ITenantPrivilege>()
-            .filter { it.id == MembersReadPrivilege.id }
-            .map { it.tenant.id }
-            .toSet()
-        if (readableTenantIds.isEmpty())
-            return false
 
         return tenantMembershipRepository.findByAccount(account.id)
-            .any { it.tenant.id in readableTenantIds }
+            .any { InterfacePolicy.HasTenantPrivilege(TenantMembersReadPrivilege(it.tenant)).evaluate(authentication) is PolicyResult.Pass }
     }
 
     private fun resolveAccount(authentication: IAuthorizationContext, accountId: UUID?): ResolveAccountResult {
         val activeAccount = accountFrom(authentication)
             ?: return ResolveAccountResult.Unauthorized
 
-        if (accountId == null || accountId == activeAccount.id)
+        if (InterfacePolicy.IsSelf(accountId).passes(authentication))
             return ResolveAccountResult.Success(activeAccount)
+
+        if (accountId == null)
+            return ResolveAccountResult.Unauthorized
 
         val requestedAccount = accountRepository.findById(accountId)
             ?: return ResolveAccountResult.NotFound
@@ -81,9 +75,8 @@ open class PasswordService<T : IHashedPassword>(
     open fun update(authentication: IAuthorizationContext, password: String, accountId: UUID? = null): UpdateResult {
         val activeAccount = accountFrom(authentication)
         val account = when {
-            accountId == null && activeAccount != null -> activeAccount
-            accountId != null && activeAccount != null && accountId == activeAccount.id -> activeAccount
-            hasAccountsWritePrivilege(authentication) -> {
+            activeAccount != null && InterfacePolicy.IsSelf(accountId).passes(authentication) -> activeAccount
+            InterfacePolicy.HasPlatformPrivilege(AccountsWritePrivilege).passes(authentication) -> {
                 val targetId = accountId ?: return UpdateResult.Unauthorized
                 accountRepository.findById(targetId) ?: return UpdateResult.NotFound
             }

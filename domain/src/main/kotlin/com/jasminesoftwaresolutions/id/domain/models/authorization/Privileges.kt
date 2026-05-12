@@ -40,6 +40,12 @@ interface ITenantPrivilege : IPrivilege {
     var tenant: ITenant
 }
 
+open class UnassignedTenantPrivilege(override var id: String, override var description: String) : ITenantPrivilege {
+    override var tenant: ITenant
+        get() = throw UnsupportedOperationException()
+        set(value) { throw UnsupportedOperationException() }
+}
+
 sealed class TenantPrivilege(override var id: String, override var description: String) : ITenantPrivilege {
     companion object {
         fun all(tenant: ITenant) = arrayOf(
@@ -48,11 +54,26 @@ sealed class TenantPrivilege(override var id: String, override var description: 
     }
 }
 
-class TenantReadPrivilege(override var tenant: ITenant) : TenantPrivilege("tenant:read", "Read tenant information")
-class TenantWritePrivilege(override var tenant: ITenant) : TenantPrivilege("tenant:write", "Manage tenant information")
+class TenantReadPrivilege(override var tenant: ITenant) : TenantPrivilege(id, description) {
+    companion object : UnassignedTenantPrivilege("tenant:read", "Read tenant information")
+}
 
-class TenantMembersListPrivilege(override var tenant: ITenant) : TenantPrivilege("members:list", "List members")
-class TenantMembersReadPrivilege(override var tenant: ITenant) : TenantPrivilege("members:read", "Read member information")
-class TenantMembersWritePrivilege(override var tenant: ITenant) : TenantPrivilege("members:write", "Manage members")
+class TenantWritePrivilege(override var tenant: ITenant) : TenantPrivilege(id, description) {
+    companion object : UnassignedTenantPrivilege("tenant:write", "Manage tenant information")
+}
 
-class TenantRolesAssignPrivilege(override var tenant: ITenant) : TenantPrivilege("roles:assign", "Assign roles to members")
+class TenantMembersListPrivilege(override var tenant: ITenant) : TenantPrivilege(id, description) {
+    companion object : UnassignedTenantPrivilege("members:list", "List members")
+}
+
+class TenantMembersReadPrivilege(override var tenant: ITenant) : TenantPrivilege(id, description) {
+    companion object : UnassignedTenantPrivilege("members:read", "Read member information")
+}
+
+class TenantMembersWritePrivilege(override var tenant: ITenant) : TenantPrivilege(id, description) {
+    companion object : UnassignedTenantPrivilege("members:write", "Manage members")
+}
+
+class TenantRolesAssignPrivilege(override var tenant: ITenant) : TenantPrivilege(id, description) {
+    companion object : UnassignedTenantPrivilege("roles:assign", "Assign roles to members")
+}

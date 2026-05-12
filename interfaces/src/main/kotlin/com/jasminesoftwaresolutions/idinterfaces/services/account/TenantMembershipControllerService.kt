@@ -1,12 +1,15 @@
 package com.jasminesoftwaresolutions.idinterfaces.services.account
 
 import com.jasminesoftwaresolutions.id.domain.models.account.IAccount
-import com.jasminesoftwaresolutions.id.domain.models.authorization.*
+import com.jasminesoftwaresolutions.id.domain.models.authorization.AccountsReadPrivilege
+import com.jasminesoftwaresolutions.id.domain.models.authorization.IAccountAuthorizationContext
+import com.jasminesoftwaresolutions.id.domain.models.authorization.IAuthorizationContext
 import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenant
 import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenantMembership
 import com.jasminesoftwaresolutions.id.domain.repositories.IAccountRepository
 import com.jasminesoftwaresolutions.id.domain.repositories.ITenantMembershipRepository
 import com.jasminesoftwaresolutions.id.domain.repositories.ITenantRepository
+import com.jasminesoftwaresolutions.idinterfaces.services.auth.InterfacePolicy
 import java.util.*
 
 open class TenantMembershipControllerService<TMembership : ITenantMembership, TTenant : ITenant>(
@@ -43,40 +46,22 @@ open class TenantMembershipControllerService<TMembership : ITenantMembership, TT
         object NotFound : UnassignResult()
     }
 
-    private fun accountFrom(authentication: IAuthorizationContext): IAccount? =
-        (authentication as? IAccountAuthorizationContext)
-            ?.takeIf { authentication !is IScopedAuthorizationContext }
-            ?.account
-
-    private fun canReadAccount(authentication: IAuthorizationContext, account: IAccount): Boolean {
-        if (authentication.privileges.any { it.id == AccountsReadPrivilege.id })
-            return true
-        if (authentication.privileges.any { it.id == MembersReadPrivilege.id && it !is ITenantPrivilege })
-            return true
-
-        val readableTenantIds = authentication.privileges
-            .filterIsInstance<ITenantPrivilege>()
-            .filter { it.id == MembersReadPrivilege.id }
-            .map { it.tenant.id }
-            .toSet()
-        if (readableTenantIds.isEmpty())
-            return false
-
-        return tenantMembershipRepository.findByAccount(account.id)
-            .any { it.tenant.id in readableTenantIds }
-    }
-
     private fun resolveAccount(authentication: IAuthorizationContext, accountId: UUID?): ResolveAccountResult {
-        val activeAccount = accountFrom(authentication)
+        val activeAccount = (authentication as? IAccountAuthorizationContext)
+            ?.takeIf { InterfacePolicy.IsUnscopedAccountContext.passes(authentication) }
+            ?.account
             ?: return ResolveAccountResult.Unauthorized
 
-        if (accountId == null || accountId == activeAccount.id)
+        if (InterfacePolicy.IsSelf(accountId).passes(authentication))
             return ResolveAccountResult.Success(activeAccount)
+
+        if (accountId == null)
+            return ResolveAccountResult.Unauthorized
 
         val requestedAccount = accountRepository.findById(accountId)
             ?: return ResolveAccountResult.NotFound
 
-        if (!canReadAccount(authentication, requestedAccount))
+        if (!InterfacePolicy.HasPlatformPrivilege(AccountsReadPrivilege).passes(authentication))
             return ResolveAccountResult.Forbidden
 
         return ResolveAccountResult.Success(requestedAccount)
