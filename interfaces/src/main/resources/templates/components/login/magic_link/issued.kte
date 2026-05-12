@@ -31,7 +31,7 @@
             <input class="hidden" id="flow_id" name="flow_id" value="${flowId.toString()}" />
             <input class="hidden" id="step" name="step" value="${EnterPasswordAuthenticationFlowStep.fqdn}" />
             <p class="text-sm font-light text-gray-500 dark:text-gray-400">
-                I didn't get anything, <a href="/login" class="cursor-pointer font-medium text-primary-600 hover:underline dark:text-primary-500">send me another email</a> or <button type="submit" class="cursor-pointer font-medium text-primary-600 hover:underline dark:text-primary-500">try with my password</button>.
+                I didn't get anything, <a href="" class="cursor-pointer font-medium text-primary-600 hover:underline dark:text-primary-500">send me another email</a> or <button type="submit" class="cursor-pointer font-medium text-primary-600 hover:underline dark:text-primary-500">try with my password</button>.
             </p>
         </form>
     </div>
