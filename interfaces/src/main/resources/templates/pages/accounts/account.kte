@@ -100,7 +100,7 @@
             @template.components.accounts.account.profile(account = account, isSelf = isSelf, allowUpdateEmail = allowUpdateEmail, allowUpdateProfile = allowUpdateProfile)
             @template.components.accounts.account.security(account = account, password = password, totpConfiguration = totpConfiguration, totpQrCodeUri = totpQrCodeUri, allowUpdatePassword = allowUpdatePassword, allowUpdateTotp = allowUpdateTotp, isSelf = isSelf)
             @template.components.accounts.account.sessions(account = account, sessions = sessions, activeSession = activeSession, isSelf = isSelf)
-            @template.components.accounts.account.roles(account = account, allRoles = allRoles, allowUpdateRoles = allowUpdateRoles)
+            @template.components.accounts.account.roles(account = account, allRoles = allRoles, allowUpdateRoles = allowUpdateRoles, isSelf = isSelf)
             @template.components.accounts.account.organizations(account = account, memberships = memberships, allowUpdateMemberships = allowUpdateMemberships, isSelf = isSelf)
         </div>
     </div>

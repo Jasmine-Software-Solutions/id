@@ -20,6 +20,7 @@ class AjaxAccountController(
     private val sessionService: SessionControllerService<IHashedSession>,
     private val totpConfigurationService: TOTPConfigurationControllerService,
     private val passwordService: PasswordControllerService<IHashedPassword>,
+    private val platformRoleService: PlatformRoleControllerService,
     private val tenantMembershipService: TenantMembershipControllerService<ITenantMembership, ITenant>
 ) {
     private fun Context.requireSession(): ISessionAuthorizationContext {
@@ -35,6 +36,11 @@ class AjaxAccountController(
     private fun parseUuid(name: String, value: String?): UUID {
         val parsed = value?.let { runCatching { UUID.fromString(it) }.getOrNull() }
         return parsed ?: throw BadRequestResponse("Invalid $name")
+    }
+
+    private fun parseRoleId(value: String?): String {
+        return value?.trim().takeUnless { it.isNullOrBlank() }
+            ?: throw BadRequestResponse("Missing role id")
     }
 
     private fun redirectToAccount(ctx: Context, accountId: UUID?, flash: String? = null) {
@@ -87,7 +93,8 @@ class AjaxAccountController(
         }
 
         val writePrivilege = authentication.privileges.any { it.id == AccountsWritePrivilege.id }
-        val writeTenantPrvilege = authentication.privileges.any { it is TenantMembersReadPrivilege }
+        val writeTenantPrivilege = authentication.privileges.any { it is TenantMembersReadPrivilege }
+        val roleAssignPrivilege = authentication.privileges.any { it.id == PlatformRolesAssignPrivilege.id && it !is ITenantPrivilege }
 
         ctx.renderWithContext(
             "pages/accounts/account.kte",
@@ -103,10 +110,10 @@ class AjaxAccountController(
             "allowUpdateProfile" to (writePrivilege || isSelf),
             "allowUpdatePassword" to (writePrivilege || isSelf),
             "allowUpdateTotp" to (writePrivilege || isSelf),
-            "allowRevokeSessions" to (writePrivilege || writeTenantPrvilege || isSelf),
-            "allowUpdateRoles" to writePrivilege,
+            "allowRevokeSessions" to (writePrivilege || writeTenantPrivilege || isSelf),
+            "allowUpdateRoles" to roleAssignPrivilege,
             "allowUpdateMemberships" to writePrivilege,
-            "allRoles" to listOf(PlatformAdministrator, PlatformMember),
+            "allRoles" to platformRoleService.managedRoles,
         )
     }
 
@@ -313,6 +320,64 @@ class AjaxAccountController(
             is SessionControllerService.RevokeAllSessionsResult.Unauthorized -> throw UnauthorizedResponse()
             is SessionControllerService.RevokeAllSessionsResult.Forbidden -> throw ForbiddenResponse()
             is SessionControllerService.RevokeAllSessionsResult.NotFound -> throw NotFoundResponse("Account not found")
+        }
+    }
+
+    @Post("/account/roles/assign")
+    fun assignSelfRole(ctx: Context) {
+        val authentication = ctx.requireSession()
+        val roleId = parseRoleId(ctx.formParam("role_id"))
+
+        when (platformRoleService.assign(authentication, roleId)) {
+            is PlatformRoleControllerService.AssignResult.Success -> redirectToAccount(ctx, null, "Role assigned")
+            is PlatformRoleControllerService.AssignResult.Unauthorized -> throw UnauthorizedResponse()
+            is PlatformRoleControllerService.AssignResult.Forbidden -> throw ForbiddenResponse()
+            is PlatformRoleControllerService.AssignResult.AccountNotFound -> throw NotFoundResponse("Account not found")
+            is PlatformRoleControllerService.AssignResult.RoleNotFound -> throw NotFoundResponse("Role not found")
+        }
+    }
+
+    @Post("/accounts/{id}/roles/assign")
+    fun assignRole(ctx: Context, @Param id: UUID) {
+        val authentication = ctx.requireSession()
+        val roleId = parseRoleId(ctx.formParam("role_id"))
+
+        when (platformRoleService.assign(authentication, roleId, id)) {
+            is PlatformRoleControllerService.AssignResult.Success -> redirectToAccount(ctx, id, "Role assigned")
+            is PlatformRoleControllerService.AssignResult.Unauthorized -> throw UnauthorizedResponse()
+            is PlatformRoleControllerService.AssignResult.Forbidden -> throw ForbiddenResponse()
+            is PlatformRoleControllerService.AssignResult.AccountNotFound -> throw NotFoundResponse("Account not found")
+            is PlatformRoleControllerService.AssignResult.RoleNotFound -> throw NotFoundResponse("Role not found")
+        }
+    }
+
+    @Post("/account/roles/unassign")
+    fun unassignSelfRole(ctx: Context) {
+        val authentication = ctx.requireSession()
+        val roleId = parseRoleId(ctx.formParam("role_id"))
+
+        when (platformRoleService.unassign(authentication, roleId)) {
+            is PlatformRoleControllerService.UnassignResult.Success -> redirectToAccount(ctx, null, "Role removed")
+            is PlatformRoleControllerService.UnassignResult.Unauthorized -> throw UnauthorizedResponse()
+            is PlatformRoleControllerService.UnassignResult.Forbidden -> throw ForbiddenResponse()
+            is PlatformRoleControllerService.UnassignResult.AccountNotFound -> throw NotFoundResponse("Account not found")
+            is PlatformRoleControllerService.UnassignResult.RoleNotFound -> throw NotFoundResponse("Role not found")
+            is PlatformRoleControllerService.UnassignResult.NotFound -> throw NotFoundResponse("Role not assigned")
+        }
+    }
+
+    @Post("/accounts/{id}/roles/unassign")
+    fun unassignRole(ctx: Context, @Param id: UUID) {
+        val authentication = ctx.requireSession()
+        val roleId = parseRoleId(ctx.formParam("role_id"))
+
+        when (platformRoleService.unassign(authentication, roleId, id)) {
+            is PlatformRoleControllerService.UnassignResult.Success -> redirectToAccount(ctx, id, "Role removed")
+            is PlatformRoleControllerService.UnassignResult.Unauthorized -> throw UnauthorizedResponse()
+            is PlatformRoleControllerService.UnassignResult.Forbidden -> throw ForbiddenResponse()
+            is PlatformRoleControllerService.UnassignResult.AccountNotFound -> throw NotFoundResponse("Account not found")
+            is PlatformRoleControllerService.UnassignResult.RoleNotFound -> throw NotFoundResponse("Role not found")
+            is PlatformRoleControllerService.UnassignResult.NotFound -> throw NotFoundResponse("Role not assigned")
         }
     }
 

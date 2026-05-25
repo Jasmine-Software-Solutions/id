@@ -182,7 +182,7 @@ class IDServerImpl : IDServer {
             register(
                 step = PollMagicLinkAuthenticationFlowStep,
                 after = EnterEmailAddressAuthenticationFlowStep,
-                priority = 1,
+                priority = if (Env.DEV_ENVIRONMENT) -1 else 1,
             )
             register(
                 step = EnterPasswordAuthenticationFlowStep,

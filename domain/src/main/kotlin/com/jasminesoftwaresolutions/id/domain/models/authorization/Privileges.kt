@@ -13,6 +13,7 @@ sealed class PlatformPrivilege(override var id: String, override var description
             OAuth2IntrospectPrivilege,
             OAuth2ImplicitConsentPrivilege,
             ClientScopesWritePrivilege,
+            PlatformRolesAssignPrivilege,
             AccountsListPrivilege, AccountsReadPrivilege, AccountsWritePrivilege,
             TenantsListPrivilege, TenantsReadPrivilege, TenantsWritePrivilege,
             MembersListPrivilege, MembersReadPrivilege, MembersWritePrivilege
@@ -35,6 +36,8 @@ object TenantsWritePrivilege : PlatformPrivilege("tenants:write", "Update tenant
 object MembersListPrivilege : PlatformPrivilege("members:list", "List all members of a tenant")
 object MembersReadPrivilege : PlatformPrivilege("members:read", "Read member information")
 object MembersWritePrivilege : PlatformPrivilege("members:write", "Update members")
+
+object PlatformRolesAssignPrivilege : PlatformPrivilege("roles:assign", "Assign roles to accounts")
 
 interface ITenantPrivilege : IPrivilege {
     var tenant: ITenant

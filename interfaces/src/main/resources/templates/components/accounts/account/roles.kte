@@ -4,6 +4,7 @@
 @param account: IAccount
 @param allRoles: List<IPlatformRole>
 @param allowUpdateRoles: Boolean
+@param isSelf: Boolean
 
 <div class="col-span-12 lg:col-span-6" id="roles">
     <section class="bg-white border border-slate-200 rounded-xl shadow-sm p-gutter h-full">
@@ -13,7 +14,7 @@
         </div>
         <div class="space-y-4">
             @for (role in allRoles)
-                @template.components.accounts.account.role(role = role, assigned = role in account.roles, allowUpdateRoles = allowUpdateRoles)
+                @template.components.accounts.account.role(account = account, role = role, assigned = role in account.roles, allowUpdateRoles = allowUpdateRoles, isSelf = isSelf)
             @endfor
         </div>
     </section>

@@ -66,7 +66,7 @@ class AjaxLoginController<T : IAuthenticationFlow>(
             }
 
             is LoginControllerService.AuthenticatedFlowNextResult -> {
-                ctx.header("HX-Redirect", "/")
+                ctx.header("HX-Redirect", "/account")
 
                 ctx.cookie(Cookie(
                         name = "session_id",

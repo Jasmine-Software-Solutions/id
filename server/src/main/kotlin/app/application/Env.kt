@@ -24,7 +24,7 @@ object Env {
     val ARGON2_MEMORY = dotenv["ARGON2_MEMORY"]?.toIntOrNull() ?: 65535
     val ARGON2_PARALLELISM = dotenv["ARGON2_PARALLELISM"]?.toIntOrNull() ?: 1
 
-    val HOT_RELOAD_JTE_TEMPLATES = dotenv["HOT_RELOAD_JTE_TEMPLATES"]?.toBooleanStrictOrNull() ?: false
+    val DEV_ENVIRONMENT = dotenv["DEV_ENVIRONMENT"]?.toBooleanStrictOrNull() ?: false
 
     val RESEND_API_KEY = dotenv["RESEND_API_KEY"] ?: ""
     val RESEND_SENDER = (dotenv["RESEND_SENDER_NAME"] ?: "") to (dotenv["RESEND_SENDER_EMAIL"] ?: "")

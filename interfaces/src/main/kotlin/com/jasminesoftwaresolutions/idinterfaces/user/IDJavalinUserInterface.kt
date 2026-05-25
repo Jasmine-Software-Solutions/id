@@ -47,6 +47,9 @@ open class IDJavalinUserInterface(server: IDServer) : IDJavalinInterface(server)
     var passwordControllerService
         = PasswordControllerService(server.passwordRepository, server.accountRepository, server.tenantMembershipRepository)
 
+    var platformRoleControllerService
+        = PlatformRoleControllerService(server.accountRepository)
+
     var tenantMembershipControllerService
         = TenantMembershipControllerService(server.tenantMembershipRepository, server.tenantRepository, server.accountRepository)
 
@@ -86,6 +89,7 @@ open class IDJavalinUserInterface(server: IDServer) : IDJavalinInterface(server)
             sessionControllerService,
             totpConfigurationControllerService,
             passwordControllerService,
+            platformRoleControllerService,
             tenantMembershipControllerService
         )
 
