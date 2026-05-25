@@ -12,7 +12,7 @@
             <h3 class="font-h3 text-h3">Active Sessions</h3>
             <p class="text-body-md text-secondary">Logged in devices and browser sessions</p>
         </div>
-        <form method="post" action="${if (isSelf) "/account" else "/accounts/${account.id}"}/sessions/revoke-all">
+        <form method="post" action="${if (isSelf) "/account/sessions/revoke-all" else "/accounts/${account.id.toString()}/sessions/revoke-all"}">
             <button class="text-error text-label-sm font-bold border border-error/20 px-4 py-2 rounded-lg hover:bg-error/5 transition-colors" type="submit">Log out all sessions</button>
         </form>
     </div>
