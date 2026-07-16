@@ -16,10 +16,12 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import java.time.Instant
 
 open class ExposedAccountRepository
-    : ExposedIdentifiedEntityRepository<IAccount, ExposedAccountRepository.Account>(Table, Account::class),
+    : ExposedIdentifiedEntityRepository<IAccount, ExposedAccountRepository.Account>(Table),
     IAccountRepository<IAccount> {
     override fun read(row: ResultRow?, insert: InsertStatement<Number>?, update: UpdateStatement?)
         = Account(row, insert, update)
+
+    override fun transform(entity: IAccount): Account? = entity as? Account
 
     override fun findByEmail(email: String): IAccount? = transaction {
         val row = Table.select { Table.email eq email }.firstOrNull()

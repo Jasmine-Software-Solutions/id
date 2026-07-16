@@ -23,10 +23,12 @@ import java.util.*
 class ExposedSessionRepository(
     val hashFunction: IHashFunction,
     val accountRepository: IAccountRepository<IAccount>
-) : ExposedIdentifiedEntityRepository<IHashedSession, ExposedSessionRepository.Session>(Table, Session::class),
+) : ExposedIdentifiedEntityRepository<IHashedSession, ExposedSessionRepository.Session>(Table),
     ISessionRepository<IHashedSession> {
     override fun read(row: ResultRow?, insert: InsertStatement<Number>?, update: UpdateStatement?)
             = Session(row, insert, update)
+
+    override fun transform(entity: IHashedSession): Session? = entity as? Session
 
     override fun clone(src: Session, dest: Session) {
         runCatching {

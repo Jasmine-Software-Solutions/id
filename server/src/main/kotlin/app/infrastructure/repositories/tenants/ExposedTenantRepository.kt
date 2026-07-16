@@ -12,10 +12,12 @@ import org.jetbrains.exposed.sql.statements.UpdateStatement
 import java.time.Instant
 
 class ExposedTenantRepository
-    : ExposedIdentifiedEntityRepository<ITenant, ExposedTenantRepository.Tenant>(Table, Tenant::class),
+    : ExposedIdentifiedEntityRepository<ITenant, ExposedTenantRepository.Tenant>(Table),
     ITenantRepository<ITenant> {
     override fun read(row: ResultRow?, insert: InsertStatement<Number>?, update: UpdateStatement?)
             = Tenant(row, insert, update)
+
+    override fun transform(entity: ITenant): Tenant? = entity as? Tenant
 
     open inner class Tenant(
         row: ResultRow? = null,

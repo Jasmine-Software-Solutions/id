@@ -27,10 +27,12 @@ import java.util.*
 class ExposedTenantMembershipRepository(
     val tenantRepository: ITenantRepository<ITenant>,
     val accountRepository: IAccountRepository<IAccount>
-) : ExposedIdentifiedEntityRepository<ITenantMembership, ExposedTenantMembershipRepository.TenantMembership>(Table, TenantMembership::class),
+) : ExposedIdentifiedEntityRepository<ITenantMembership, ExposedTenantMembershipRepository.TenantMembership>(Table),
     ITenantMembershipRepository<ITenantMembership> {
     override fun read(row: ResultRow?, insert: InsertStatement<Number>?, update: UpdateStatement?)
             = TenantMembership(row, insert, update)
+
+    override fun transform(entity: ITenantMembership): TenantMembership? = entity as? TenantMembership
 
     override fun findByAccount(id: UUID): List<ITenantMembership> = transaction {
         val memberships = Table.select { Table.account eq id }

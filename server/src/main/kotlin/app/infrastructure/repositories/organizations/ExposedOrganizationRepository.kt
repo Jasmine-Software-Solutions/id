@@ -22,10 +22,12 @@ import java.util.*
 
 class ExposedOrganizationRepository(
     val tenantRepository: ITenantRepository<ITenant>
-) : ExposedIdentifiedEntityRepository<IOrganization, ExposedOrganizationRepository.Organization>(Table, Organization::class),
+) : ExposedIdentifiedEntityRepository<IOrganization, ExposedOrganizationRepository.Organization>(Table),
     IOrganizationRepository<IOrganization> {
     override fun read(row: ResultRow?, insert: InsertStatement<Number>?, update: UpdateStatement?)
             = Organization(row, insert, update)
+
+    override fun transform(entity: IOrganization): Organization? = entity as? Organization
 
     override fun findByTenant(id: UUID): List<IOrganization> = transaction {
         Table.select { Table.tenant eq id }

@@ -30,10 +30,12 @@ class ExposedDelegatedSessionRepository(
     val tenantRepository: ITenantRepository<out ITenant>,
     val scopeRepository: IScopeRepository<out IRegisteredScope>,
     val scopeRegistry: IScopeRegistry<out IScope>
-) : ExposedIdentifiedEntityRepository<IDelegatedSession, ExposedDelegatedSessionRepository.DelegatedSession>(Table, DelegatedSession::class),
+) : ExposedIdentifiedEntityRepository<IDelegatedSession, ExposedDelegatedSessionRepository.DelegatedSession>(Table),
     IDelegatedSessionRepository<IDelegatedSession> {
     override fun read(row: ResultRow?, insert: InsertStatement<Number>?, update: UpdateStatement?)
         = DelegatedSession(row, insert, update)
+
+    override fun transform(entity: IDelegatedSession): DelegatedSession? = entity as? DelegatedSession
 
     override fun clone(src: DelegatedSession, dest: DelegatedSession) {
         runCatching {

@@ -21,10 +21,12 @@ import java.util.*
 
 class ExposedTeamRepository(
     val organizationRepository: IOrganizationRepository<IOrganization>
-) : ExposedIdentifiedEntityRepository<ITeam, ExposedTeamRepository.Team>(Table, Team::class),
+) : ExposedIdentifiedEntityRepository<ITeam, ExposedTeamRepository.Team>(Table),
     ITeamRepository<ITeam> {
     override fun read(row: ResultRow?, insert: InsertStatement<Number>?, update: UpdateStatement?)
             = Team(row, insert, update)
+
+    override fun transform(entity: ITeam): Team? = entity as? Team
 
     override fun findByOrganization(id: UUID): List<ITeam> = transaction {
         Table.select { Table.organization eq id }

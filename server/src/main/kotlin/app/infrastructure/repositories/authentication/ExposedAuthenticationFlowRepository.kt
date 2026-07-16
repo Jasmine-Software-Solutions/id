@@ -27,9 +27,11 @@ class ExposedAuthenticationFlowRepository(
     val stepRegistry: IAuthenticationStepRegistry<IAuthenticationFlow>,
     val tenantRepository: ITenantRepository<ITenant>,
     val accountRepository: IAccountRepository<IAccount>
-) : ExposedIdentifiedEntityRepository<IAuthenticationFlow, ExposedAuthenticationFlowRepository.AuthenticationFlow>(Table, AuthenticationFlow::class), IAuthenticationFlowRepository<IAuthenticationFlow> {
+) : ExposedIdentifiedEntityRepository<IAuthenticationFlow, ExposedAuthenticationFlowRepository.AuthenticationFlow>(Table), IAuthenticationFlowRepository<IAuthenticationFlow> {
     override fun read(row: ResultRow?, insert: InsertStatement<Number>?, update: UpdateStatement?)
             = AuthenticationFlow(row, insert, update)
+
+    override fun transform(entity: IAuthenticationFlow): AuthenticationFlow? = entity as? AuthenticationFlow
 
     override fun clone(src: AuthenticationFlow, dest: AuthenticationFlow) {
         (dest.steps.values as MutableList).clear()

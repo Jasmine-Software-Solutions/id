@@ -23,10 +23,12 @@ import java.util.*
 class ExposedPasswordRepository(
     val hashFunction: IHashFunction,
     val accountRepository: IAccountRepository<IAccount>
-) : ExposedIdentifiedEntityRepository<IHashedPassword, ExposedPasswordRepository.Password>(Table, Password::class),
+) : ExposedIdentifiedEntityRepository<IHashedPassword, ExposedPasswordRepository.Password>(Table),
     IPasswordRepository<IHashedPassword> {
     override fun read(row: ResultRow?, insert: InsertStatement<Number>?, update: UpdateStatement?)
             = Password(row, insert, update)
+
+    override fun transform(entity: IHashedPassword): Password? = entity as? Password
 
     override fun findByAccount(id: UUID): List<IHashedPassword> = transaction {
         Table.select { Table.account eq id }

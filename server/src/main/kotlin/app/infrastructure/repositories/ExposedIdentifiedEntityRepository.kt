@@ -10,11 +10,9 @@ import org.jetbrains.exposed.sql.statements.InsertStatement
 import org.jetbrains.exposed.sql.statements.UpdateStatement
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.util.*
-import kotlin.reflect.KClass
 
 abstract class ExposedIdentifiedEntityRepository<T, TWrapper>(
-    val table: UUIDTable,
-    val wrapperClazz: KClass<TWrapper>
+    val table: UUIDTable
 ) : IIdentifiedRepository<T> where T : IIdentified, TWrapper : ExposedEntity {
     abstract fun read(
         row: ResultRow? = null,
@@ -22,6 +20,8 @@ abstract class ExposedIdentifiedEntityRepository<T, TWrapper>(
         update: UpdateStatement? = null): T
 
     open fun clone(src: TWrapper, dest: TWrapper) {}
+
+    open fun transform(entity: T): TWrapper? = null
 
     open fun writeDefaults(id: UUID, entity: T, it: InsertStatement<Number>) {
         it[table.id] = id
@@ -56,8 +56,7 @@ abstract class ExposedIdentifiedEntityRepository<T, TWrapper>(
     }
 
     override fun update(entity: T, function: T.() -> Unit) = transaction {
-        val isExposedEntity = entity::class == wrapperClazz
-        val oldWrappedEntity = if (isExposedEntity) entity as ExposedEntity else null
+        val oldWrappedEntity = transform(entity)
 
         try {
             table.update({ table.id eq entity.id }) {
@@ -66,14 +65,14 @@ abstract class ExposedIdentifiedEntityRepository<T, TWrapper>(
                 val newWrappedEntity = read(row, null, it)
                 function(newWrappedEntity)
 
-                if (isExposedEntity && oldWrappedEntity != null) {
+                if (oldWrappedEntity != null) {
                     oldWrappedEntity.row = row
                     oldWrappedEntity.insert = null
                     oldWrappedEntity.update = null
 
                     this@ExposedIdentifiedEntityRepository.clone(
                         src = newWrappedEntity as TWrapper,
-                        dest = oldWrappedEntity as TWrapper
+                        dest = oldWrappedEntity
                     )
                 }
             }

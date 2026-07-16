@@ -22,10 +22,12 @@ import java.time.Instant
 class ExposedServiceSessionRepository(
     val tenantRepository: ITenantRepository<ITenant>,
     val clientRepository: IClientRepository<IClient>
-) : ExposedIdentifiedEntityRepository<IServiceSession, ExposedServiceSessionRepository.ServiceSession>(Table, ServiceSession::class),
+) : ExposedIdentifiedEntityRepository<IServiceSession, ExposedServiceSessionRepository.ServiceSession>(Table),
     IServiceSessionRepository<IServiceSession> {
     override fun read(row: ResultRow?, insert: InsertStatement<Number>?, update: UpdateStatement?)
             = ServiceSession(row, insert, update)
+
+    override fun transform(entity: IServiceSession): ServiceSession? = entity as? ServiceSession
 
     open inner class ServiceSession(
         row: ResultRow? = null,

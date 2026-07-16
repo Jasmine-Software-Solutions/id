@@ -22,10 +22,12 @@ import java.util.*
 
 class ExposedClientRepository(
     val hashFunction: IHashFunction
-) : ExposedIdentifiedEntityRepository<IClient, ExposedClientRepository.Client>(Table, Client::class),
+) : ExposedIdentifiedEntityRepository<IClient, ExposedClientRepository.Client>(Table),
     IClientRepository<IClient> {
     override fun read(row: ResultRow?, insert: InsertStatement<Number>?, update: UpdateStatement?)
             = Client(row, insert, update)
+
+    override fun transform(entity: IClient): Client? = entity as? Client
 
     override fun clone(src: Client, dest: Client) {
         (dest.redirectUris.values as MutableList).clear()
