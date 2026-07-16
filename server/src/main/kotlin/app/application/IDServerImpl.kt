@@ -4,6 +4,8 @@ import app.infrastructure.repositories.accounts.*
 import app.infrastructure.repositories.authentication.ExposedAuthenticationFlowRepository
 import app.infrastructure.repositories.clients.ExposedClientRepository
 import app.infrastructure.repositories.clients.ExposedDelegatedSessionRepository
+import app.infrastructure.repositories.organizations.ExposedOrganizationRepository
+import app.infrastructure.repositories.organizations.ExposedTeamRepository
 import app.infrastructure.repositories.scopes.ExposedScopeRepository
 import app.infrastructure.repositories.tenants.ExposedTenantMembershipRepository
 import app.infrastructure.repositories.tenants.ExposedTenantRepository
@@ -21,6 +23,8 @@ import com.jasminesoftwaresolutions.id.domain.models.authentication.IAuthenticat
 import com.jasminesoftwaresolutions.id.domain.models.authorization.*
 import com.jasminesoftwaresolutions.id.domain.models.client.IClient
 import com.jasminesoftwaresolutions.id.domain.models.client.IDelegatedSession
+import com.jasminesoftwaresolutions.id.domain.models.organization.IOrganization
+import com.jasminesoftwaresolutions.id.domain.models.organization.ITeam
 import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenant
 import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenantMembership
 import com.jasminesoftwaresolutions.id.domain.registries.*
@@ -96,6 +100,8 @@ class IDServerImpl : IDServer {
 
     override var tenantRepository: ITenantRepository<ITenant> = ExposedTenantRepository()
     override var tenantMembershipRepository: ITenantMembershipRepository<ITenantMembership> = ExposedTenantMembershipRepository(tenantRepository, accountRepository)
+    override var organizationRepository: IOrganizationRepository<IOrganization> = ExposedOrganizationRepository(tenantRepository)
+    override var teamRepository: ITeamRepository<ITeam> = ExposedTeamRepository(organizationRepository)
 
     override var authenticationFlowRepository: IAuthenticationFlowRepository<IAuthenticationFlow> = ExposedAuthenticationFlowRepository(authenticationStepRegistry, tenantRepository, accountRepository)
 
