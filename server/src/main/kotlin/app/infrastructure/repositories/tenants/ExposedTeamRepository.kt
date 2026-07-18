@@ -1,14 +1,13 @@
-package app.infrastructure.repositories.organizations
+package app.infrastructure.repositories.tenants
 
 import app.infrastructure.entities.ExposedIdentifiedEntity
 import app.infrastructure.repositories.ExposedIdentifiedEntityRepository
-import app.infrastructure.repositories.tenants.ExposedTenantRepository
 import app.infrastructure.util.EntityTransformer
 import app.infrastructure.util.InstantTransformer
-import com.jasminesoftwaresolutions.id.domain.models.organization.IOrganization
-import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenant
+import com.jasminesoftwaresolutions.id.domain.models.tenant.IOrganization
+import com.jasminesoftwaresolutions.id.domain.models.tenant.ITeam
 import com.jasminesoftwaresolutions.id.domain.repositories.IOrganizationRepository
-import com.jasminesoftwaresolutions.id.domain.repositories.ITenantRepository
+import com.jasminesoftwaresolutions.id.domain.repositories.ITeamRepository
 import org.jetbrains.exposed.dao.id.UUIDTable
 import org.jetbrains.exposed.sql.ReferenceOption
 import org.jetbrains.exposed.sql.ResultRow
@@ -20,41 +19,39 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import java.time.Instant
 import java.util.*
 
-class ExposedOrganizationRepository(
-    val tenantRepository: ITenantRepository<ITenant>
-) : ExposedIdentifiedEntityRepository<IOrganization, ExposedOrganizationRepository.Organization>(Table),
-    IOrganizationRepository<IOrganization> {
+class ExposedTeamRepository(
+    val organizationRepository: IOrganizationRepository<IOrganization>
+) : ExposedIdentifiedEntityRepository<ITeam, ExposedTeamRepository.Team>(Table),
+    ITeamRepository<ITeam> {
     override fun read(row: ResultRow?, insert: InsertStatement<Number>?, update: UpdateStatement?)
-            = Organization(row, insert, update)
+            = Team(row, insert, update)
 
-    override fun transform(entity: IOrganization): Organization? = entity as? Organization
+    override fun transform(entity: ITeam): Team? = entity as? Team
 
-    override fun findByTenant(id: UUID): List<IOrganization> = transaction {
-        Table.select { Table.tenant eq id }
+    override fun findByOrganization(id: UUID): List<ITeam> = transaction {
+        Table.select { Table.organization eq id }
             .orderBy(Table.createdAt, SortOrder.ASC)
             .map { read(it, null, null) }
             .toList()
     }
 
-    open inner class Organization(
+    open inner class Team(
         row: ResultRow? = null,
         insert: InsertStatement<Number>? = null,
         update: UpdateStatement? = null
-    ) : ExposedIdentifiedEntity(Table, row, insert, update), IOrganization {
+    ) : ExposedIdentifiedEntity(Table, row, insert, update), ITeam {
         override val createdAt: Instant by column(Table.createdAt, InstantTransformer)
 
-        override var tenant: ITenant by column(
-            Table.tenant,
-            EntityTransformer(ExposedTenantRepository.Table, tenantRepository)
-        )
+        override var organization: IOrganization by column(Table.organization,
+            EntityTransformer(ExposedOrganizationRepository.Table, organizationRepository))
 
         override var name: String by column(Table.name)
     }
 
-    object Table : UUIDTable("organizations") {
+    object Table : UUIDTable("teams") {
         val createdAt = long("created_at").clientDefault { System.currentTimeMillis() }
 
-        val tenant = reference("tenant", ExposedTenantRepository.Table, onDelete = ReferenceOption.CASCADE)
+        val organization = reference("organization", ExposedOrganizationRepository.Table, onDelete = ReferenceOption.CASCADE)
         val name = varchar("name", 64)
     }
 }

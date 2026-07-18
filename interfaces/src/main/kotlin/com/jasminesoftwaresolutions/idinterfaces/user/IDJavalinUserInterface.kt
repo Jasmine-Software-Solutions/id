@@ -30,13 +30,13 @@ open class IDJavalinUserInterface(server: IDServer) : IDJavalinInterface(server)
         = LoginControllerService(server.authenticationStepRegistry, server.authenticationFlowRepository, server.authenticationService, server.signingFunction)
 
     var oAuth2ControllerService
-        = OAuth2ControllerService(server.sessionRepository, server.clientRepository, server.tenantRepository, server.tenantMembershipRepository, server.delegatedSessionRepository, server.encryptionFunction, server.tokenService, authorizationService, server.scopeRegistry, server.scopeRepository)
+        = OAuth2ControllerService(server.sessionRepository, server.clientRepository, server.tenantRepository, server.tenantMembershipRepository, server.roleAssignmentRepository, server.delegatedSessionRepository, server.encryptionFunction, server.tokenService, authorizationService, server.scopeRegistry, server.scopeRepository)
 
     var magicLinkService
         = MagicLinkControllerService(server.magicLinkRepository)
 
     var accountControllerService
-        = AccountControllerService(server.accountRepository, server.tenantMembershipRepository)
+        = AccountControllerService(server.accountRepository, server.tenantMembershipRepository, server.roleAssignmentRepository)
 
     var sessionControllerService
         = SessionControllerService(server.sessionRepository, server.accountRepository, server.tenantMembershipRepository)
@@ -48,7 +48,7 @@ open class IDJavalinUserInterface(server: IDServer) : IDJavalinInterface(server)
         = PasswordControllerService(server.passwordRepository, server.accountRepository, server.tenantMembershipRepository)
 
     var platformRoleControllerService
-        = PlatformRoleControllerService(server.accountRepository)
+        = PlatformRoleControllerService(server.accountRepository, server.roleAssignmentRepository, server.roleRepository)
 
     var tenantMembershipControllerService
         = TenantMembershipControllerService(server.tenantMembershipRepository, server.tenantRepository, server.accountRepository)

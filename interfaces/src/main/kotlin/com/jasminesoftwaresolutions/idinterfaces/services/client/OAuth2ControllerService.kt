@@ -21,6 +21,7 @@ open class OAuth2ControllerService(
     protected val clientRepository: IClientRepository<out IClient>,
     protected val tenantRepository: ITenantRepository<out ITenant>,
     protected val tenantMembershipRepository: ITenantMembershipRepository<out ITenantMembership>,
+    protected val assignmentRepository: IRoleAssignmentRepository<out IRoleAssignment>,
     protected val delegatedSessionRepository: IDelegatedSessionRepository<out IDelegatedSession>,
     protected val encryptionFunction: IEncryptionFunction,
     protected val tokenService: ITokenService<out IDelegatedSessionAccessToken, IDelegatedSessionRefreshToken, out IServiceSessionAccessToken>,
@@ -82,7 +83,8 @@ open class OAuth2ControllerService(
             ?: return AuthorizeResult.InvalidRedirectUri()
 
         val linkedTenants = tenantMembershipRepository.findByAccount(authentication.session.account.id)
-            .map { it.tenant }
+            .mapNotNull { it.tenant }
+            .distinctBy { it.id }
 
         if (request is TenantOAuth2Request && request.tenantId == null) {
             return AuthorizeResult.SelectTenant(
@@ -101,7 +103,7 @@ open class OAuth2ControllerService(
 
         val scopes = parseRequestedScopes(request.scope)
 
-        if (client.roles.flatMap { it.privileges }.contains(OAuth2ImplicitConsentPrivilege)) {
+        if (assignmentRepository.findByClient(client).flatMap { it.role.privileges }.contains(OAuth2ImplicitConsentPrivilege)) {
             val consentResult = consent(authentication, request)
             if (consentResult is ConsentResult.Consented) {
                 val redirectUri = consentResult.redirectUri

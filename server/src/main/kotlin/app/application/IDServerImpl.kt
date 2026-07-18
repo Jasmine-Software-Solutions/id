@@ -2,11 +2,13 @@ package app.application
 
 import app.infrastructure.repositories.accounts.*
 import app.infrastructure.repositories.authentication.ExposedAuthenticationFlowRepository
+import app.infrastructure.repositories.authorization.ExposedRoleAssignmentRepository
+import app.infrastructure.repositories.authorization.ExposedRoleRepository
 import app.infrastructure.repositories.clients.ExposedClientRepository
 import app.infrastructure.repositories.clients.ExposedDelegatedSessionRepository
-import app.infrastructure.repositories.organizations.ExposedOrganizationRepository
-import app.infrastructure.repositories.organizations.ExposedTeamRepository
 import app.infrastructure.repositories.scopes.ExposedScopeRepository
+import app.infrastructure.repositories.tenants.ExposedOrganizationRepository
+import app.infrastructure.repositories.tenants.ExposedTeamRepository
 import app.infrastructure.repositories.tenants.ExposedTenantMembershipRepository
 import app.infrastructure.repositories.tenants.ExposedTenantRepository
 import app.infrastructure.services.AES256EncryptionFunction
@@ -23,8 +25,8 @@ import com.jasminesoftwaresolutions.id.domain.models.authentication.IAuthenticat
 import com.jasminesoftwaresolutions.id.domain.models.authorization.*
 import com.jasminesoftwaresolutions.id.domain.models.client.IClient
 import com.jasminesoftwaresolutions.id.domain.models.client.IDelegatedSession
-import com.jasminesoftwaresolutions.id.domain.models.organization.IOrganization
-import com.jasminesoftwaresolutions.id.domain.models.organization.ITeam
+import com.jasminesoftwaresolutions.id.domain.models.tenant.IOrganization
+import com.jasminesoftwaresolutions.id.domain.models.tenant.ITeam
 import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenant
 import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenantMembership
 import com.jasminesoftwaresolutions.id.domain.registries.*
@@ -89,6 +91,10 @@ class IDServerImpl : IDServer {
     override var authenticationStepHandlerRegistry: IAuthenticationStepHandlerRegistry<IAuthenticationFlow> = AuthenticationStepHandlerRegistry()
     override var scopeRegistry: IScopeRegistry<IScope> = ScopeRegistry()
 
+    override var tenantRepository: ITenantRepository<ITenant> = ExposedTenantRepository()
+    override var organizationRepository: IOrganizationRepository<IOrganization> = ExposedOrganizationRepository(tenantRepository)
+    override var teamRepository: ITeamRepository<ITeam> = ExposedTeamRepository(organizationRepository)
+
     override var accountRepository: IAccountRepository<IAccount> = ExposedAccountRepository()
     override var passwordRepository: IPasswordRepository<IHashedPassword> = ExposedPasswordRepository(hashFunction, accountRepository)
     override var magicLinkRepository: IMagicLinkRepository<IHashedMagicLink> = ExposedMagicLinkRepository(hashFunction, accountRepository)
@@ -98,10 +104,19 @@ class IDServerImpl : IDServer {
     override var clientRepository: IClientRepository<IClient> = ExposedClientRepository(hashFunction)
     override var scopeRepository: IScopeRepository<IRegisteredScope> = ExposedScopeRepository(clientRepository)
 
-    override var tenantRepository: ITenantRepository<ITenant> = ExposedTenantRepository()
-    override var tenantMembershipRepository: ITenantMembershipRepository<ITenantMembership> = ExposedTenantMembershipRepository(tenantRepository, accountRepository)
-    override var organizationRepository: IOrganizationRepository<IOrganization> = ExposedOrganizationRepository(tenantRepository)
-    override var teamRepository: ITeamRepository<ITeam> = ExposedTeamRepository(organizationRepository)
+    override var roleRepository: IRoleRepository<IRole> = ExposedRoleRepository(
+        tenantRepository,
+        organizationRepository,
+        teamRepository
+    )
+
+    override var roleAssignmentRepository: IRoleAssignmentRepository<IRoleAssignment> = ExposedRoleAssignmentRepository(
+        accountRepository,
+        clientRepository,
+        roleRepository
+    )
+
+    override var tenantMembershipRepository: ITenantMembershipRepository<ITenantMembership> = ExposedTenantMembershipRepository(tenantRepository, organizationRepository, teamRepository, accountRepository)
 
     override var authenticationFlowRepository: IAuthenticationFlowRepository<IAuthenticationFlow> = ExposedAuthenticationFlowRepository(authenticationStepRegistry, tenantRepository, accountRepository)
 
@@ -142,6 +157,9 @@ class IDServerImpl : IDServer {
         accountRepository,
         clientRepository,
         tenantRepository,
+        organizationRepository,
+        teamRepository,
+        roleAssignmentRepository,
         tenantMembershipRepository,
         delegatedSessionRepository,
         sessionRepository,

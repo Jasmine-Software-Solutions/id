@@ -1,8 +1,7 @@
-package com.jasminesoftwaresolutions.id.domain.models.organization
+package com.jasminesoftwaresolutions.id.domain.models.tenant
 
 import com.jasminesoftwaresolutions.id.domain.models.ICreated
 import com.jasminesoftwaresolutions.id.domain.models.IIdentified
-import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenant
 
 interface IOrganization : IIdentified, ICreated {
     var tenant: ITenant

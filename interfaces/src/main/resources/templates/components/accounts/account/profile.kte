@@ -1,6 +1,8 @@
 @import com.jasminesoftwaresolutions.id.domain.models.account.IAccount
+@import com.jasminesoftwaresolutions.id.domain.models.authorization.IRole
 
 @param account: IAccount
+@param assignedRoles: List<IRole>
 @param isSelf: Boolean
 @param allowUpdateEmail: Boolean
 @param allowUpdateProfile: Boolean
@@ -17,7 +19,7 @@
             <h3 class="font-h3 text-h3">${account.firstName} ${account.lastName}</h3>
             <p class="text-body-md text-secondary">${account.email}</p>
             <div class="mt-2 flex gap-2">
-                @for (role in account.roles)
+                @for (role in assignedRoles)
                     <span class="px-2 py-1 bg-surface-container-high text-primary text-label-sm rounded-md">${role.name}</span>
                 @endfor
             </div>

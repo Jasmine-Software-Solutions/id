@@ -23,6 +23,7 @@ class JavalinAuthorizationService(
     val clientRepository: IClientRepository<out IClient>,
     val tenantRepository: ITenantRepository<out ITenant>,
     val tenantMembershipRepository: ITenantMembershipRepository<out ITenantMembership>,
+    val assignmentRepository: IRoleAssignmentRepository<out IRoleAssignment>,
     val tokenService: ITokenService<out IDelegatedSessionAccessToken, out IDelegatedSessionRefreshToken, out IServiceSessionAccessToken>,
     val scopeRegistry: IScopeRegistry<out IScope>,
     val scopeRepository: IScopeRepository<out IRegisteredScope>,
@@ -32,17 +33,17 @@ class JavalinAuthorizationService(
 
     inner class AccountAuthorizationContext(override val account: IAccount) : IAccountAuthorizationContext {
         override val roles: Set<IRole>
-            get() = account.roles + tenantMembershipRepository.findByAccount(account).flatMap { it.roles }
+            get() = assignmentRepository.findByAccount(account).map { it.role }.toSet()
     }
 
     inner class SessionAuthorizationContext(override val session: ISession) : ISessionAuthorizationContext {
         override val roles: Set<IRole>
-            get() = account.roles + tenantMembershipRepository.findByAccount(account).flatMap { it.roles }
+            get() = assignmentRepository.findByAccount(account).map { it.role }.toSet()
     }
 
     inner class ClientAuthorizationContext(override val client: IClient) : IClientAuthorizationContext {
         override val roles: Set<IRole>
-            get() = client.roles
+            get() = assignmentRepository.findByClient(client).map { it.role }.toSet()
     }
 
     inner class DelegatedSessionAuthorizationContext(override val session: ISession, override val tenant: ITenant?, override val token: IDelegatedSessionAccessToken) : IDelegatedSessionAuthorizationContext {
@@ -54,14 +55,7 @@ class JavalinAuthorizationService(
                 if (token.roles != null)
                     return token.roles!!
 
-                val platformRoles = account.roles
-
-                val tenantRoles = if (tenant == null) setOf()
-                else tenantMembershipRepository.findByAccount(account)
-                    .filter { it.tenant.id == tenant.id }
-                    .flatMap { it.roles }
-
-                return platformRoles + tenantRoles
+                return assignmentRepository.findByAccount(account).map { it.role }.toSet()
             }
     }
 
@@ -70,7 +64,7 @@ class JavalinAuthorizationService(
             get() = token.scopes
 
         override val roles: Set<IRole>
-            get() = client.roles
+            get() = assignmentRepository.findByClient(client).map { it.role }.toSet()
     }
 
     override fun authenticate(request: Context): IAuthorizationContext? {
@@ -180,10 +174,11 @@ abstract class InterfacePolicy : Policy<IAuthorizationContext> {
 
                         var memberships = membershipRepository.findByAccount(context.account)
                         if (context is IDelegatedSessionAuthorizationContext)
-                            memberships = memberships.filter { it.tenant.id == context.tenant?.id }
+                            memberships = memberships.filter { it.tenant?.id == context.tenant?.id }
 
-                        val policy = Policy.Or<IAuthorizationContext>(memberships.map {
-                            HasTenantPrivilege(TenantMembersReadPrivilege(it.tenant))
+                        val policy = Policy.Or<IAuthorizationContext>(memberships.mapNotNull {
+                            val tenant = it.tenant ?: return@mapNotNull null
+                            HasTenantPrivilege(TenantMembersReadPrivilege(tenant))
                         })
 
                         return policy.evaluate(context)
@@ -220,10 +215,11 @@ abstract class InterfacePolicy : Policy<IAuthorizationContext> {
 
                         var memberships = membershipRepository.findByAccount(context.account)
                         if (context is IDelegatedSessionAuthorizationContext)
-                            memberships = memberships.filter { it.tenant.id == context.tenant?.id }
+                            memberships = memberships.filter { it.tenant?.id == context.tenant?.id }
 
-                        val policy = Policy.Or<IAuthorizationContext>(memberships.map {
-                            HasTenantPrivilege(TenantMembersReadPrivilege(it.tenant))
+                        val policy = Policy.Or<IAuthorizationContext>(memberships.mapNotNull {
+                            val tenant = it.tenant ?: return@mapNotNull null
+                            HasTenantPrivilege(TenantMembersReadPrivilege(tenant))
                         } + HasPlatformPrivilege(privilege))
 
                         return policy.evaluate(context)

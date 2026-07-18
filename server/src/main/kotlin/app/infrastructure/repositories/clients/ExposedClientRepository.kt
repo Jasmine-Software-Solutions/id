@@ -2,9 +2,7 @@ package app.infrastructure.repositories.clients
 
 import app.infrastructure.entities.ExposedIdentifiedEntity
 import app.infrastructure.repositories.ExposedIdentifiedEntityRepository
-import app.infrastructure.util.ExposedColumnTransformer
 import app.infrastructure.util.InstantTransformer
-import com.jasminesoftwaresolutions.id.domain.models.authorization.*
 import com.jasminesoftwaresolutions.id.domain.models.client.IClient
 import com.jasminesoftwaresolutions.id.domain.models.client.IClientRedirectUris
 import com.jasminesoftwaresolutions.id.domain.models.client.IHashedClient
@@ -120,22 +118,6 @@ class ExposedClientRepository(
                 _secret = value
             }
 
-        override val roles: Set<IPlatformRole> by column(
-            Table.roles, ExposedColumnTransformer(
-            fromColumn = { it.split(" ").mapNotNull {
-                if (it == PlatformAdministrator.id)
-                    PlatformAdministrator
-                else if (it == PlatformTrustedClient.id)
-                    PlatformTrustedClient
-                else if (it == PlatformClient.id)
-                    PlatformClient
-                else if (it == PlatformMember.id)
-                    PlatformMember
-                else null
-            }.toSet() },
-            toColumn = { it.map { it.id }.joinToString(" ") },
-        ))
-
         override fun verify(secret: String): Boolean {
             return hashFunction.verify(secret.toByteArray(), row!![Table.secretHash])
         }
@@ -150,7 +132,6 @@ class ExposedClientRepository(
 
         val secretHash = text("argon2_secret_hash")
 
-        val roles = text("roles").clientDefault { PlatformClient.id }
     }
     
     object RedirectUrisTable : UUIDTable("client_redirect_uris") {

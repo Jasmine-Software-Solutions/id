@@ -1,12 +1,20 @@
 package com.jasminesoftwaresolutions.id.domain.models.tenant
 
+import com.jasminesoftwaresolutions.id.domain.models.IAttachment
 import com.jasminesoftwaresolutions.id.domain.models.ICreated
 import com.jasminesoftwaresolutions.id.domain.models.IIdentified
 import com.jasminesoftwaresolutions.id.domain.models.account.IAccount
-import com.jasminesoftwaresolutions.id.domain.models.authorization.ITenantRole
 
 interface ITenantMembership : IIdentified, ICreated {
-    var tenant: ITenant
+    var attachment: IAttachment
     var account: IAccount
-    var roles: Set<ITenantRole>
+
+    val tenant: ITenant?
+        get() = attachment.tenant
+
+    val organization: IOrganization?
+        get() = attachment.organization
+
+    val team: ITeam?
+        get() = attachment.team
 }

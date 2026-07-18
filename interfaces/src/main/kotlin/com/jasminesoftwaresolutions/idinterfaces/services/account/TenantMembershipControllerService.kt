@@ -1,5 +1,6 @@
 package com.jasminesoftwaresolutions.idinterfaces.services.account
 
+import com.jasminesoftwaresolutions.id.domain.models.TenantAttachment
 import com.jasminesoftwaresolutions.id.domain.models.account.IAccount
 import com.jasminesoftwaresolutions.id.domain.models.authorization.AccountsReadPrivilege
 import com.jasminesoftwaresolutions.id.domain.models.authorization.IAccountAuthorizationContext
@@ -76,7 +77,12 @@ open class TenantMembershipControllerService<TMembership : ITenantMembership, TT
         }
 
         val memberships = tenantMembershipRepository.findByAccount(account.id)
-            .sortedBy { it.tenant.name.lowercase() }
+            .sortedBy { membership ->
+                membership.team?.name
+                    ?: membership.organization?.name
+                    ?: membership.tenant?.name
+                    ?: ""
+            }
 
         return ReadResult.Success(memberships)
     }
@@ -93,13 +99,13 @@ open class TenantMembershipControllerService<TMembership : ITenantMembership, TT
             ?: return AssignResult.TenantNotFound
 
         val existing = tenantMembershipRepository.findByAccount(account.id)
-            .firstOrNull { it.tenant.id == tenant.id }
+            .firstOrNull { it.tenant?.id == tenant.id }
         if (existing != null)
             return AssignResult.Success(existing, false)
 
         val created = tenantMembershipRepository.create {
             this.account = account
-            this.tenant = tenant
+            this.attachment = TenantAttachment(tenant)
         }
 
         return AssignResult.Success(created, true)
@@ -114,7 +120,7 @@ open class TenantMembershipControllerService<TMembership : ITenantMembership, TT
         }
 
         val membership = tenantMembershipRepository.findByAccount(account.id)
-            .firstOrNull { it.tenant.id == tenantId }
+            .firstOrNull { it.tenant?.id == tenantId }
             ?: return UnassignResult.NotFound
 
         tenantMembershipRepository.delete(membership)

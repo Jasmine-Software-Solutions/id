@@ -50,12 +50,14 @@ class AjaxAccountController(
 
     private fun renderAccount(ctx: Context, authentication: ISessionAuthorizationContext, accountId: UUID?) {
         val accountResult = accountService.get(authentication, accountId)
-        val account = when (accountResult) {
-            is AccountControllerService.GetAccountResult.Success -> accountResult.account.account
+        val accountDto = when (accountResult) {
+            is AccountControllerService.GetAccountResult.Success -> accountResult.account
             is AccountControllerService.GetAccountResult.Forbidden -> throw ForbiddenResponse()
             is AccountControllerService.GetAccountResult.NotFound -> throw NotFoundResponse("Account not found")
             else -> throw BadRequestResponse()
         }
+        val account = accountDto.account
+        val assignedRoles = accountDto.roles?.map { it.role } ?: emptyList()
 
         val targetAccountId = account.id
         val isSelf = targetAccountId == authentication.account.id
@@ -106,6 +108,7 @@ class AjaxAccountController(
             "totpQrCodeUri" to totpQrCodeUri,
             "password" to password,
             "memberships" to memberships,
+            "assignedRoles" to assignedRoles,
             "allowUpdateEmail" to writePrivilege,
             "allowUpdateProfile" to (writePrivilege || isSelf),
             "allowUpdatePassword" to (writePrivilege || isSelf),

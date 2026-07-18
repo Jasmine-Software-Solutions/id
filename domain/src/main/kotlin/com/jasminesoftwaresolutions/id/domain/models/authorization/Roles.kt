@@ -1,79 +1,89 @@
 package com.jasminesoftwaresolutions.id.domain.models.authorization
 
+import com.jasminesoftwaresolutions.id.domain.models.*
+import com.jasminesoftwaresolutions.id.domain.models.tenant.IOrganization
+import com.jasminesoftwaresolutions.id.domain.models.tenant.ITeam
 import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenant
+import java.time.Instant
+import java.util.*
 
-interface IRole {
-    var id: String
+fun IRole.isSameAssignmentAs(other: IRole): Boolean =
+    id == other.id && attachment.isSameAssignmentTargetAs(other.attachment)
+
+fun IAttachment.isSameAssignmentTargetAs(other: IAttachment): Boolean =
+    when {
+        this is ITenantAttachment && other is ITenantAttachment -> tenant.id == other.tenant.id
+        this is IOrganizationAttachment && other is IOrganizationAttachment -> organization.id == other.organization.id
+        this is ITeamAttachment && other is ITeamAttachment -> team.id == other.team.id
+        else -> type == other.type
+    }
+
+interface IRole: IIdentified, ICreated {
     var name: String
-    var description: String
-
-    var privileges: List<IPrivilege>
+    var attachment: IAttachment
 }
 
-interface IPlatformRole : IRole
-
-object PlatformAdministrator : IPlatformRole {
-    override var id: String = "platform_administrator"
-    override var name: String = "Platform Administrator"
-    override var description: String = "Full access to all resources"
-    override var privileges: List<IPrivilege> = listOf(
-        *PlatformPrivilege.all()
-    )
-}
-
-object PlatformTrustedClient : IPlatformRole {
-    override var id: String = "platform_trusted_client"
-    override var name: String = "Platform Trusted Client"
-    override var description: String = "Full access for applications"
-    override var privileges: List<IPrivilege> = listOf(
-        *PlatformPrivilege.all()
-    )
-}
-
-object PlatformClient : IPlatformRole {
-    override var id: String = "platform_client"
-    override var name: String = "Platform Client"
-    override var description: String = "Limited access for applications"
-    override var privileges: List<IPrivilege> = listOf(
-        ClientScopesWritePrivilege
-    )
-}
-
-object PlatformMember : IPlatformRole {
-    override var id: String = "platform_member"
-    override var name: String = "Platform Member"
-    override var description: String = "Limited access"
-    override var privileges: List<IPrivilege> = emptyList()
+interface IPlatformRole : IRole {
+    override var attachment: IAttachment
+        get() = PlatformAttachment
+        set(value) {
+            require(value.type == PlatformAttachment.type)
+        }
 }
 
 interface ITenantRole : IRole {
+    override var attachment: IAttachment
+        get() = TenantAttachment(tenant)
+        set(value) {
+            tenant = (value as ITenantAttachment).tenant
+        }
+
     var tenant: ITenant
 }
 
-class TenantAdministrator(override var tenant: ITenant) : ITenantRole {
-    companion object {
-        val id = "administrator"
-    }
+interface IOrganizationRole : IRole {
+    override var attachment: IAttachment
+        get() = OrganizationAttachment(organization)
+        set(value) {
+            organization = (value as IOrganizationAttachment).organization
+        }
 
-    override var id: String = Companion.id
-    override var name: String = "Administrator"
-    override var description: String = "Full access to organization resources"
-    override var privileges: List<IPrivilege> = listOf(
-        *TenantPrivilege.all(tenant)
-    )
+    var organization: IOrganization
 }
 
-class TenantMember(override var tenant: ITenant) : ITenantRole {
-    companion object {
-        val id = "member"
-    }
+interface ITeamRole : IRole {
+    override var attachment: IAttachment
+        get() = TeamAttachment(team)
+        set(value) {
+            team = (value as ITeamAttachment).team
+        }
 
-    override var id: String = Companion.id
-    override var name: String = "Member"
-    override var description: String = "Limited access to organization resources"
-    override var privileges: List<IPrivilege> = listOf(
-        TenantReadPrivilege(tenant),
-        TenantMembersListPrivilege(tenant),
-        TenantMembersReadPrivilege(tenant)
-    )
+    var team: ITeam
 }
+
+open class PlatformRole(
+    override var id: UUID,
+    override var name: String,
+    override val createdAt: Instant
+) : IPlatformRole
+
+open class TenantRole(
+    override var tenant: ITenant,
+    override var id: UUID,
+    override var name: String,
+    override val createdAt: Instant
+) : ITenantRole
+
+open class OrganizationRole(
+    override var organization: IOrganization,
+    override var id: UUID,
+    override var name: String,
+    override val createdAt: Instant
+) : IOrganizationRole
+
+open class TeamRole(
+    override var team: ITeam,
+    override var id: UUID,
+    override var name: String,
+    override val createdAt: Instant
+) : ITeamRole

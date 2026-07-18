@@ -50,7 +50,8 @@ open class PasswordControllerService<T : IHashedPassword>(
             return true
 
         return tenantMembershipRepository.findByAccount(account.id)
-            .any { InterfacePolicy.HasTenantPrivilege(TenantMembersReadPrivilege(it.tenant)).evaluate(authentication) is PolicyResult.Pass }
+            .mapNotNull { it.tenant }
+            .any { InterfacePolicy.HasTenantPrivilege(TenantMembersReadPrivilege(it)).evaluate(authentication) is PolicyResult.Pass }
     }
 
     private fun resolveAccount(authentication: IAuthorizationContext, accountId: UUID?): ResolveAccountResult {

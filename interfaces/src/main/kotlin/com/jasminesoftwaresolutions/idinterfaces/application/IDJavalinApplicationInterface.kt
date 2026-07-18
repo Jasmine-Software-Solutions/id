@@ -15,13 +15,13 @@ import java.util.*
 
 open class IDJavalinApplicationInterface(server: IDServer) : IDJavalinInterface(server) {
     var oAuth2ControllerService
-        = OAuth2ControllerService(server.sessionRepository, server.clientRepository, server.tenantRepository, server.tenantMembershipRepository, server.delegatedSessionRepository, server.encryptionFunction, server.tokenService, authorizationService, server.scopeRegistry, server.scopeRepository)
+        = OAuth2ControllerService(server.sessionRepository, server.clientRepository, server.tenantRepository, server.tenantMembershipRepository, server.roleAssignmentRepository, server.delegatedSessionRepository, server.encryptionFunction, server.tokenService, authorizationService, server.scopeRegistry, server.scopeRepository)
 
     var clientScopesControllerService
         = ClientScopesControllerService(authorizationService, server.clientRepository, server.scopeRepository, server.scopeRegistry)
 
     var accountControllerService
-        = AccountControllerService(server.accountRepository, server.tenantMembershipRepository)
+        = AccountControllerService(server.accountRepository, server.tenantMembershipRepository, server.roleAssignmentRepository)
 
     override fun install(config: JavalinConfig) {
         val oauth2Controller = RestOAuth2Controller(oAuth2ControllerService, authorizationService)

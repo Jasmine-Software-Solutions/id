@@ -1,11 +1,14 @@
 package com.jasminesoftwaresolutions.id.domain.services.authorization
 
 import com.google.gson.*
+import com.jasminesoftwaresolutions.id.domain.models.*
 import com.jasminesoftwaresolutions.id.domain.models.account.IAccount
 import com.jasminesoftwaresolutions.id.domain.models.account.ISession
 import com.jasminesoftwaresolutions.id.domain.models.authorization.*
 import com.jasminesoftwaresolutions.id.domain.models.client.IClient
 import com.jasminesoftwaresolutions.id.domain.models.client.IDelegatedSession
+import com.jasminesoftwaresolutions.id.domain.models.tenant.IOrganization
+import com.jasminesoftwaresolutions.id.domain.models.tenant.ITeam
 import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenant
 import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenantMembership
 import com.jasminesoftwaresolutions.id.domain.registries.IScopeRegistry
@@ -57,6 +60,9 @@ open class JWTTokenService (
     private val accountRepository: IAccountRepository<out IAccount>,
     private val clientRepository: IClientRepository<out IClient>,
     private val tenantRepository: ITenantRepository<out ITenant>,
+    private val organizationRepository: IOrganizationRepository<out IOrganization>,
+    private val teamRepository: ITeamRepository<out ITeam>,
+    private val assignmentRepository: IRoleAssignmentRepository<out IRoleAssignment>,
     private val tenantMembershipRepository: ITenantMembershipRepository<out ITenantMembership>,
     private val delegatedSessionRepository: IDelegatedSessionRepository<IDelegatedSession>,
     private val sessionRepository: ISessionRepository<out ISession>,
@@ -71,6 +77,7 @@ open class JWTTokenService (
         private const val CLAIM_SESSION_ID = "https://id.jasmine.software/session_id"
         private const val CLAIM_TENANT = "https://id.jasmine.software/tenant"
         private const val CLAIM_ROLES = "https://id.jasmine.software/roles"
+        private const val CLAIM_ATTACHMENT = "attachment"
         private const val TYPE_DELEGATED_ACCESS = "delegated_session_access"
         private const val TYPE_DELEGATED_REFRESH = "delegated_session_refresh"
     }
@@ -86,17 +93,81 @@ open class JWTTokenService (
         addProperty("name", tenant.name)
     }
 
+    private fun generateAttachmentInfo(attachment: IAttachment) = JsonObject().apply {
+        addProperty("type", attachment.type.name.lowercase())
+
+        when (attachment) {
+            is ITenantAttachment -> addProperty("tenant_id", attachment.tenant.id.toString())
+            is IOrganizationAttachment -> addProperty("organization_id", attachment.organization.id.toString())
+            is ITeamAttachment -> addProperty("team_id", attachment.team.id.toString())
+        }
+    }
+
     private fun generateRoleInfo(role: IRole) = JsonObject().apply {
         addProperty("id", role.id)
-        addProperty("description", role.name)
-
-        if (role is ITenantRole)
-            addProperty("tenant_id", role.tenant.id.toString())
+        addProperty("name", role.name)
+        addProperty("description", role.description)
+        add(CLAIM_ATTACHMENT, generateAttachmentInfo(role.attachment))
     }
 
     private fun generateRoleInfo(roles: Set<IRole>) = JsonArray().apply {
         for (role in roles)
             add(generateRoleInfo(role))
+    }
+
+    private fun deserializeAttachmentInfo(obj: JsonObject): IAttachment? {
+        if (obj.has(CLAIM_ATTACHMENT)) {
+            val attachment = obj[CLAIM_ATTACHMENT].asJsonObject
+            return deserializeAttachmentInfoFromClaim(attachment)
+        }
+
+        val level = obj.get("level")?.asString
+        return when (level) {
+            AttachmentType.GLOBAL.name.lowercase() -> PlatformAttachment
+            AttachmentType.TENANT.name.lowercase() -> obj.get("tenant_id")?.asString
+                ?.let { tenantRepository.findById(UUID.fromString(it)) }
+                ?.let { TenantAttachment(it) }
+            AttachmentType.ORGANIZATION.name.lowercase() -> obj.get("organization_id")?.asString
+                ?.let { organizationRepository.findById(UUID.fromString(it)) }
+                ?.let { OrganizationAttachment(it) }
+            AttachmentType.TEAM.name.lowercase() -> obj.get("team_id")?.asString
+                ?.let { teamRepository.findById(UUID.fromString(it)) }
+                ?.let { TeamAttachment(it) }
+            else -> obj.get("tenant_id")?.asString
+                ?.let { tenantRepository.findById(UUID.fromString(it)) }
+                ?.let { TenantAttachment(it) }
+                ?: PlatformAttachment
+        }
+    }
+
+    private fun deserializeAttachmentInfoFromClaim(obj: JsonObject): IAttachment? {
+        return when (obj.get("type")?.asString) {
+            AttachmentType.GLOBAL.name.lowercase() -> PlatformAttachment
+            AttachmentType.TENANT.name.lowercase() -> obj.get("tenant_id")?.asString
+                ?.let { tenantRepository.findById(UUID.fromString(it)) }
+                ?.let { TenantAttachment(it) }
+            AttachmentType.ORGANIZATION.name.lowercase() -> obj.get("organization_id")?.asString
+                ?.let { organizationRepository.findById(UUID.fromString(it)) }
+                ?.let { OrganizationAttachment(it) }
+            AttachmentType.TEAM.name.lowercase() -> obj.get("team_id")?.asString
+                ?.let { teamRepository.findById(UUID.fromString(it)) }
+                ?.let { TeamAttachment(it) }
+            else -> null
+        }
+    }
+
+    private fun deserializeRoleInfo(obj: JsonObject): IRole? {
+        val id = obj["id"].asString
+        val name = obj.get("name")?.asString ?: id
+        val description = obj.get("description")?.asString ?: ""
+        val attachment = deserializeAttachmentInfo(obj) ?: return null
+
+        return when (attachment) {
+            is ITenantAttachment -> TenantRole(attachment.tenant, id, name, description)
+            is IOrganizationAttachment -> OrganizationRole(attachment.organization, id, name, description)
+            is ITeamAttachment -> TeamRole(attachment.team, id, name, description)
+            else -> PlatformRole(id, name, description)
+        }
     }
 
     private inner class DelegatedSessionAccessTokenSerializer : JsonSerializer<IDelegatedSessionAccessToken>, JsonDeserializer<IDelegatedSessionAccessToken> {
@@ -179,28 +250,9 @@ open class JWTTokenService (
                     if (!obj.has(CLAIM_ROLES))
                         return@lazy null
 
-                    obj[CLAIM_ROLES].asJsonArray.mapNotNull {
-                        val obj = it.asJsonObject
-                        val id = obj["id"].asString
-                        val tenantId = obj.get("tenant_id")?.asString
-
-                        if (tenantId == null)
-                            return@mapNotNull when (id) {
-                                PlatformAdministrator.id -> PlatformAdministrator
-                                PlatformTrustedClient.id -> PlatformTrustedClient
-                                PlatformClient.id -> PlatformClient
-                                PlatformMember.id -> PlatformMember
-                                else -> null
-                            }
-
-                        val tenant = tenantRepository.findById(UUID.fromString(tenantId))!!
-
-                        return@mapNotNull when (id) {
-                            TenantAdministrator.id -> TenantAdministrator(tenant)
-                            TenantMember.id -> TenantMember(tenant)
-                            else -> null
-                        }
-                    }.toSet()
+                    obj[CLAIM_ROLES].asJsonArray
+                        .mapNotNull { deserializeRoleInfo(it.asJsonObject) }
+                        .toSet()
                 }
 
                 override val token: String = jwtService.encode(gson.toJsonTree(this).asJsonObject)
@@ -349,18 +401,9 @@ open class JWTTokenService (
                     if (!obj.has(CLAIM_ROLES))
                         return@lazy null
 
-                    obj[CLAIM_ROLES].asJsonArray.mapNotNull {
-                        val obj = it.asJsonObject
-                        val id = obj["id"].asString
-
-                        return@mapNotNull when (id) {
-                            PlatformAdministrator.id -> PlatformAdministrator
-                            PlatformTrustedClient.id -> PlatformTrustedClient
-                            PlatformClient.id -> PlatformClient
-                            PlatformMember.id -> PlatformMember
-                            else -> null
-                        }
-                    }.toSet()
+                    obj[CLAIM_ROLES].asJsonArray
+                        .mapNotNull { deserializeRoleInfo(it.asJsonObject) }
+                        .toSet()
                 }
 
                 override val token: String = jwtService.encode(gson.toJsonTree(this).asJsonObject)
@@ -396,16 +439,8 @@ open class JWTTokenService (
             override val roles: Set<IRole> by lazy {
                 val roles = mutableSetOf<IRole>()
 
-                for (role in session.account.roles)
+                for (role in assignmentRepository.findByAccount(session.account).map { it.role })
                     roles.add(role)
-
-                val membership = tenantMembershipRepository.findByAccount(session.account)
-                    .firstOrNull { it.tenant == tenant }
-
-                if (membership != null) {
-                    for (role in membership.roles)
-                        roles.add(role)
-                }
 
                 return@lazy roles
             }
@@ -478,7 +513,7 @@ open class JWTTokenService (
 
             override val tenant = tenant
             override val scopes = scopes
-            override val roles: Set<IRole> = client.roles
+            override val roles: Set<IRole> = assignmentRepository.findByClient(client).map { it.role }.toSet()
 
             override val token = jwtService.encode(gson.toJsonTree(this).asJsonObject)
         }

@@ -6,8 +6,8 @@ import com.jasminesoftwaresolutions.id.domain.models.authentication.IAuthenticat
 import com.jasminesoftwaresolutions.id.domain.models.authorization.*
 import com.jasminesoftwaresolutions.id.domain.models.client.IClient
 import com.jasminesoftwaresolutions.id.domain.models.client.IDelegatedSession
-import com.jasminesoftwaresolutions.id.domain.models.organization.IOrganization
-import com.jasminesoftwaresolutions.id.domain.models.organization.ITeam
+import com.jasminesoftwaresolutions.id.domain.models.tenant.IOrganization
+import com.jasminesoftwaresolutions.id.domain.models.tenant.ITeam
 import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenant
 import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenantMembership
 import com.jasminesoftwaresolutions.id.domain.registries.IAuthenticationStepHandlerRegistry
@@ -46,6 +46,9 @@ interface IDServer {
     var clientRepository: IClientRepository<IClient>
     var delegatedSessionRepository: IDelegatedSessionRepository<IDelegatedSession>
     var scopeRepository: IScopeRepository<IRegisteredScope>
+
+    var roleRepository: IRoleRepository<IRole>
+    var roleAssignmentRepository: IRoleAssignmentRepository<IRoleAssignment>
 
     var tenantRepository: ITenantRepository<ITenant>
     var tenantMembershipRepository: ITenantMembershipRepository<ITenantMembership>

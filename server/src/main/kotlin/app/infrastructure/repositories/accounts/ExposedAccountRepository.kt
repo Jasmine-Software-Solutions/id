@@ -2,10 +2,8 @@ package app.infrastructure.repositories.accounts
 
 import app.infrastructure.entities.ExposedIdentifiedEntity
 import app.infrastructure.repositories.ExposedIdentifiedEntityRepository
-import app.infrastructure.util.ExposedColumnTransformer
 import app.infrastructure.util.InstantTransformer
 import com.jasminesoftwaresolutions.id.domain.models.account.IAccount
-import com.jasminesoftwaresolutions.id.domain.models.authorization.*
 import com.jasminesoftwaresolutions.id.domain.repositories.IAccountRepository
 import org.jetbrains.exposed.dao.id.UUIDTable
 import org.jetbrains.exposed.sql.ResultRow
@@ -15,8 +13,7 @@ import org.jetbrains.exposed.sql.statements.UpdateStatement
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.time.Instant
 
-open class ExposedAccountRepository
-    : ExposedIdentifiedEntityRepository<IAccount, ExposedAccountRepository.Account>(Table),
+open class ExposedAccountRepository : ExposedIdentifiedEntityRepository<IAccount, ExposedAccountRepository.Account>(Table),
     IAccountRepository<IAccount> {
     override fun read(row: ResultRow?, insert: InsertStatement<Number>?, update: UpdateStatement?)
         = Account(row, insert, update)
@@ -30,7 +27,7 @@ open class ExposedAccountRepository
         return@transaction read(row, null, null)
     }
 
-    open class Account(
+    open inner class Account(
         row: ResultRow? = null,
         insert: InsertStatement<Number>? = null,
         update: UpdateStatement? = null
@@ -40,21 +37,6 @@ open class ExposedAccountRepository
         override var email: String by column(Table.email)
         override var firstName: String by column(Table.firstName)
         override var lastName: String by column(Table.lastName)
-
-        override var roles: Set<IPlatformRole> by column(Table.roles, ExposedColumnTransformer(
-            fromColumn = { it.split(" ").mapNotNull {
-                if (it == PlatformAdministrator.id)
-                    PlatformAdministrator
-                else if (it == PlatformMember.id)
-                    PlatformMember
-                else if (it == PlatformClient.id)
-                    PlatformClient
-                else if (it == PlatformTrustedClient.id)
-                    PlatformTrustedClient
-                else null
-            }.toSet() },
-            toColumn = { it.map { it.id }.joinToString(" ") },
-        ))
     }
 
     object Table : UUIDTable("accounts") {
@@ -64,7 +46,5 @@ open class ExposedAccountRepository
 
         val firstName = varchar("first_name", 40)
         val lastName = varchar("last_name", 40)
-
-        val roles = text("roles").clientDefault { PlatformMember.id }
     }
 }

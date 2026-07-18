@@ -1,21 +1,22 @@
 package com.jasminesoftwaresolutions.idinterfaces.services.account
 
+import com.jasminesoftwaresolutions.id.domain.models.TenantAttachment
 import com.jasminesoftwaresolutions.id.domain.models.account.IAccount
 import com.jasminesoftwaresolutions.id.domain.models.authorization.*
 import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenant
 import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenantMembership
 import com.jasminesoftwaresolutions.id.domain.repositories.IAccountRepository
+import com.jasminesoftwaresolutions.id.domain.repositories.IRoleAssignmentRepository
 import com.jasminesoftwaresolutions.id.domain.repositories.ITenantMembershipRepository
 import com.jasminesoftwaresolutions.id.domain.services.authorization.Policy
 import com.jasminesoftwaresolutions.id.domain.services.authorization.PolicyResult
 import com.jasminesoftwaresolutions.idinterfaces.services.auth.InterfacePolicy
-import org.jetbrains.kotlin.com.google.common.collect.Streams
 import java.util.*
-import java.util.stream.Collectors
 
 open class AccountControllerService(
     protected val accountRepository: IAccountRepository<IAccount>,
     protected val tenantMembershipRepository: ITenantMembershipRepository<out ITenantMembership>,
+    protected val assignmentRepository: IRoleAssignmentRepository<out IRoleAssignment>,
 ) {
     data class RoleDTO(
         @Transient val role: IRole,
@@ -54,7 +55,7 @@ open class AccountControllerService(
     }
 
     private fun isMemberOfTenant(account: IAccount, tenant: ITenant): Boolean =
-        tenantMembershipRepository.findByAccount(account.id).any { it.tenant.id == tenant.id }
+        tenantMembershipRepository.findByAccount(account.id).any { it.tenant?.id == tenant.id }
 
     private fun toAccountDTO(
         account: IAccount,
@@ -62,8 +63,6 @@ open class AccountControllerService(
         includeProfile: Boolean = true,
         includePermissions: Boolean = true
     ): AccountDTO {
-        val memberships = tenantMembershipRepository.findByAccount(account.id)
-
         return AccountDTO(
             account,
             id = account.id,
@@ -71,12 +70,9 @@ open class AccountControllerService(
             firstName = if (includeProfile) account.firstName else null,
             lastName = if (includeProfile) account.lastName else null,
             roles = if (includePermissions) {
-                val platformRoles = account.roles
-                val tenantRoles = memberships.flatMap { it.roles }
-
-                Streams.concat(platformRoles.stream(), tenantRoles.stream())
-                    .map { RoleDTO(it, it.id, it.name, (it as? ITenantRole)?.tenant?.id) }
-                    .collect(Collectors.toList())
+                assignmentRepository.findByAccount(account)
+                    .map { it.role }
+                    .map { RoleDTO(it, it.id, it.description, it.attachment.tenant?.id) }
             } else null
         )
     }
@@ -196,7 +192,7 @@ open class AccountControllerService(
 
             if (!isMemberOfTenant(account, tenant)) {
                 tenantMembershipRepository.create {
-                    this.tenant = tenant
+                    this.attachment = TenantAttachment(tenant)
                     this.account = account
                 }
             }

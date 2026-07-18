@@ -3,7 +3,7 @@
 @import com.jasminesoftwaresolutions.id.domain.models.account.ISession
 @import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenantMembership
 @import com.jasminesoftwaresolutions.id.domain.models.account.ITOTPConfiguration
-@import com.jasminesoftwaresolutions.id.domain.models.authorization.IPlatformRole
+@import com.jasminesoftwaresolutions.id.domain.models.authorization.IRole
 
 @param account: IAccount
 @param activeSession: ISession?
@@ -15,6 +15,7 @@
 @param password: IPassword?
 
 @param memberships: List<ITenantMembership>
+@param assignedRoles: List<IRole>
 
 @param allowUpdateEmail: Boolean
 @param allowUpdateProfile: Boolean
@@ -23,7 +24,7 @@
 @param allowRevokeSessions: Boolean
 @param allowUpdateRoles: Boolean
 @param allowUpdateMemberships: Boolean
-@param allRoles: List<IPlatformRole>
+@param allRoles: List<IRole>
 
 <head>
     <meta charset="utf-8"/>
@@ -97,10 +98,10 @@
 <main class="ml-64 pt-24 pb-12 px-8 min-h-screen">
     <div class="max-w-[1120px] mx-auto space-y-6">
         <div class="grid grid-cols-12 gap-gutter">
-            @template.components.accounts.account.profile(account = account, isSelf = isSelf, allowUpdateEmail = allowUpdateEmail, allowUpdateProfile = allowUpdateProfile)
+            @template.components.accounts.account.profile(account = account, assignedRoles = assignedRoles, isSelf = isSelf, allowUpdateEmail = allowUpdateEmail, allowUpdateProfile = allowUpdateProfile)
             @template.components.accounts.account.security(account = account, password = password, totpConfiguration = totpConfiguration, totpQrCodeUri = totpQrCodeUri, allowUpdatePassword = allowUpdatePassword, allowUpdateTotp = allowUpdateTotp, isSelf = isSelf)
             @template.components.accounts.account.sessions(account = account, sessions = sessions, activeSession = activeSession, isSelf = isSelf)
-            @template.components.accounts.account.roles(account = account, allRoles = allRoles, allowUpdateRoles = allowUpdateRoles, isSelf = isSelf)
+            @template.components.accounts.account.roles(account = account, assignedRoles = assignedRoles, allRoles = allRoles, allowUpdateRoles = allowUpdateRoles, isSelf = isSelf)
             @template.components.accounts.account.organizations(account = account, memberships = memberships, allowUpdateMemberships = allowUpdateMemberships, isSelf = isSelf)
         </div>
     </div>

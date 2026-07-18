@@ -1,19 +1,25 @@
 package com.jasminesoftwaresolutions.idinterfaces.services.account
 
+import com.jasminesoftwaresolutions.id.domain.models.AttachmentType
 import com.jasminesoftwaresolutions.id.domain.models.account.IAccount
 import com.jasminesoftwaresolutions.id.domain.models.authorization.*
 import com.jasminesoftwaresolutions.id.domain.repositories.IAccountRepository
+import com.jasminesoftwaresolutions.id.domain.repositories.IRoleAssignmentRepository
+import com.jasminesoftwaresolutions.id.domain.repositories.IRoleRepository
 import com.jasminesoftwaresolutions.idinterfaces.services.auth.InterfacePolicy
 import java.util.*
 
 open class PlatformRoleControllerService(
     protected val accountRepository: IAccountRepository<IAccount>,
-    open val managedRoles: List<IPlatformRole> = listOf(PlatformAdministrator, PlatformMember),
+    protected val assignmentRepository: IRoleAssignmentRepository<out IRoleAssignment>,
+    protected val roleRepository: IRoleRepository<out IRole>,
 ) {
-    private val managedRolesById = managedRoles.associateBy { it.id }
+    open val managedRoles: List<IRole>
+        get() = roleRepository.entries()
+            .filter { it.attachment.type == AttachmentType.GLOBAL }
 
     open class AssignResult {
-        data class Success(val account: IAccount, val role: IPlatformRole, val created: Boolean) : AssignResult()
+        data class Success(val account: IAccount, val role: IRole, val created: Boolean) : AssignResult()
         object Unauthorized : AssignResult()
         object Forbidden : AssignResult()
         object AccountNotFound : AssignResult()
@@ -21,7 +27,7 @@ open class PlatformRoleControllerService(
     }
 
     open class UnassignResult {
-        data class Success(val account: IAccount, val role: IPlatformRole) : UnassignResult()
+        data class Success(val account: IAccount, val role: IRole) : UnassignResult()
         object Unauthorized : UnassignResult()
         object Forbidden : UnassignResult()
         object AccountNotFound : UnassignResult()
@@ -54,14 +60,21 @@ open class PlatformRoleControllerService(
         if (!InterfacePolicy.HasPlatformPrivilege(PlatformRolesAssignPrivilege).passes(authentication))
             return AssignResult.Forbidden
 
-        val role = managedRolesById[roleId]
+        val role = roleRepository.findById(roleId)
+            ?.takeIf { it.attachment.type == AttachmentType.GLOBAL }
             ?: return AssignResult.RoleNotFound
 
-        if (role in account.roles)
+        val existing = assignmentRepository.findByAccount(account)
+            .firstOrNull { it.role.isSameAssignmentAs(role) }
+
+        if (existing != null)
             return AssignResult.Success(account, role, false)
 
-        accountRepository.update(account) {
-            this.roles = roles + role
+        @Suppress("UNCHECKED_CAST")
+        (assignmentRepository as IRoleAssignmentRepository<IRoleAssignment>).create {
+            this.account = account
+            this.client = null
+            this.role = role
         }
 
         return AssignResult.Success(account, role, true)
@@ -74,15 +87,16 @@ open class PlatformRoleControllerService(
         if (!InterfacePolicy.HasPlatformPrivilege(PlatformRolesAssignPrivilege).passes(authentication))
             return UnassignResult.Forbidden
 
-        val role = managedRolesById[roleId]
+        val role = roleRepository.findById(roleId)
+            ?.takeIf { it.attachment.type == AttachmentType.GLOBAL }
             ?: return UnassignResult.RoleNotFound
 
-        if (role !in account.roles)
-            return UnassignResult.NotFound
+        val assignment = assignmentRepository.findByAccount(account)
+            .firstOrNull { it.role.isSameAssignmentAs(role) }
+            ?: return UnassignResult.NotFound
 
-        accountRepository.update(account) {
-            this.roles = roles - role
-        }
+        @Suppress("UNCHECKED_CAST")
+        (assignmentRepository as IRoleAssignmentRepository<IRoleAssignment>).delete(assignment)
 
         return UnassignResult.Success(account, role)
     }

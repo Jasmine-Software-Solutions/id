@@ -10,7 +10,7 @@
     <section class="bg-white border border-slate-200 rounded-xl shadow-sm p-gutter h-full">
         <div class="flex items-center gap-3 mb-6">
             <span class="p-2 bg-slate-50 text-slate-600 rounded-lg material-symbols-outlined" data-icon="corporate_fare">corporate_fare</span>
-            <h3 class="font-h3 text-h3">Organizations</h3>
+            <h3 class="font-h3 text-h3">Memberships</h3>
         </div>
         <div class="space-y-4">
             @for (membership in memberships)
