@@ -95,11 +95,17 @@ class RestOAuth2Controller(
             val sessionToken = ctx.cookie("session_token")
             System.out.println("[OAuth2 authorize] NOT AUTHENTICATED - session_id=" + sessionId + " session_token=" + sessionToken)
             // Not logged in — redirect to login page, preserving the full authorize URL
-            // so the user is returned here after authentication.
+            // so the user is returned here after authentication. A `referrer_hint`
+            // the client put on this URL is carried along too: it is the product's
+            // own sentence for why the email address is being asked for, and this
+            // redirect is the only place the login page can learn it. The value is
+            // untrusted prose and is cleaned by `referrerHint` below.
             val loginUrl = "$issuerBaseUrl/#/login"
-            val returnUrl = java.net.URLEncoder.encode(ctx.fullUrl(), "UTF-8")
-            System.out.println("[OAuth2 authorize] redirecting to=" + loginUrl)
-            ctx.redirect("$loginUrl?return_url=$returnUrl")
+            val loginParams = mutableMapOf("return_url" to ctx.fullUrl())
+            referrerHint(ctx)?.let { loginParams[REFERRER_HINT_PARAM] = it }
+            val target = buildRedirectUrl(loginUrl, loginParams)
+            System.out.println("[OAuth2 authorize] redirecting to=" + target)
+            ctx.redirect(target)
             return
         }
 
@@ -527,11 +533,42 @@ class RestOAuth2Controller(
 
     // ---- Private helpers ----
 
+    /**
+     * The sentence a referring product asked the sign-in page to show, or null
+     * when none was sent or nothing usable is left.
+     *
+     * The value arrives in an unauthenticated query string and is displayed on
+     * Identity's own login page, so it is untrusted text. Control characters
+     * are flattened to spaces and whitespace runs collapsed so it stays a
+     * single readable line, and the result is capped so a crafted link cannot
+     * turn the page into a billboard. It is rendered as text by the login page
+     * — this function is about shape, not markup.
+     */
+    private fun referrerHint(ctx: Context): String? {
+        val raw = ctx.queryParam(REFERRER_HINT_PARAM) ?: return null
+        val clean =
+            raw
+                .map { if (it.code < 0x20 || it.code in 0x7F..0x9F) ' ' else it }
+                .joinToString("")
+                .replace(Regex("\\s+"), " ")
+                .trim()
+                .take(MAX_REFERRER_HINT_LENGTH)
+        return clean.takeUnless { it.isEmpty() }
+    }
+
     private fun buildRedirectUrl(baseUri: String, params: Map<String, String>): String {
         val queryString = params.entries.joinToString("&") { (k, v) ->
             "${java.net.URLEncoder.encode(k, "UTF-8")}=${java.net.URLEncoder.encode(v, "UTF-8")}"
         }
         val separator = if (baseUri.contains('?')) "&" else "?"
         return "$baseUri$separator$queryString"
+    }
+
+    private companion object {
+        /** Sign-in copy a referring product may ask Identity to display. */
+        const val REFERRER_HINT_PARAM = "referrer_hint"
+
+        /** Longest hint rendered. The shared client cap uses the same value. */
+        const val MAX_REFERRER_HINT_LENGTH = 500
     }
 }

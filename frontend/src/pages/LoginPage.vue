@@ -18,6 +18,16 @@ const { fetchAccount } = useAuth()
 // This preserves OAuth authorize redirects and other post-login destinations.
 const returnUrl = (route.query.return_url as string) || null
 
+// The referring product's own sentence for why the email address is being
+// asked for, carried here by the authorize endpoint. Only the string form is
+// accepted: a repeated parameter (`?referrer_hint=a&referrer_hint=b`) parses to
+// an array, and joining it would invent a sentence nobody sent. Capped here as
+// well as server-side because this route can be opened directly, without the
+// authorize endpoint in between.
+const rawHint = route.query.referrer_hint
+const referrerHint =
+  typeof rawHint === 'string' && rawHint.trim() ? rawHint.trim().slice(0, 500) : null
+
 // Silent SSO.
 //
 // A product reaches this page by way of the OAuth authorize endpoint, which
@@ -73,7 +83,7 @@ async function handleInstead(stepFqdn: string) {
       </div>
 
       <div v-if="checking || (loading && !step)">
-        <EnterEmail :disabled="true" />
+        <EnterEmail :disabled="true" :hint="referrerHint" />
       </div>
 
       <div v-else-if="error" class="bg-white rounded-xl shadow-sm p-8">
@@ -83,6 +93,7 @@ async function handleInstead(stepFqdn: string) {
 
       <div v-else-if="step">
         <EnterEmail v-if="step.includes('enter_email_address')"
+          :hint="referrerHint"
           @submit="handleNext" />
         <EnterPassword v-else-if="step.includes('enter_password')"
           @submit="handleNext" />
