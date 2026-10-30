@@ -107,6 +107,34 @@ ID uses a `.env` file for configuration via [cdimascio/dotenv-kotlin](https://gi
 4. **Access the application:**
    - Web UI: http://localhost:80
 
+### Workers
+
+**id** builds one worker image from `docker/Dockerfile.worker`. That single process runs the asynchronous event workers, with one SQS listener per enabled module:
+
+| Module | Purpose |
+|---|---|
+| `security` | Handles ID security events and can publish ID events |
+| `email` | Sends email for ID events through Resend |
+| `witchwood` | Applies ID-related work through Witchwood |
+
+`ID_WORKER_MODULES` selects the modules to run:
+
+| Value | Behavior |
+|---|---|
+| unset, blank, or `all` | Runs all three modules |
+| a comma-separated list, such as `security,email` | Runs only the named modules |
+| any other name | The process fails to start |
+
+Production runs `ID_WORKER_MODULES=security,email,witchwood`.
+
+Each module consumes its own SQS queue, configured by a per-module variable:
+
+| Variable | Module |
+|---|---|
+| `SQS_QUEUE_URL_SECURITY` | `security` |
+| `SQS_QUEUE_URL_EMAIL` | `email` |
+| `SQS_QUEUE_URL_WITCHWOOD` | `witchwood` |
+
 ## CodeArtifact
 
 `id` now supports consuming Gradle plugins and publishing module artifacts through AWS CodeArtifact.

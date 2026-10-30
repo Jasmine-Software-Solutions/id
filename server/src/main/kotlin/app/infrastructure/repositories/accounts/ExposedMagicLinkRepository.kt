@@ -23,8 +23,8 @@ import java.util.*
 
 class ExposedMagicLinkRepository(
     val hashFunction: IHashFunction,
-    val accountRepository: IAccountRepository<IAccount>
-) : ExposedIdentifiedEntityRepository<IHashedMagicLink, ExposedMagicLinkRepository.MagicLink>(Table), IMagicLinkRepository<IHashedMagicLink> {
+    val accountRepository: IAccountRepository
+) : ExposedIdentifiedEntityRepository<IHashedMagicLink, ExposedMagicLinkRepository.MagicLink>(Table), IMagicLinkRepository {
     override fun read(row: ResultRow?, insert: InsertStatement<Number>?, update: UpdateStatement?)
             = MagicLink(row, insert, update)
 

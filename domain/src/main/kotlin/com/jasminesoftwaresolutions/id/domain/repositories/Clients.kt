@@ -4,11 +4,11 @@ import com.jasminesoftwaresolutions.id.domain.models.client.IClient
 import com.jasminesoftwaresolutions.id.domain.models.client.IDelegatedSession
 import com.jasminesoftwaresolutions.id.domain.models.client.IServiceSession
 
-interface IClientRepository<T : IClient> :
-    IIdentifiedRepository<T>
+interface IClientRepository : IIdentifiedRepository<IClient> {
+    fun entries(): List<IClient>
+    fun findByFqdn(fqdn: String): IClient?
+}
 
-interface IDelegatedSessionRepository<T : IDelegatedSession> :
-    IIdentifiedRepository<T>
+interface IDelegatedSessionRepository : IIdentifiedRepository<IDelegatedSession>
 
-interface IServiceSessionRepository<T : IServiceSession> :
-    IIdentifiedRepository<T>
+interface IServiceSessionRepository : IIdentifiedRepository<IServiceSession>

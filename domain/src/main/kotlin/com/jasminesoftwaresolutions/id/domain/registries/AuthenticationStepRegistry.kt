@@ -3,7 +3,7 @@ package com.jasminesoftwaresolutions.id.domain.registries
 import com.jasminesoftwaresolutions.id.domain.models.authentication.IAuthenticationFlow
 import com.jasminesoftwaresolutions.id.domain.services.authentication.AuthenticationFlowStep
 
-interface IAuthenticationStepRegistry<T : IAuthenticationFlow> {
+interface IAuthenticationStepRegistry {
     class Entry<T : IAuthenticationFlow>(
         val step: AuthenticationFlowStep,
         val afterAnyOf: Set<AuthenticationFlowStep> = emptySet(),
@@ -13,16 +13,16 @@ interface IAuthenticationStepRegistry<T : IAuthenticationFlow> {
         constructor(
             step: AuthenticationFlowStep,
             after: AuthenticationFlowStep?,
-            condition: (T) -> Boolean = { true }
+            condition: (IAuthenticationFlow) -> Boolean = { true }
         ) : this(step, after?.let(::setOf) ?: emptySet(), condition)
     }
 
-    fun entries(): Set<Entry<T>>
+    fun entries(): Set<Entry<IAuthenticationFlow>>
 
     fun register(
         step: AuthenticationFlowStep,
         afterAnyOf: Set<AuthenticationFlowStep> = emptySet(),
-        condition: (T) -> Boolean = { true },
+        condition: (IAuthenticationFlow) -> Boolean = { true },
         priority: Int = 0,
         force: Boolean = false
     )
@@ -30,14 +30,14 @@ interface IAuthenticationStepRegistry<T : IAuthenticationFlow> {
     fun register(
         step: AuthenticationFlowStep,
         after: AuthenticationFlowStep? = null,
-        condition: (T) -> Boolean = { true },
+        condition: (IAuthenticationFlow) -> Boolean = { true },
         priority: Int = 0,
         force: Boolean = false
     ) = register(step, after?.let(::setOf) ?: emptySet(), condition, priority, force)
 
-    fun findByFqdn(fqdn: String): Entry<T>?
+    fun findByFqdn(fqdn: String): Entry<IAuthenticationFlow>?
 
-    fun nextOrNull(flow: T): AuthenticationFlowStep?
+    fun nextOrNull(flow: IAuthenticationFlow): AuthenticationFlowStep?
         = entries().filter {
             val currentStepFqdn = flow.steps.currentOrNull()?.fqdn
             val isMatchingDependency = if (currentStepFqdn == null) {
@@ -50,17 +50,16 @@ interface IAuthenticationStepRegistry<T : IAuthenticationFlow> {
         }.maxByOrNull { it.priority }?.step
 }
 
-open class AuthenticationStepRegistry<T : IAuthenticationFlow> :
-    IAuthenticationStepRegistry<T> {
-    protected val steps: MutableSet<IAuthenticationStepRegistry.Entry<T>> = mutableSetOf()
+open class AuthenticationStepRegistry : IAuthenticationStepRegistry {
+    protected val steps: MutableSet<IAuthenticationStepRegistry.Entry<IAuthenticationFlow>> = mutableSetOf()
 
-    override fun entries(): Set<IAuthenticationStepRegistry.Entry<T>>
+    override fun entries(): Set<IAuthenticationStepRegistry.Entry<IAuthenticationFlow>>
         = HashSet(steps)
 
     override fun register(
         step: AuthenticationFlowStep,
         afterAnyOf: Set<AuthenticationFlowStep>,
-        condition: (T) -> Boolean,
+        condition: (IAuthenticationFlow) -> Boolean,
         priority: Int,
         force: Boolean
     ) {
@@ -71,6 +70,6 @@ open class AuthenticationStepRegistry<T : IAuthenticationFlow> :
         steps.add(IAuthenticationStepRegistry.Entry(step, afterAnyOf, condition, priority))
     }
 
-    override fun findByFqdn(fqdn: String): IAuthenticationStepRegistry.Entry<T>?
+    override fun findByFqdn(fqdn: String): IAuthenticationStepRegistry.Entry<IAuthenticationFlow>?
         = steps.find { it.step.fqdn == fqdn }
 }

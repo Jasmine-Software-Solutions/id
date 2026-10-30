@@ -3,20 +3,13 @@ package app.infrastructure.repositories.authorization
 import app.infrastructure.entities.ExposedIdentifiedEntity
 import app.infrastructure.repositories.ExposedIdentifiedEntityRepository
 import app.infrastructure.repositories.accounts.ExposedAccountRepository
-import app.infrastructure.repositories.tenants.ExposedOrganizationRepository
-import app.infrastructure.repositories.tenants.ExposedTeamRepository
-import app.infrastructure.util.ExposedAttachmentColumns
+import app.infrastructure.repositories.tenants.ExposedTenantRepository
 import app.infrastructure.util.InstantTransformer
-import com.jasminesoftwaresolutions.id.domain.models.AttachmentType
-import com.jasminesoftwaresolutions.id.domain.models.IAttachment
-import com.jasminesoftwaresolutions.id.domain.models.PlatformAttachment
+import app.infrastructure.util.NullableEntityTransformer
+import app.infrastructure.util.matchesTenant
 import com.jasminesoftwaresolutions.id.domain.models.authorization.IRole
-import com.jasminesoftwaresolutions.id.domain.models.tenant.IOrganization
-import com.jasminesoftwaresolutions.id.domain.models.tenant.ITeam
 import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenant
-import com.jasminesoftwaresolutions.id.domain.repositories.IOrganizationRepository
 import com.jasminesoftwaresolutions.id.domain.repositories.IRoleRepository
-import com.jasminesoftwaresolutions.id.domain.repositories.ITeamRepository
 import com.jasminesoftwaresolutions.id.domain.repositories.ITenantRepository
 import org.jetbrains.exposed.dao.id.UUIDTable
 import org.jetbrains.exposed.sql.ResultRow
@@ -29,10 +22,8 @@ import java.time.Instant
 import java.util.*
 
 class ExposedRoleRepository(
-    private val tenantRepository: ITenantRepository<ITenant>,
-    private val organizationRepository: IOrganizationRepository<IOrganization>,
-    private val teamRepository: ITeamRepository<ITeam>
-) : ExposedIdentifiedEntityRepository<IRole, ExposedRoleRepository.Role>(Table), IRoleRepository<IRole> {
+    private val tenantRepository: ITenantRepository
+) : ExposedIdentifiedEntityRepository<IRole, ExposedRoleRepository.Role>(Table), IRoleRepository {
     override fun read(row: ResultRow?, insert: InsertStatement<Number>?, update: UpdateStatement?)
         = Role(row, insert, update)
 
@@ -51,8 +42,15 @@ class ExposedRoleRepository(
             .toList()
     }
 
-    override fun findByAttachment(attachment: IAttachment, includeDescendants: Boolean): List<IRole> = transaction {
-        Table.select { Table.attachment.matchesAttachment(attachment, includeDescendants) }
+    override fun findByTenant(tenant: ITenant?): List<IRole> = transaction {
+        Table.select { Table.tenant.matchesTenant(tenant) }
+            .orderBy(Table.createdAt, SortOrder.ASC)
+            .map { Role(it, null, null) }
+            .toList()
+    }
+
+    override fun findByName(name: String): List<IRole> = transaction {
+        Table.select { Table.name eq name }
             .orderBy(Table.createdAt, SortOrder.ASC)
             .map { Role(it, null, null) }
             .toList()
@@ -63,32 +61,23 @@ class ExposedRoleRepository(
         insert: InsertStatement<Number>? = null,
         update: UpdateStatement? = null
     ) : ExposedIdentifiedEntity(Table, row, insert, update), IRole {
-        private var attachmentValue: IAttachment? = null
-
         override val createdAt: Instant by column(ExposedAccountRepository.Table.createdAt, InstantTransformer)
 
         override var name by column(Table.name)
+        override var description by nullableColumn(Table.description)
 
-        override var attachment: IAttachment
-            get() = attachmentValue ?: row?.let {
-                Table.attachment.read(it, tenantRepository, organizationRepository, teamRepository)
-            } ?: PlatformAttachment
-            set(value) {
-                attachmentValue = value
-                Table.attachment.write(row, insert, update, value)
-            }
+        override var tenant: ITenant? by nullableColumn(
+            Table.tenant,
+            NullableEntityTransformer(ExposedTenantRepository.Table, tenantRepository)
+        )
     }
 
     object Table : UUIDTable("roles") {
         val createdAt = long("created_at").clientDefault { System.currentTimeMillis() }
 
         val name = varchar("name", 128)
+        val description = varchar("description", 1024).nullable()
 
-        val attachment = ExposedAttachmentColumns(
-            type = varchar("attachment_type", 32).default(AttachmentType.GLOBAL.name),
-            tenant = optReference("tenant_id", app.infrastructure.repositories.tenants.ExposedTenantRepository.Table),
-            organization = optReference("organization_id", ExposedOrganizationRepository.Table),
-            team = optReference("team_id", ExposedTeamRepository.Table)
-        )
+        val tenant = optReference("tenant_id", ExposedTenantRepository.Table)
     }
 }

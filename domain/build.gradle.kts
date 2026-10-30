@@ -1,13 +1,14 @@
 plugins {
     kotlin("jvm")
 
-    id("com.github.johnrengelman.shadow") version "8.0.0"
+    id("com.gradleup.shadow") version "9.0.2"
 }
 
 group = "com.jasminesoftwaresolutions"
 version = "1.0.0-SNAPSHOT"
 
 repositories {
+    mavenLocal()
     mavenCentral()
 
     maven("https://maven.reposilite.com/snapshots")
@@ -16,6 +17,8 @@ repositories {
 dependencies {
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
+    // Gradle 9 no longer puts the platform launcher on the test runtime classpath.
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
     api("org.slf4j:slf4j-simple:2.0.3")
 
@@ -44,12 +47,12 @@ dependencies {
     implementation("io.javalin.community.routing:routing-core:6.4.1-SNAPSHOT")
     implementation("io.javalin.community.routing:routing-annotated:6.4.1-SNAPSHOT")
     implementation("io.javalin.community.routing:routing-coroutines:6.4.1-SNAPSHOT")
+
+    api("com.jasminesoftwaresolutions:witchwood:1.0-SNAPSHOT")
 }
 
 tasks.test {
     useJUnitPlatform()
-
-    environment("ENV_FILE_PATH", "test.env")
 }
 
 tasks.withType<Jar> {
@@ -63,7 +66,7 @@ tasks.withType<Test> {
 }
 
 kotlin {
-    jvmToolchain(17)
+    jvmToolchain(26)
     compilerOptions {
         javaParameters.set(true)
     }

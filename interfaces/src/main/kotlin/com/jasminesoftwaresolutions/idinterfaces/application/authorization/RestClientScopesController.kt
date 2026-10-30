@@ -1,76 +1,115 @@
 package com.jasminesoftwaresolutions.idinterfaces.application.authorization
 
-import com.fasterxml.jackson.annotation.JsonProperty
-import com.jasminesoftwaresolutions.id.domain.models.authorization.IRegisteredScope
 import com.jasminesoftwaresolutions.id.domain.models.authorization.IScope
-import com.jasminesoftwaresolutions.id.domain.models.client.IClient
-import com.jasminesoftwaresolutions.idinterfaces.services.auth.JavalinAuthorizationService
-import com.jasminesoftwaresolutions.idinterfaces.services.client.ClientScopesControllerService
+import com.jasminesoftwaresolutions.id.domain.registries.IScopeRegistry
+import com.jasminesoftwaresolutions.id.domain.repositories.IClientRepository
+import com.jasminesoftwaresolutions.id.domain.repositories.IScopeRepository
+import com.jasminesoftwaresolutions.id.domain.models.authorization.IdActions
+import com.jasminesoftwaresolutions.id.domain.models.authorization.IdResources
+import com.jasminesoftwaresolutions.id.domain.services.authorization.IAuthorizationService
+import com.jasminesoftwaresolutions.idinterfaces.services.auth.JavalinRequestAuthenticationService
+import com.jasminesoftwaresolutions.idinterfaces.services.auth.PrincipalAuthorizationContext
 import io.javalin.community.routing.annotations.Put
 import io.javalin.http.*
 import java.util.*
 
-class RestClientScopesController<T : IRegisteredScope>(
-    private val service: ClientScopesControllerService<T>,
-    private val authorizationService: JavalinAuthorizationService
+class RestClientScopesController(
+    private val clientRepository: IClientRepository,
+    private val scopeRepository: IScopeRepository,
+    private val scopeRegistry: IScopeRegistry<IScope>,
+    private val authorizationService: JavalinRequestAuthenticationService,
+    private val evaluationService: IAuthorizationService,
 ) {
     data class ScopePayload(
-        @get:JsonProperty("id") val id: String?,
-        @get:JsonProperty("description") val description: String?,
-        @get:JsonProperty("is_by_tenant") val isByTenant: Boolean?
+        val id: String?,
+        val description: String?,
     )
 
     data class ReplaceRequest(
-        @get:JsonProperty("scopes") val scopes: List<ScopePayload>?
+        val scopes: List<ScopePayload>?,
     )
 
-    data class UnregisteredScope(
-        override val id: String,
-        override val description: String,
-        override val isByTenant: Boolean
-    ) : IScope {
-        override var client: IClient?
-            get() = throw UnsupportedOperationException()
-            set(_) = throw UnsupportedOperationException()
-    }
+    private val scopeIdPattern = Regex("^[\\u0021\\u0023-\\u005B\\u005D-\\u007E]+$")
 
     @Put("/api/v1/clients/{client_id}/scopes")
     fun put(ctx: Context) {
-        val authentication = authorizationService.authenticate(ctx)
-            ?: throw UnauthorizedResponse()
+        val auth = authorizationService.authenticate(ctx) ?: throw UnauthorizedResponse()
 
         val clientId = runCatching { UUID.fromString(ctx.pathParam("client_id")) }.getOrNull()
             ?: throw BadRequestResponse("Invalid client_id")
 
+        // Client-authenticated calls are limited to their own registrations;
+        // session-authenticated callers are evaluated through Witchwood.
+        if (auth is PrincipalAuthorizationContext.SessionAuth) {
+            val allowed = evaluationService.evaluate(auth.principalId, IdActions.MANAGE_CLIENT_SCOPES, IdResources.client(clientId)).get()
+            if (!allowed) throw ForbiddenResponse("Insufficient privileges: ${IdActions.MANAGE_CLIENT_SCOPES} on client $clientId")
+        } else if (auth.principalId != clientId) {
+            throw ForbiddenResponse()
+        }
+
         val request = runCatching { ctx.bodyAsClass(ReplaceRequest::class.java) }.getOrNull()
             ?: throw BadRequestResponse("Invalid payload")
 
-        val scopes = request.scopes
-            ?.map { scope ->
-                val id = scope.id
-                    ?: throw BadRequestResponse("Missing scope id")
-                val description = scope.description
-                    ?: throw BadRequestResponse("Missing scope description")
-                val isByTenant = scope.isByTenant ?: false
+        val desiredScopes = request.scopes?.map { payload ->
+            val id = payload.id
+                ?: throw BadRequestResponse("Missing scope id")
+            val description = payload.description
+                ?: throw BadRequestResponse("Missing scope description")
 
-                UnregisteredScope(id, description, isByTenant)
-            } ?: throw BadRequestResponse("Missing scopes")
+            if (!scopeIdPattern.matches(id))
+                throw BadRequestResponse("Invalid scope id: $id")
 
-        when (val result = service.replace(authentication, clientId, scopes)) {
-            is ClientScopesControllerService.ReplaceResult.Success -> {
-                ctx.json(
-                    mapOf(
-                        "client_id" to result.client.id,
-                        "scopes" to result.scopes
-                    )
-                )
+            // Static scope IDs remain code-defined and cannot be redefined by clients
+            if (scopeRegistry.findById(id) != null)
+                throw BadRequestResponse("Reserved scope id: $id")
+
+            id to description
+        } ?: throw BadRequestResponse("Missing scopes")
+
+        val client = clientRepository.findById(clientId)
+            ?: throw NotFoundResponse("Client not found")
+
+        val desiredById = desiredScopes.toMap()
+
+        val existing = scopeRepository.findByClient(clientId)
+        val existingById = existing.associateBy { it.id }
+
+        // Delete removed scopes
+        for (scope in existing) {
+            if (scope.id !in desiredById)
+                scopeRepository.delete(scope)
+        }
+
+        // Create or update scopes
+        for ((scopeId, description) in desiredById) {
+            val current = existingById[scopeId] ?: scopeRepository.findById(scopeId)
+
+            if (current == null) {
+                scopeRepository.create {
+                    this.client = client
+                    this.id = scopeId
+                    this.description = description
+                }
+                continue
             }
 
-            is ClientScopesControllerService.ReplaceResult.ClientNotFound -> throw NotFoundResponse("Client not found")
-            is ClientScopesControllerService.ReplaceResult.Forbidden -> throw ForbiddenResponse()
-            is ClientScopesControllerService.ReplaceResult.InvalidScopeId -> throw BadRequestResponse("Invalid scope id: ${result.id}")
-            is ClientScopesControllerService.ReplaceResult.ReservedScopeId -> throw BadRequestResponse("Reserved scope id: ${result.id}")
-            is ClientScopesControllerService.ReplaceResult.ScopeOwnedByAnotherClient -> throw BadRequestResponse("Scope id already owned by another client: ${result.id}")
+            if (current.client?.id != clientId)
+                throw BadRequestResponse("Scope id already owned by another client: $scopeId")
+
+            scopeRepository.update(current) {
+                this.client = client
+                this.description = description
+            }
         }
+
+        val updated = scopeRepository.findByClient(clientId).sortedBy { it.id }
+
+        ctx.status(200)
+        ctx.json(
+            mapOf(
+                "client_id" to client.id,
+                "scopes" to updated.map { mapOf("id" to it.id, "description" to it.description) }
+            )
+        )
     }
 }

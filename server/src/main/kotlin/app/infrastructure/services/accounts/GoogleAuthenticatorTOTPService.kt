@@ -15,21 +15,24 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
 class GoogleAuthenticatorTOTPService(
-    private val repository: ITOTPConfigurationRepository<*>,
+    private val repository: ITOTPConfigurationRepository,
     private val issuer: String,
     private val defaultAlgorithm: HmacAlgorithm = HmacAlgorithm.SHA1,
     private val defaultPeriod: Duration = 30.seconds,
     private val defaultDigits: Int = 6,
-) : ITOTPService<ISetTOTPConfiguration> {
+) : ITOTPService {
     companion object {
-        private fun <T : ITOTPConfiguration> update(repository: ITOTPConfigurationRepository<T>, account: IAccount, function: T.() -> Unit) =
-            repository.findByAccount(account).also { repository.update(it, function )}
+        private fun update(repository: ITOTPConfigurationRepository, account: IAccount, function: ITOTPConfiguration.() -> Unit): ITOTPConfiguration {
+            val config = repository.findByAccount(account)
+            repository.update(config, function)
+            return config
+        }
     }
 
-    override fun findByAccount(id: UUID): ISetTOTPConfiguration?
-        = repository.findByAccount(id) as? ISetTOTPConfiguration
+    override fun findByAccount(id: UUID): ITOTPConfiguration
+        = repository.findByAccount(id)
 
-    override fun enable(account: IAccount): ISetTOTPConfiguration {
+    override fun enable(account: IAccount): ITOTPConfiguration {
         val newSecret = GoogleAuthenticator.createRandomSecretAsByteArray()
         try {
             update(repository, account) {
@@ -51,21 +54,24 @@ class GoogleAuthenticatorTOTPService(
     }
 
     override fun disable(account: IAccount): ITOTPConfiguration {
-        return update(repository, account) {
+        val config = repository.findByAccount(account)
+        repository.update(config) {
             this.enabled = false
         }
+        return config
     }
 
-    override fun generate(config: ISetTOTPConfiguration, period: Long): Int {
-        val base32Secret = config.secret.clone()
+    override fun generate(config: ITOTPConfiguration, period: Long): Int {
+        val setConfig = config as ISetTOTPConfiguration
+        val base32Secret = setConfig.secret.clone()
         val decodedSecret = Base32().decode(base32Secret)
 
         try {
             val generatorConfig = TimeBasedOneTimePasswordConfig(
-                config.period.inWholeSeconds,
+                setConfig.period.inWholeSeconds,
                 TimeUnit.SECONDS,
-                config.digits,
-                config.algorithm
+                setConfig.digits,
+                setConfig.algorithm
             )
 
             val hotpGenerator = HmacOneTimePasswordGenerator(decodedSecret, generatorConfig)
@@ -79,7 +85,7 @@ class GoogleAuthenticatorTOTPService(
     }
 
     override fun verify(
-        config: ISetTOTPConfiguration,
+        config: ITOTPConfiguration,
         period: Long,
         code: Int
     ): TOTPVerificationResult {
@@ -88,7 +94,7 @@ class GoogleAuthenticatorTOTPService(
     }
 
     override fun verify(
-        config: ISetTOTPConfiguration,
+        config: ITOTPConfiguration,
         code: Int
     ): TOTPVerificationResult {
         val periodNow = period(config, Instant.now())
@@ -102,16 +108,18 @@ class GoogleAuthenticatorTOTPService(
         return TOTPVerificationResult(codeNow == code, periodNow)
     }
 
-    override fun period(config: ISetTOTPConfiguration, instant: Instant): Long
-            = instant.epochSecond / config.period.inWholeSeconds
+    override fun period(config: ITOTPConfiguration, instant: Instant): Long
+            = instant.epochSecond / (config as ISetTOTPConfiguration).period.inWholeSeconds
 
-    override fun uri(config: ISetTOTPConfiguration): String
-        = OtpAuthUriBuilder
-            .forTotp(config.secret)
-            .label(config.account.email, issuer)
+    override fun uri(config: ITOTPConfiguration): String {
+        val setConfig = config as ISetTOTPConfiguration
+        return OtpAuthUriBuilder
+            .forTotp(setConfig.secret)
+            .label(setConfig.account.email, issuer)
             .issuer(issuer)
-            .algorithm(config.algorithm)
-            .digits(config.digits)
-            .period(config.period.inWholeSeconds, TimeUnit.SECONDS)
+            .algorithm(setConfig.algorithm)
+            .digits(setConfig.digits)
+            .period(setConfig.period.inWholeSeconds, TimeUnit.SECONDS)
             .buildToString()
+    }
 }

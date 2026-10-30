@@ -7,31 +7,25 @@ import com.jasminesoftwaresolutions.id.domain.repositories.ISessionRepository
 import java.time.Instant
 import kotlin.time.Duration
 
-interface ISessionService<T : ISession> {
-    fun create(account: IAccount, function: (T).() -> (Unit) = {}): T
+interface ISessionService {
+    fun create(account: IAccount, function: ISession.() -> Unit = {}): ISession
 }
 
-open class StandardSessionService<T : ISession>(
-    protected val repository: ISessionRepository<out T>,
+open class StandardSessionService(
+    protected val repository: ISessionRepository,
     protected val lifetime: Duration
-) : ISessionService<T> {
-    protected open fun nextToken(account: IAccount) =
-        SecureToken()
+) : ISessionService {
+    protected open fun nextToken(account: IAccount) = SecureToken()
 
-    protected open fun T.create(account: IAccount, function: (T).() -> (Unit) = {}) {
-        function(this)
-    }
+    protected open fun finish(account: IAccount, entity: ISession) = entity
 
-    protected open fun finish(account: IAccount, entity: T) = entity
-
-    override fun create(account: IAccount, function: (T).() -> Unit): T {
+    override fun create(account: IAccount, function: ISession.() -> Unit): ISession {
         val token = nextToken(account)
         return finish(account, repository.create {
             this.expiresAt = Instant.now().plusMillis(lifetime.inWholeMilliseconds)
             this.account = account
-
             this.token = token
-            create(account, function)
+            function(this)
         })
     }
 }

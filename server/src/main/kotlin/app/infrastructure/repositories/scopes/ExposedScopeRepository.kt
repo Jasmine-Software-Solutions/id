@@ -11,8 +11,8 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import java.util.*
 
 class ExposedScopeRepository(
-    private val clientRepository: IClientRepository<out IClient>
-) : IScopeRepository<IRegisteredScope> {
+    private val clientRepository: IClientRepository
+) : IScopeRepository {
     private val scopeIdPattern = Regex("^[\\u0021\\u0023-\\u005B\\u005D-\\u007E]+$")
 
     private fun requireValidId(id: String) {
@@ -30,7 +30,6 @@ class ExposedScopeRepository(
         client = clientRepository.findById(row[Table.client].value),
         id = row[Table.id],
         description = row[Table.description],
-        isByTenant = row[Table.isByTenant]
     )
 
     override fun entries(): Set<IRegisteredScope> = transaction {
@@ -51,7 +50,7 @@ class ExposedScopeRepository(
     }
 
     override fun create(function: IRegisteredScope.() -> Unit): IRegisteredScope = transaction {
-        val scope = RegisteredScope(client = null, id = "", description = "", isByTenant = false)
+        val scope = RegisteredScope(client = null, id = "", description = "")
         scope.function()
 
         requireValidId(scope.id)
@@ -73,7 +72,6 @@ class ExposedScopeRepository(
             client = entity.client,
             id = entity.id,
             description = entity.description,
-            isByTenant = entity.isByTenant
         )
         updated.function()
 
@@ -84,13 +82,11 @@ class ExposedScopeRepository(
             it[Table.id] = updated.id
             it[Table.description] = updated.description
             it[Table.client] = client.id
-            it[Table.isByTenant] = updated.isByTenant
         }
 
         entity.id = updated.id
         entity.description = updated.description
         entity.client = updated.client
-        entity.isByTenant = updated.isByTenant
     }
 
     override fun delete(entity: IRegisteredScope) = transaction {
@@ -114,7 +110,6 @@ class ExposedScopeRepository(
         override var client: IClient?,
         override var id: String,
         override var description: String,
-        override var isByTenant: Boolean,
     ) : IRegisteredScope
 
     object Table : org.jetbrains.exposed.sql.Table("scopes") {
@@ -122,7 +117,6 @@ class ExposedScopeRepository(
 
         val id = varchar("id", 128)
         val description = varchar("description", 1024)
-        val isByTenant = bool("is_by_tenant").default(false)
 
         override val primaryKey = PrimaryKey(id)
     }

@@ -4,11 +4,9 @@ import com.jasminesoftwaresolutions.id.domain.models.authorization.IRegisteredSc
 import com.jasminesoftwaresolutions.id.domain.models.client.IClient
 import java.util.*
 
-interface IScopeRepository<T : IRegisteredScope> : IRepository<T> {
-    fun entries(): Set<T>
-
-    fun findById(id: String): T?
-
-    fun findByClient(client: IClient): List<T> = findByClient(client.id)
-    fun findByClient(id: UUID): List<T>
+interface IScopeRepository : IRepository<IRegisteredScope> {
+    fun entries(): Set<IRegisteredScope>
+    fun findById(id: String): IRegisteredScope?
+    fun findByClient(client: IClient): List<IRegisteredScope> = findByClient(client.id)
+    fun findByClient(id: UUID): List<IRegisteredScope>
 }

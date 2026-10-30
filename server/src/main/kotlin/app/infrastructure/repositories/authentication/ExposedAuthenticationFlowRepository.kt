@@ -24,10 +24,10 @@ import java.time.Instant
 import java.util.*
 
 class ExposedAuthenticationFlowRepository(
-    val stepRegistry: IAuthenticationStepRegistry<IAuthenticationFlow>,
-    val tenantRepository: ITenantRepository<ITenant>,
-    val accountRepository: IAccountRepository<IAccount>
-) : ExposedIdentifiedEntityRepository<IAuthenticationFlow, ExposedAuthenticationFlowRepository.AuthenticationFlow>(Table), IAuthenticationFlowRepository<IAuthenticationFlow> {
+    val stepRegistry: IAuthenticationStepRegistry,
+    val tenantRepository: ITenantRepository,
+    val accountRepository: IAccountRepository
+) : ExposedIdentifiedEntityRepository<IAuthenticationFlow, ExposedAuthenticationFlowRepository.AuthenticationFlow>(Table), IAuthenticationFlowRepository {
     override fun read(row: ResultRow?, insert: InsertStatement<Number>?, update: UpdateStatement?)
             = AuthenticationFlow(row, insert, update)
 
@@ -87,6 +87,11 @@ class ExposedAuthenticationFlowRepository(
         override var account: IAccount? by nullableColumn(Table.account,
             NullableEntityTransformer(ExposedAccountRepository.Table, accountRepository))
 
+        override var userAgent: String? by nullableColumn(Table.userAgent)
+        override var ipAddress: String by column(Table.ipAddress)
+
+        override var state: String? by nullableColumn(Table.state)
+
         override val steps: IAuthenticationFlowSteps = object : IAuthenticationFlowSteps {
             override val values: List<AuthenticationFlowStep> =
                 if (insert == null) findSteps(id).toMutableList()
@@ -130,6 +135,11 @@ class ExposedAuthenticationFlowRepository(
 
         val tenant = optReference("tenant", ExposedTenantRepository.Table, onDelete = ReferenceOption.CASCADE)
         val account = optReference("account", ExposedAccountRepository.Table, onDelete = ReferenceOption.CASCADE)
+
+        val userAgent = varchar("user_agent", 256).nullable()
+        val ipAddress = varchar("ip_address", 39)
+
+        val state = text("state").nullable()
     }
 
     object StepsTable : UUIDTable("authentication_flow_steps") {

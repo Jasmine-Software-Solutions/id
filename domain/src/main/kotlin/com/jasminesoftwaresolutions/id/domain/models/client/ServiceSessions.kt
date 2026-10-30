@@ -5,12 +5,7 @@ import com.jasminesoftwaresolutions.id.domain.models.IExpires
 import com.jasminesoftwaresolutions.id.domain.models.IIdentified
 import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenant
 
-interface IServiceSession : IIdentified,
-    ICreated, IExpires {
-    var tenant: ITenant?
+interface IServiceSession : IIdentified, ICreated, IExpires {
     var client: IClient
-
     var scope: String?
-
-    fun isAccessToken(token: String): Boolean
 }

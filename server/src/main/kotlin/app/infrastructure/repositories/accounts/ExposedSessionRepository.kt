@@ -10,6 +10,7 @@ import com.jasminesoftwaresolutions.id.domain.repositories.IAccountRepository
 import com.jasminesoftwaresolutions.id.domain.repositories.ISessionRepository
 import com.jasminesoftwaresolutions.id.domain.services.IHashFunction
 import org.jetbrains.exposed.dao.id.UUIDTable
+import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.ReferenceOption
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
@@ -22,9 +23,9 @@ import java.util.*
 
 class ExposedSessionRepository(
     val hashFunction: IHashFunction,
-    val accountRepository: IAccountRepository<IAccount>
+    val accountRepository: IAccountRepository
 ) : ExposedIdentifiedEntityRepository<IHashedSession, ExposedSessionRepository.Session>(Table),
-    ISessionRepository<IHashedSession> {
+    ISessionRepository {
     override fun read(row: ResultRow?, insert: InsertStatement<Number>?, update: UpdateStatement?)
             = Session(row, insert, update)
 
@@ -37,7 +38,8 @@ class ExposedSessionRepository(
     }
 
     override fun findByAccount(id: UUID): List<IHashedSession> = transaction {
-        Table.select { Table.account eq id }
+        val now = System.currentTimeMillis()
+        Table.select { (Table.account eq id) and (Table.expiresAt greaterEq now) }
             .orderBy(Table.createdAt, SortOrder.ASC)
             .map { read(it, null, null) }
             .toList()

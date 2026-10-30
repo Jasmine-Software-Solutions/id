@@ -20,10 +20,10 @@ import org.jetbrains.exposed.sql.statements.UpdateStatement
 import java.time.Instant
 
 class ExposedServiceSessionRepository(
-    val tenantRepository: ITenantRepository<ITenant>,
-    val clientRepository: IClientRepository<IClient>
+    val tenantRepository: ITenantRepository,
+    val clientRepository: IClientRepository
 ) : ExposedIdentifiedEntityRepository<IServiceSession, ExposedServiceSessionRepository.ServiceSession>(Table),
-    IServiceSessionRepository<IServiceSession> {
+    IServiceSessionRepository {
     override fun read(row: ResultRow?, insert: InsertStatement<Number>?, update: UpdateStatement?)
             = ServiceSession(row, insert, update)
 
@@ -37,17 +37,10 @@ class ExposedServiceSessionRepository(
         override val createdAt: Instant by column(Table.createdAt, InstantTransformer)
         override var expiresAt: Instant by column(Table.expiresAt, InstantTransformer)
 
-        override var tenant: ITenant? by nullableColumn(Table.tenant,
-            NullableEntityTransformer(ExposedTenantRepository.Table, tenantRepository))
-
         override var client: IClient by column(Table.client,
             EntityTransformer(ExposedClientRepository.Table, clientRepository))
 
         override var scope: String? by nullableColumn(Table.scope)
-
-        override fun isAccessToken(token: String): Boolean {
-            TODO("Not yet implemented")
-        }
     }
 
     object Table : UUIDTable("service_sessions") {

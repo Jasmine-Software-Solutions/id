@@ -29,23 +29,15 @@ import java.time.Instant
 import java.util.*
 
 class ExposedRoleAssignmentRepository(
-    private val accountRepository: IAccountRepository<IAccount>,
-    private val clientRepository: IClientRepository<IClient>,
-    private val roleRepository: IRoleRepository<IRole>
+    private val accountRepository: IAccountRepository,
+    private val clientRepository: IClientRepository,
+    private val roleRepository: IRoleRepository
 ) : ExposedIdentifiedEntityRepository<IRoleAssignment, ExposedRoleAssignmentRepository.RoleAssignment>(Table),
-    IRoleAssignmentRepository<IRoleAssignment> {
+    IRoleAssignmentRepository {
     override fun read(row: ResultRow?, insert: InsertStatement<Number>?, update: UpdateStatement?)
         = RoleAssignment(row, insert, update)
 
     override fun transform(entity: IRoleAssignment): RoleAssignment? = entity as? RoleAssignment
-
-    override fun writeDefaults(id: UUID, entity: IRoleAssignment, it: InsertStatement<Number>) {
-        require((entity.account == null) != (entity.client == null)) {
-            "Assignment must target exactly one account or client"
-        }
-
-        super.writeDefaults(id, entity, it)
-    }
 
     override fun findByAccount(id: UUID): List<IRoleAssignment> = transaction {
         Table.select { Table.account eq EntityID(id, ExposedAccountRepository.Table) }
@@ -56,6 +48,13 @@ class ExposedRoleAssignmentRepository(
 
     override fun findByClient(id: UUID): List<IRoleAssignment> = transaction {
         Table.select { Table.client eq EntityID(id, ExposedClientRepository.Table) }
+            .orderBy(Table.createdAt, SortOrder.ASC)
+            .map { read(it, null, null) }
+            .toList()
+    }
+
+    override fun findByRole(id: UUID): List<IRoleAssignment> = transaction {
+        Table.select { Table.role eq EntityID(id, ExposedRoleRepository.Table) }
             .orderBy(Table.createdAt, SortOrder.ASC)
             .map { read(it, null, null) }
             .toList()

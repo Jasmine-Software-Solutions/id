@@ -2,9 +2,7 @@ package com.jasminesoftwaresolutions.id.domain.models.authorization
 
 import com.jasminesoftwaresolutions.id.domain.models.IIdentified
 import com.jasminesoftwaresolutions.id.domain.models.account.ISession
-import com.jasminesoftwaresolutions.id.domain.models.client.IClient
 import com.jasminesoftwaresolutions.id.domain.models.client.IDelegatedSession
-import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenant
 import java.time.Instant
 
 interface IToken : IIdentified {
@@ -15,25 +13,33 @@ interface IToken : IIdentified {
     val notBefore: Instant
 
     val subject: IIdentified
-    val audience: IClient
+    val audience: List<String>
 
-    val tenant: ITenant?
+    val scopes: Set<String>
 }
 
-interface IDelegatedSessionAccessToken : IToken {
-    val delegatedSession: IDelegatedSession
-    val session: ISession
-
-    val scopes: Set<IScope>
-    val roles: Set<IRole>?
-}
-
-interface IDelegatedSessionRefreshToken : IToken {
+interface IAccessToken : IToken {
     val delegatedSession: IDelegatedSession
     val session: ISession
 }
 
-interface IServiceSessionAccessToken : IToken {
-    val scopes: Set<IScope>?
-    val roles: Set<IRole>?
+interface IRefreshToken : IToken {
+    val delegatedSession: IDelegatedSession
+    val session: ISession
+}
+
+interface IServiceToken : IToken
+
+interface IIDToken : IIdentified {
+    val token: String
+
+    val issuedAt: Instant
+    val expiresAt: Instant
+
+    val subject: String
+    val audience: String
+    val issuer: String
+
+    val nonce: String?
+    val claims: Map<String, Any?>
 }

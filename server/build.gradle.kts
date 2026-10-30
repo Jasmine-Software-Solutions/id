@@ -3,8 +3,7 @@ import kotlin.io.path.Path
 plugins {
     kotlin("jvm")
 
-    id("gg.jte.gradle") version "3.2.4-jasmine.1-SNAPSHOT"
-    id("com.github.johnrengelman.shadow") version "8.0.0"
+    id("com.gradleup.shadow") version "9.0.2"
 }
 
 group = "com.jasminesoftwaresolutions"
@@ -15,29 +14,27 @@ repositories {
     mavenLocal()
 
     maven("https://maven.reposilite.com/snapshots")
-
-    maven {
-        url = uri("https://jasmine-software-solutions-435238036697.d.codeartifact.us-east-1.amazonaws.com/maven/jte/")
-        credentials {
-            username = "aws"
-            password = System.getenv("CODEARTIFACT_AUTH_TOKEN")
-        }
-    }
 }
 
 dependencies {
-    implementation(project(":domain"))
+    implementation(project(":domain")) {
+        exclude(group = "org.slf4j", module = "slf4j-simple")
+    }
     implementation(project(":interfaces"))
+    implementation("com.jasminesoftwaresolutions:id-java-client:1.0.0-SNAPSHOT")
 
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
+    // Gradle 9 no longer puts the platform launcher on the test runtime classpath.
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    testImplementation("org.xerial:sqlite-jdbc:3.49.1.0")
 
-    implementation("org.slf4j:slf4j-simple:2.0.3")
+    implementation("ch.qos.logback:logback-classic:1.5.38")
+    implementation("io.opentelemetry.instrumentation:opentelemetry-logback-appender-1.0:2.30.0-alpha")
+
     implementation("org.jetbrains.exposed:exposed-core:0.40.1")
     implementation("org.jetbrains.exposed:exposed-dao:0.40.1")
     implementation("org.jetbrains.exposed:exposed-jdbc:0.40.1")
-
-    implementation("io.github.cdimascio:dotenv-kotlin:6.4.1")
 
     implementation("io.jsonwebtoken:jjwt-api:0.13.0")
     runtimeOnly("io.jsonwebtoken:jjwt-impl:0.13.0")
@@ -62,11 +59,6 @@ dependencies {
     runtimeOnly("io.jsonwebtoken:jjwt-impl:0.13.0")
     runtimeOnly("io.jsonwebtoken:jjwt-gson:0.13.0")
 
-    implementation("gg.jte:jte:3.2.4-jasmine.1-SNAPSHOT")
-    implementation("gg.jte:jte-watcher:3.2.4-jasmine.1-SNAPSHOT")
-
-    implementation("gg.jte:jte-kotlin:3.2.4-jasmine.1-SNAPSHOT")
-
     implementation("io.javalin:javalin:6.6.0")
     implementation("io.javalin:javalin-rendering:6.4.0")
 
@@ -75,15 +67,13 @@ dependencies {
     implementation("io.javalin.community.routing:routing-coroutines:6.4.1-SNAPSHOT")
 
     implementation("com.resend:resend-java:+")
-}
 
-jte {
-    sourceDirectory.set(Path("src/main/resources/templates"))
-    targetDirectory.set(Path("build/generated-sources/jte"))
-    contentType.set(gg.jte.ContentType.Html)
-    packageName.set("gg.jte.generated.precompiled")
+    implementation(platform("software.amazon.awssdk:bom:2.29.52"))
+    implementation("software.amazon.awssdk:sns")
 
-    generate()
+    implementation("io.grpc:grpc-netty:1.75.0")
+
+    implementation("io.opentelemetry.instrumentation:opentelemetry-instrumentation-annotations:2.30.0")
 }
 
 tasks.test {
@@ -96,12 +86,20 @@ tasks.withType<Jar> {
     }
 }
 
+tasks.shadowJar {
+    isZip64 = true
+    // Required for mergeServiceFiles() to see more than the first file at a
+    // given path; otherwise gRPC's NameResolverProvider registration is lost.
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+    mergeServiceFiles()
+}
+
 tasks.withType<Test> {
     maxParallelForks = 1
 }
 
 kotlin {
-    jvmToolchain(17)
+    jvmToolchain(26)
     compilerOptions {
         javaParameters.set(true)
     }

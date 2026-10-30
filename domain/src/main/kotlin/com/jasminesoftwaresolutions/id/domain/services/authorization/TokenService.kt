@@ -1,17 +1,14 @@
 package com.jasminesoftwaresolutions.id.domain.services.authorization
 
 import com.google.gson.*
-import com.jasminesoftwaresolutions.id.domain.models.*
 import com.jasminesoftwaresolutions.id.domain.models.account.IAccount
 import com.jasminesoftwaresolutions.id.domain.models.account.ISession
-import com.jasminesoftwaresolutions.id.domain.models.authorization.*
+import com.jasminesoftwaresolutions.id.domain.models.authorization.IAccessToken
+import com.jasminesoftwaresolutions.id.domain.models.authorization.IIDToken
+import com.jasminesoftwaresolutions.id.domain.models.authorization.IRefreshToken
+import com.jasminesoftwaresolutions.id.domain.models.authorization.IServiceToken
 import com.jasminesoftwaresolutions.id.domain.models.client.IClient
 import com.jasminesoftwaresolutions.id.domain.models.client.IDelegatedSession
-import com.jasminesoftwaresolutions.id.domain.models.tenant.IOrganization
-import com.jasminesoftwaresolutions.id.domain.models.tenant.ITeam
-import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenant
-import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenantMembership
-import com.jasminesoftwaresolutions.id.domain.registries.IScopeRegistry
 import com.jasminesoftwaresolutions.id.domain.repositories.*
 import com.jasminesoftwaresolutions.id.domain.services.accounts.IJWTService
 import java.lang.reflect.Type
@@ -20,32 +17,41 @@ import java.util.*
 import kotlin.time.Duration
 
 interface ITokenService<
-        TDelegatedSessionAccessToken : IDelegatedSessionAccessToken,
-        TDelegatedSessionRefreshToken : IDelegatedSessionRefreshToken,
-        TServiceSessionAccessToken : IServiceSessionAccessToken> {
+        TAccessToken : IAccessToken,
+        TRefreshToken : IRefreshToken,
+        TServiceToken : IServiceToken,
+        TIDToken : IIDToken> {
+
     // Delegated Sessions
     // ------------------
 
     fun generateDelegatedSessionAccessToken(
         delegatedSession: IDelegatedSession,
-    ): TDelegatedSessionAccessToken?
+    ): TAccessToken?
 
     fun generateDelegatedSessionRefreshToken(
         delegatedSession: IDelegatedSession
-    ): TDelegatedSessionRefreshToken?
+    ): TRefreshToken?
 
     fun renewDelegatedSessionAccessToken(
-        refreshToken: TDelegatedSessionRefreshToken
-    ): TDelegatedSessionAccessToken?
+        refreshToken: TRefreshToken
+    ): TAccessToken?
 
     // Service Sessions
     // ------------------
 
     fun generateServiceSessionAccessToken(
         client: IClient,
-        tenant: ITenant?,
-        scopes: Set<IScope>?
-    ): TServiceSessionAccessToken?
+        scopes: Set<String>?
+    ): TServiceToken?
+
+    // OIDC
+    // ------------------
+
+    fun generateIDToken(
+        delegatedSession: IDelegatedSession,
+        claims: Map<String, Any?>,
+    ): TIDToken?
 
     // Generic
     // ------------------
@@ -55,159 +61,84 @@ interface ITokenService<
     ): Any?
 }
 
-open class JWTTokenService (
+open class JWTTokenService(
     private val jwtService: IJWTService,
-    private val accountRepository: IAccountRepository<out IAccount>,
-    private val clientRepository: IClientRepository<out IClient>,
-    private val tenantRepository: ITenantRepository<out ITenant>,
-    private val organizationRepository: IOrganizationRepository<out IOrganization>,
-    private val teamRepository: ITeamRepository<out ITeam>,
-    private val assignmentRepository: IRoleAssignmentRepository<out IRoleAssignment>,
-    private val tenantMembershipRepository: ITenantMembershipRepository<out ITenantMembership>,
-    private val delegatedSessionRepository: IDelegatedSessionRepository<IDelegatedSession>,
-    private val sessionRepository: ISessionRepository<out ISession>,
-    private val scopeRepository: IScopeRepository<out IRegisteredScope>,
-    private val scopeRegistry: IScopeRegistry<out IScope>,
+    private val accountRepository: IAccountRepository,
+    private val clientRepository: IClientRepository,
+    private val delegatedSessionRepository: IDelegatedSessionRepository,
+    private val sessionRepository: ISessionRepository,
     val accessTokenLifetime: Duration,
     val refreshTokenLifetime: Duration
-) : ITokenService<IDelegatedSessionAccessToken, IDelegatedSessionRefreshToken, IServiceSessionAccessToken> {
+) : ITokenService<IAccessToken, IRefreshToken, IServiceToken, IIDToken> {
+
     private companion object {
         private const val CLAIM_TOKEN_TYPE = "https://id.jasmine.software/token_type"
         private const val CLAIM_DELEGATED_SESSION_ID = "https://id.jasmine.software/delegated_session_id"
         private const val CLAIM_SESSION_ID = "https://id.jasmine.software/session_id"
-        private const val CLAIM_TENANT = "https://id.jasmine.software/tenant"
-        private const val CLAIM_ROLES = "https://id.jasmine.software/roles"
-        private const val CLAIM_ATTACHMENT = "attachment"
+
         private const val TYPE_DELEGATED_ACCESS = "delegated_session_access"
         private const val TYPE_DELEGATED_REFRESH = "delegated_session_refresh"
+        private const val TYPE_SERVICE = "service_session_access"
     }
 
     private val gson = GsonBuilder()
-        .registerTypeAdapter(IDelegatedSessionAccessToken::class.java, DelegatedSessionAccessTokenSerializer())
-        .registerTypeAdapter(IDelegatedSessionRefreshToken::class.java, DelegatedSessionRefreshTokenSerializer())
+        .registerTypeAdapter(Instant::class.java, InstantAdapter())
+        .registerTypeAdapter(IAccessToken::class.java, AccessTokenSerializer())
+        .registerTypeAdapter(IRefreshToken::class.java, RefreshTokenSerializer())
+        .registerTypeAdapter(IServiceToken::class.java, ServiceTokenSerializer())
         .disableHtmlEscaping()
         .create()
 
-    private fun generateTenantInfo(tenant: ITenant) = JsonObject().apply {
-        addProperty("id", tenant.id.toString())
-        addProperty("name", tenant.name)
+    // ----- Serializers -----
+
+    /**
+     * Serializes [Instant] as epoch seconds to avoid reflective field access
+     * that fails under Java 26's strong module encapsulation of java.time.
+     */
+    private inner class InstantAdapter : JsonSerializer<Instant>, JsonDeserializer<Instant> {
+        override fun serialize(src: Instant?, typeOfSrc: Type?, context: JsonSerializationContext?): JsonElement =
+            JsonPrimitive(src?.epochSecond)
+
+        override fun deserialize(json: JsonElement?, typeOfT: Type?, context: JsonDeserializationContext?): Instant? =
+            json?.asJsonPrimitive?.asLong?.let { Instant.ofEpochSecond(it) }
     }
 
-    private fun generateAttachmentInfo(attachment: IAttachment) = JsonObject().apply {
-        addProperty("type", attachment.type.name.lowercase())
-
-        when (attachment) {
-            is ITenantAttachment -> addProperty("tenant_id", attachment.tenant.id.toString())
-            is IOrganizationAttachment -> addProperty("organization_id", attachment.organization.id.toString())
-            is ITeamAttachment -> addProperty("team_id", attachment.team.id.toString())
-        }
+    private fun List<String>.serialize(): JsonArray = JsonArray().apply {
+        for (str in this@serialize)
+            add(str)
     }
 
-    private fun generateRoleInfo(role: IRole) = JsonObject().apply {
-        addProperty("id", role.id)
-        addProperty("name", role.name)
-        addProperty("description", role.description)
-        add(CLAIM_ATTACHMENT, generateAttachmentInfo(role.attachment))
-    }
-
-    private fun generateRoleInfo(roles: Set<IRole>) = JsonArray().apply {
-        for (role in roles)
-            add(generateRoleInfo(role))
-    }
-
-    private fun deserializeAttachmentInfo(obj: JsonObject): IAttachment? {
-        if (obj.has(CLAIM_ATTACHMENT)) {
-            val attachment = obj[CLAIM_ATTACHMENT].asJsonObject
-            return deserializeAttachmentInfoFromClaim(attachment)
-        }
-
-        val level = obj.get("level")?.asString
-        return when (level) {
-            AttachmentType.GLOBAL.name.lowercase() -> PlatformAttachment
-            AttachmentType.TENANT.name.lowercase() -> obj.get("tenant_id")?.asString
-                ?.let { tenantRepository.findById(UUID.fromString(it)) }
-                ?.let { TenantAttachment(it) }
-            AttachmentType.ORGANIZATION.name.lowercase() -> obj.get("organization_id")?.asString
-                ?.let { organizationRepository.findById(UUID.fromString(it)) }
-                ?.let { OrganizationAttachment(it) }
-            AttachmentType.TEAM.name.lowercase() -> obj.get("team_id")?.asString
-                ?.let { teamRepository.findById(UUID.fromString(it)) }
-                ?.let { TeamAttachment(it) }
-            else -> obj.get("tenant_id")?.asString
-                ?.let { tenantRepository.findById(UUID.fromString(it)) }
-                ?.let { TenantAttachment(it) }
-                ?: PlatformAttachment
-        }
-    }
-
-    private fun deserializeAttachmentInfoFromClaim(obj: JsonObject): IAttachment? {
-        return when (obj.get("type")?.asString) {
-            AttachmentType.GLOBAL.name.lowercase() -> PlatformAttachment
-            AttachmentType.TENANT.name.lowercase() -> obj.get("tenant_id")?.asString
-                ?.let { tenantRepository.findById(UUID.fromString(it)) }
-                ?.let { TenantAttachment(it) }
-            AttachmentType.ORGANIZATION.name.lowercase() -> obj.get("organization_id")?.asString
-                ?.let { organizationRepository.findById(UUID.fromString(it)) }
-                ?.let { OrganizationAttachment(it) }
-            AttachmentType.TEAM.name.lowercase() -> obj.get("team_id")?.asString
-                ?.let { teamRepository.findById(UUID.fromString(it)) }
-                ?.let { TeamAttachment(it) }
-            else -> null
-        }
-    }
-
-    private fun deserializeRoleInfo(obj: JsonObject): IRole? {
-        val id = obj["id"].asString
-        val name = obj.get("name")?.asString ?: id
-        val description = obj.get("description")?.asString ?: ""
-        val attachment = deserializeAttachmentInfo(obj) ?: return null
-
-        return when (attachment) {
-            is ITenantAttachment -> TenantRole(attachment.tenant, id, name, description)
-            is IOrganizationAttachment -> OrganizationRole(attachment.organization, id, name, description)
-            is ITeamAttachment -> TeamRole(attachment.team, id, name, description)
-            else -> PlatformRole(id, name, description)
-        }
-    }
-
-    private inner class DelegatedSessionAccessTokenSerializer : JsonSerializer<IDelegatedSessionAccessToken>, JsonDeserializer<IDelegatedSessionAccessToken> {
-        override fun serialize(src: IDelegatedSessionAccessToken?, typeOfSrc: Type?, context: JsonSerializationContext?): JsonElement? {
-            if (src == null)
-                return null
-
-            return with (src) {
+    private inner class AccessTokenSerializer : JsonSerializer<IAccessToken>, JsonDeserializer<IAccessToken> {
+        override fun serialize(src: IAccessToken?, typeOfSrc: Type?, context: JsonSerializationContext?): JsonElement? {
+            if (src == null) return null
+            return with(src) {
                 JsonObject().apply {
                     addProperty("jti", id.toString())
-
                     addProperty("iat", issuedAt.epochSecond)
                     addProperty("exp", expiresAt.epochSecond)
                     addProperty("nbf", notBefore.epochSecond)
 
                     addProperty("sub", subject.id.toString())
+                    add("aud", audience.serialize())
 
-                    addProperty("aud", audience.id.toString())
-                    addProperty("scope", scopes.joinToString(" ") { it.id })
+                    addProperty("scope", scopes.joinToString(" "))
+
                     addProperty(CLAIM_TOKEN_TYPE, TYPE_DELEGATED_ACCESS)
-
                     addProperty(CLAIM_DELEGATED_SESSION_ID, delegatedSession.id.toString())
                     addProperty(CLAIM_SESSION_ID, session.id.toString())
-
-                    if (tenant != null)
-                        add(CLAIM_TENANT, generateTenantInfo(tenant!!))
-
-                    if (scopes.any { it.id == PermissionsScope.id })
-                        add(CLAIM_ROLES, generateRoleInfo(roles!!))
                 }
             }
         }
 
-        override fun deserialize(json: JsonElement?, typeOfT: Type?, context: JsonDeserializationContext?): IDelegatedSessionAccessToken? {
-            if (json == null || json.isJsonNull || json.isJsonObject == false)
-                return null
-
+        override fun deserialize(
+            json: JsonElement?,
+            typeOfT: Type?,
+            context: JsonDeserializationContext?
+        ): IAccessToken? {
+            if (json == null || json.isJsonNull || !json.isJsonObject) return null
             val obj = json.asJsonObject
 
-            return object : IDelegatedSessionAccessToken {
+            return object : IAccessToken {
                 override val id: UUID = UUID.fromString(obj["jti"].asString)
 
                 override val issuedAt = Instant.ofEpochSecond(obj["iat"].asLong)
@@ -219,81 +150,60 @@ open class JWTTokenService (
                         ?: throw IllegalArgumentException("Invalid subject")
                 }
 
-                override val audience by lazy {
-                    clientRepository.findById(UUID.fromString(obj["aud"].asString))
-                        ?: throw IllegalArgumentException("Invalid audience")
-                }
+                override val audience = obj["aud"].asJsonArray.map { it.asString }
 
-                override val scopes by lazy {
-                    obj["scope"].asString.split(" ").mapNotNull {
-                        scopeRegistry.findById(it) ?: scopeRepository.findById(it)
-                    }.toSet()
-                }
+                override val scopes: Set<String> =
+                    obj["scope"].asString.split(" ").filter { it.isNotEmpty() }.toSet()
 
                 override val delegatedSession by lazy {
-                    delegatedSessionRepository.findById(UUID.fromString(obj["delegated_session_id"].asString))
+                    delegatedSessionRepository.findById(UUID.fromString(obj[CLAIM_DELEGATED_SESSION_ID].asString))
                         ?: throw IllegalArgumentException("Invalid delegated session")
                 }
 
                 override val session by lazy {
-                    sessionRepository.findById(UUID.fromString(obj["session_id"].asString))
+                    sessionRepository.findById(UUID.fromString(obj[CLAIM_SESSION_ID].asString))
                         ?: throw IllegalArgumentException("Invalid session")
                 }
 
-                override val tenant by lazy {
-                    if (obj.has(CLAIM_TENANT))
-                        tenantRepository.findById(UUID.fromString(obj[CLAIM_TENANT].asJsonObject["id"].asString))
-                    else null
-                }
-
-                override val roles: Set<IRole>? by lazy {
-                    if (!obj.has(CLAIM_ROLES))
-                        return@lazy null
-
-                    obj[CLAIM_ROLES].asJsonArray
-                        .mapNotNull { deserializeRoleInfo(it.asJsonObject) }
-                        .toSet()
-                }
-
-                override val token: String = jwtService.encode(gson.toJsonTree(this).asJsonObject)
+                override val token: String =
+                    jwtService.encode(gson.toJsonTree(this, IAccessToken::class.java).asJsonObject)
             }
         }
     }
 
-    private inner class DelegatedSessionRefreshTokenSerializer : JsonSerializer<IDelegatedSessionRefreshToken>, JsonDeserializer<IDelegatedSessionRefreshToken> {
-        override fun serialize(src: IDelegatedSessionRefreshToken?, typeOfSrc: Type?, context: JsonSerializationContext?): JsonElement? {
-            if (src == null)
-                return null
-
-            return with (src) {
+    private inner class RefreshTokenSerializer : JsonSerializer<IRefreshToken>, JsonDeserializer<IRefreshToken> {
+        override fun serialize(
+            src: IRefreshToken?,
+            typeOfSrc: Type?,
+            context: JsonSerializationContext?
+        ): JsonElement? {
+            if (src == null) return null
+            return with(src) {
                 JsonObject().apply {
                     addProperty("jti", id.toString())
-
                     addProperty("iat", issuedAt.epochSecond)
                     addProperty("exp", expiresAt.epochSecond)
                     addProperty("nbf", notBefore.epochSecond)
 
                     addProperty("sub", subject.id.toString())
+                    add("aud", audience.serialize())
 
-                    addProperty("aud", audience.id.toString())
                     addProperty(CLAIM_TOKEN_TYPE, TYPE_DELEGATED_REFRESH)
-
                     addProperty(CLAIM_DELEGATED_SESSION_ID, delegatedSession.id.toString())
                     addProperty(CLAIM_SESSION_ID, session.id.toString())
-
-                    if (tenant != null)
-                        add(CLAIM_TENANT, generateTenantInfo(tenant!!))
                 }
             }
         }
 
-        override fun deserialize(json: JsonElement?, typeOfT: Type?, context: JsonDeserializationContext?): IDelegatedSessionRefreshToken? {
-            if (json == null || json.isJsonNull || json.isJsonObject == false)
-                return null
-
+        override fun deserialize(
+            json: JsonElement?,
+            typeOfT: Type?,
+            context: JsonDeserializationContext?
+        ): IRefreshToken? {
+            if (json == null || json.isJsonNull || !json.isJsonObject) return null
             val obj = json.asJsonObject
 
-            return object : IDelegatedSessionRefreshToken {
+            return object : IRefreshToken {
                 override val id: UUID = UUID.fromString(obj["jti"].asString)
 
                 override val issuedAt = Instant.ofEpochSecond(obj["iat"].asLong)
@@ -305,70 +215,59 @@ open class JWTTokenService (
                         ?: throw IllegalArgumentException("Invalid subject")
                 }
 
-                override val audience by lazy {
-                    clientRepository.findById(UUID.fromString(obj["aud"].asString))
-                        ?: throw IllegalArgumentException("Invalid audience")
-                }
+                override val audience = obj["aud"].asJsonArray.map { it.asString }
+
+                override val scopes: Set<String> = emptySet()
 
                 override val delegatedSession by lazy {
-                    delegatedSessionRepository.findById(UUID.fromString(obj["delegated_session_id"].asString))
+                    delegatedSessionRepository.findById(UUID.fromString(obj[CLAIM_DELEGATED_SESSION_ID].asString))
                         ?: throw IllegalArgumentException("Invalid delegated session")
                 }
 
                 override val session by lazy {
-                    sessionRepository.findById(UUID.fromString(obj["session_id"].asString))
+                    sessionRepository.findById(UUID.fromString(obj[CLAIM_SESSION_ID].asString))
                         ?: throw IllegalArgumentException("Invalid session")
                 }
 
-                override val tenant by lazy {
-                    if (obj.has(CLAIM_TENANT))
-                        tenantRepository.findById(UUID.fromString(obj[CLAIM_TENANT].asJsonObject["id"].asString))
-                    else null
-                }
-
-                override val token: String = jwtService.encode(gson.toJsonTree(this).asJsonObject)
+                override val token: String =
+                    jwtService.encode(gson.toJsonTree(this, IRefreshToken::class.java).asJsonObject)
             }
         }
     }
 
-    private inner class ServiceSessionAccessTokenSerializer : JsonSerializer<IServiceSessionAccessToken>, JsonDeserializer<IServiceSessionAccessToken> {
-        override fun serialize(src: IServiceSessionAccessToken?, typeOfSrc: Type?, context: JsonSerializationContext?): JsonElement? {
-            if (src == null)
-                return null
-
-            return with (src) {
+    private inner class ServiceTokenSerializer : JsonSerializer<IServiceToken>, JsonDeserializer<IServiceToken> {
+        override fun serialize(
+            src: IServiceToken?,
+            typeOfSrc: Type?,
+            context: JsonSerializationContext?
+        ): JsonElement? {
+            if (src == null) return null
+            return with(src) {
                 JsonObject().apply {
                     addProperty("jti", id.toString())
-
                     addProperty("iat", issuedAt.epochSecond)
                     addProperty("exp", expiresAt.epochSecond)
                     addProperty("nbf", notBefore.epochSecond)
 
-                    addProperty("sub", subject.id.toString())
+                    addProperty("sub", "https://${(subject as IClient).fqdn}/")
+                    add("aud", audience.serialize())
 
-                    addProperty("aud", audience.id.toString())
+                    addProperty("scope", scopes.joinToString(" "))
 
-                    if (scopes != null)
-                        addProperty("scope", scopes!!.joinToString(" ") { it.id })
-
-                    addProperty(CLAIM_TOKEN_TYPE, TYPE_DELEGATED_ACCESS)
-
-                    if (tenant != null)
-                        add(CLAIM_TENANT, generateTenantInfo(tenant!!))
-
-                    if (scopes == null || scopes!!.any { it.id == PermissionsScope.id })
-                        add(CLAIM_ROLES, generateRoleInfo(roles!!))
+                    addProperty(CLAIM_TOKEN_TYPE, TYPE_SERVICE)
                 }
             }
         }
 
-        override fun deserialize(json: JsonElement?, typeOfT: Type?, context: JsonDeserializationContext?): IServiceSessionAccessToken? {
-            if (json == null || json.isJsonNull || json.isJsonObject == false)
-                return null
-
+        override fun deserialize(
+            json: JsonElement?,
+            typeOfT: Type?,
+            context: JsonDeserializationContext?
+        ): IServiceToken? {
+            if (json == null || json.isJsonNull || !json.isJsonObject) return null
             val obj = json.asJsonObject
 
-            return object : IServiceSessionAccessToken {
+            return object : IServiceToken {
                 override val id: UUID = UUID.fromString(obj["jti"].asString)
 
                 override val issuedAt = Instant.ofEpochSecond(obj["iat"].asLong)
@@ -376,117 +275,106 @@ open class JWTTokenService (
                 override val notBefore = Instant.ofEpochSecond(obj["nbf"].asLong)
 
                 override val subject by lazy {
-                    accountRepository.findById(UUID.fromString(obj["sub"].asString))
+                    val sub = obj["sub"].asString
+                    val fqdn = sub.removePrefix("https://").removeSuffix("/")
+                    clientRepository.findByFqdn(fqdn)
                         ?: throw IllegalArgumentException("Invalid subject")
                 }
 
-                override val audience by lazy {
-                    clientRepository.findById(UUID.fromString(obj["aud"].asString))
-                        ?: throw IllegalArgumentException("Invalid audience")
-                }
+                override val audience = obj["aud"].asJsonArray.map { it.asString }
 
-                override val tenant by lazy {
-                    if (obj.has(CLAIM_TENANT))
-                        tenantRepository.findById(UUID.fromString(obj[CLAIM_TENANT].asJsonObject["id"].asString))
-                    else null
-                }
+                override val scopes: Set<String> =
+                    if (obj.has("scope"))
+                        obj["scope"].asString.split(" ").filter { it.isNotEmpty() }.toSet()
+                    else
+                        emptySet()
 
-                override val scopes by lazy {
-                    obj["scope"].asString.split(" ").mapNotNull {
-                        scopeRegistry.findById(it) ?: scopeRepository.findById(it)
-                    }.toSet()
-                }
-
-                override val roles: Set<IRole>? by lazy {
-                    if (!obj.has(CLAIM_ROLES))
-                        return@lazy null
-
-                    obj[CLAIM_ROLES].asJsonArray
-                        .mapNotNull { deserializeRoleInfo(it.asJsonObject) }
-                        .toSet()
-                }
-
-                override val token: String = jwtService.encode(gson.toJsonTree(this).asJsonObject)
+                override val token: String =
+                    jwtService.encode(gson.toJsonTree(this, IServiceToken::class.java).asJsonObject)
             }
         }
     }
+
+    // ----- Token generation -----
 
     override fun generateDelegatedSessionAccessToken(
         delegatedSession: IDelegatedSession
-    ): IDelegatedSessionAccessToken? {
+    ): IAccessToken? {
         if (delegatedSession.session.expiresAt <= Instant.now())
             return null
 
         if (delegatedSession.expiresAt <= Instant.now())
             return null
 
-        return object : IDelegatedSessionAccessToken {
+        val now = Instant.now()
+
+        return object : IAccessToken {
             override val id = UUID.randomUUID()
 
-            override val issuedAt = Instant.now()
-            override val expiresAt = Instant.now().plusMillis(accessTokenLifetime.inWholeMilliseconds)
+            override val issuedAt = now
+            override val expiresAt = now.plusMillis(accessTokenLifetime.inWholeMilliseconds)
             override val notBefore = issuedAt
 
             override val subject = delegatedSession.session.account
-            override val audience = delegatedSession.client
+            override val audience = listOf("https://${delegatedSession.client.fqdn}/")
 
-            override val scopes = delegatedSession.scopes
+            override val scopes: Set<String> = delegatedSession.scopes.map { it.id }.toSet()
 
             override val delegatedSession: IDelegatedSession = delegatedSession
             override val session = delegatedSession.session
-            override val tenant = delegatedSession.tenant
 
-            override val roles: Set<IRole> by lazy {
-                val roles = mutableSetOf<IRole>()
-
-                for (role in assignmentRepository.findByAccount(session.account).map { it.role })
-                    roles.add(role)
-
-                return@lazy roles
-            }
-
-            override val token: String = jwtService.encode(gson.toJsonTree(this).asJsonObject)
+            override val token: String = jwtService.encode(gson.toJsonTree(this, IAccessToken::class.java).asJsonObject)
         }
     }
 
     override fun generateDelegatedSessionRefreshToken(
         delegatedSession: IDelegatedSession
-    ): IDelegatedSessionRefreshToken? {
+    ): IRefreshToken? {
         if (delegatedSession.session.expiresAt <= Instant.now())
             return null
 
         if (delegatedSession.expiresAt <= Instant.now())
             return null
 
-        return object : IDelegatedSessionRefreshToken {
+        val now = Instant.now()
+
+        return object : IRefreshToken {
             override val id = UUID.randomUUID()
 
-            override val issuedAt = Instant.now()
+            override val issuedAt = now
             override val expiresAt = minOf(
-                Instant.now().plusMillis(refreshTokenLifetime.inWholeMilliseconds),
+                now.plusMillis(refreshTokenLifetime.inWholeMilliseconds),
                 delegatedSession.session.expiresAt
             )
             override val notBefore = issuedAt
 
             override val subject = delegatedSession.session.account
-            override val audience = delegatedSession.client
+            override val audience = listOf("https://${delegatedSession.client.fqdn}/")
+
+            override val scopes: Set<String> = emptySet()
 
             override val delegatedSession = delegatedSession
             override val session = delegatedSession.session
-            override val tenant = delegatedSession.tenant
 
-            override val token: String = jwtService.encode(gson.toJsonTree(this).asJsonObject)
+            override val token: String =
+                jwtService.encode(gson.toJsonTree(this, IRefreshToken::class.java).asJsonObject)
         }
     }
 
-    override fun renewDelegatedSessionAccessToken(refreshToken: IDelegatedSessionRefreshToken): IDelegatedSessionAccessToken? {
+    override fun renewDelegatedSessionAccessToken(refreshToken: IRefreshToken): IAccessToken? {
         if (Instant.now() < refreshToken.notBefore || Instant.now() > refreshToken.expiresAt)
             return null
 
         if (refreshToken.session.expiresAt <= Instant.now())
             return null
 
-        if (refreshToken.delegatedSession.refreshedAt != null && refreshToken.issuedAt < refreshToken.delegatedSession.refreshedAt)
+        // Add a 1-second grace window because JWT iat is truncated to seconds while
+        // ds.refreshedAt carries millisecond (or finer) precision. Without the window,
+        // a refresh that happens within the same second as token issuance falsely
+        // marks the token as superseded.
+        if (refreshToken.delegatedSession.refreshedAt != null &&
+            refreshToken.issuedAt.plusSeconds(1) < refreshToken.delegatedSession.refreshedAt
+        )
             return null
 
         delegatedSessionRepository.update(refreshToken.delegatedSession) {
@@ -498,38 +386,84 @@ open class JWTTokenService (
 
     override fun generateServiceSessionAccessToken(
         client: IClient,
-        tenant: ITenant?,
-        scopes: Set<IScope>?
-    ): IServiceSessionAccessToken? {
-        return object : IServiceSessionAccessToken {
+        scopes: Set<String>?
+    ): IServiceToken? {
+        val now = Instant.now()
+
+        return object : IServiceToken {
             override val id = UUID.randomUUID()
 
-            override val issuedAt = Instant.now()
-            override val expiresAt = Instant.now().plusMillis(accessTokenLifetime.inWholeMilliseconds)
+            override val issuedAt = now
+            override val expiresAt = now.plusMillis(accessTokenLifetime.inWholeMilliseconds)
             override val notBefore = issuedAt
 
             override val subject = client
-            override val audience = client
+            override val audience = listOf("https://${client.fqdn}/", "https://witchwood.jasmine.software/")
 
-            override val tenant = tenant
-            override val scopes = scopes
-            override val roles: Set<IRole> = assignmentRepository.findByClient(client).map { it.role }.toSet()
+            override val scopes: Set<String> = scopes ?: emptySet()
 
-            override val token = jwtService.encode(gson.toJsonTree(this).asJsonObject)
+            override val token: String =
+                jwtService.encode(gson.toJsonTree(this, IServiceToken::class.java).asJsonObject)
         }
     }
 
-    override fun decode(token: String): Any? {
-        val decoded = jwtService.decode(token)
-        if (decoded[CLAIM_TOKEN_TYPE].asString != TYPE_DELEGATED_ACCESS && decoded[CLAIM_TOKEN_TYPE].asString != TYPE_DELEGATED_REFRESH)
+    // ----- ID Token -----
+
+    override fun generateIDToken(
+        delegatedSession: IDelegatedSession,
+        claims: Map<String, Any?>,
+    ): IIDToken? {
+        if (delegatedSession.session.expiresAt <= Instant.now())
+            return null
+        if (delegatedSession.expiresAt <= Instant.now())
             return null
 
-        if (decoded[CLAIM_TOKEN_TYPE].asString == TYPE_DELEGATED_ACCESS)
-            return gson.fromJson(decoded, IDelegatedSessionAccessToken::class.java)
+        val now = Instant.now()
+        val account = delegatedSession.session.account
 
-        if (decoded[CLAIM_TOKEN_TYPE].asString == TYPE_DELEGATED_REFRESH)
-            return gson.fromJson(decoded, IDelegatedSessionRefreshToken::class.java)
+        val claimsObj = JsonObject().apply {
+            addProperty("iss", "https://id.jasmine.software/")
+            addProperty("sub", account.id.toString())
+            addProperty("aud", "https://${delegatedSession.client.fqdn}/")
+            addProperty("iat", now.epochSecond)
+            addProperty("exp", now.plusMillis(accessTokenLifetime.inWholeMilliseconds).epochSecond)
+            delegatedSession.nonce?.let { addProperty("nonce", it) }
 
-        return null
+            for ((key, value) in claims) {
+                when (value) {
+                    null -> add(key, null)
+                    is String -> addProperty(key, value)
+                    is Number -> addProperty(key, value)
+                    is Boolean -> addProperty(key, value)
+                    else -> addProperty(key, value.toString())
+                }
+            }
+        }
+
+        return object : IIDToken {
+            override val id: UUID = UUID.randomUUID()
+            override val token: String = jwtService.encode(claimsObj)
+            override val issuedAt: Instant = now
+            override val expiresAt: Instant = now.plusMillis(accessTokenLifetime.inWholeMilliseconds)
+            override val subject: String = account.id.toString()
+            override val audience: String = "https://${delegatedSession.client.fqdn}/"
+            override val issuer: String = "https://id.jasmine.software/"
+            override val nonce: String? = delegatedSession.nonce
+            override val claims: Map<String, Any?> = claims
+        }
+    }
+
+    // ----- Decode -----
+
+    override fun decode(token: String): Any? {
+        val decoded = jwtService.decode(token)
+        val type = decoded[CLAIM_TOKEN_TYPE]?.asString ?: return null
+
+        return when (type) {
+            TYPE_DELEGATED_ACCESS -> gson.fromJson(decoded, IAccessToken::class.java)
+            TYPE_DELEGATED_REFRESH -> gson.fromJson(decoded, IRefreshToken::class.java)
+            TYPE_SERVICE -> gson.fromJson(decoded, IServiceToken::class.java)
+            else -> null
+        }
     }
 }

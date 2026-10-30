@@ -1,0 +1,22 @@
+FROM eclipse-temurin:26-jre
+
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
+WORKDIR /app
+
+# Copy the pre-built shadow JAR from the host.
+COPY workers/build/libs/workers-*-all.jar app.jar
+
+# OpenTelemetry Java agent for distributed tracing and logging.
+ADD --chown=appuser:appuser https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v2.30.0/opentelemetry-javaagent.jar /app/opentelemetry-javaagent.jar
+
+RUN chown -R appuser:appuser /app
+
+USER appuser
+
+# One JVM now carries every module ID_WORKER_MODULES selects — up to three SQS
+# listeners plus the security module's detectors, geolocation cache and gRPC
+# client. 128 MiB was sized for a single module, so the ceiling is raised here.
+ENV JAVA_OPTS="-Xms128m -Xmx512m -XX:+UseG1GC -XX:+UseContainerSupport"
+
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -javaagent:/app/opentelemetry-javaagent.jar -cp app.jar app.workers.entrypoints.IdWorkerMainKt"]

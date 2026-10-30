@@ -4,12 +4,20 @@ import com.jasminesoftwaresolutions.id.domain.models.ICreated
 import com.jasminesoftwaresolutions.id.domain.models.IIdentified
 import java.net.URI
 
-interface IClient : IIdentified,
-    ICreated {
+interface IClient : IIdentified, ICreated {
     var suspended: Boolean
 
-    var name: String
+    var fqdn: String
     var confidential: Boolean
+
+    /** Human-readable display name for SSO tiles. Falls back to [fqdn] when empty. */
+    var name: String?
+
+    /** Optional logo URI for SSO tile branding. */
+    var logoUri: URI?
+
+    /** Optional OIDC initiate-login URI. Presence determines SSO eligibility. */
+    var initiateLoginUri: URI?
 
     val redirectUris: IClientRedirectUris
 

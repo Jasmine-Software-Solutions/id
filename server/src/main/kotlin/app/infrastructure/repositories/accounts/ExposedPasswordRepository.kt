@@ -22,9 +22,9 @@ import java.util.*
 
 class ExposedPasswordRepository(
     val hashFunction: IHashFunction,
-    val accountRepository: IAccountRepository<IAccount>
+    val accountRepository: IAccountRepository
 ) : ExposedIdentifiedEntityRepository<IHashedPassword, ExposedPasswordRepository.Password>(Table),
-    IPasswordRepository<IHashedPassword> {
+    IPasswordRepository {
     override fun read(row: ResultRow?, insert: InsertStatement<Number>?, update: UpdateStatement?)
             = Password(row, insert, update)
 

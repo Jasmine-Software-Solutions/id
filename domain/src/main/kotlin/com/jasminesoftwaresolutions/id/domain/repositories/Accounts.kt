@@ -3,32 +3,33 @@ package com.jasminesoftwaresolutions.id.domain.repositories
 import com.jasminesoftwaresolutions.id.domain.models.account.*
 import java.util.*
 
-interface IAccountRepository<T : IAccount> :
-    IIdentifiedRepository<T> {
-    fun findByEmail(email: String): T?
+interface IAccountRepository : IIdentifiedRepository<IAccount> {
+    fun findByEmail(email: String): IAccount?
+    fun entries(): List<IAccount>
 }
 
 interface IRepositoryRelatedToAccount<T> {
-    fun findByAccount(account: IAccount): T = findByAccount(account.id)
-    fun findByAccount(id: UUID): T
+    fun findByAccount(account: IAccount): List<T> = findByAccount(account.id)
+    fun findByAccount(id: UUID): List<T>
 }
 
-interface ITOTPConfigurationRepository<T : ITOTPConfiguration> : IRepository<T>,
-    IRepositoryRelatedToAccount<T> {
-    override fun create(function: T.() -> Unit): T {
+interface ITOTPConfigurationRepository : IRepository<ITOTPConfiguration> {
+    fun findByAccount(account: IAccount): ITOTPConfiguration = findByAccount(account.id)
+    fun findByAccount(id: UUID): ITOTPConfiguration
+
+    override fun create(function: ITOTPConfiguration.() -> Unit): ITOTPConfiguration {
         throw UnsupportedOperationException()
     }
 
-    override fun delete(entity: T) {
+    override fun delete(entity: ITOTPConfiguration) {
         throw UnsupportedOperationException()
     }
 }
 
-interface IMagicLinkRepository<T : IMagicLink> : IIdentifiedRepository<T>,
-    IRepositoryRelatedToAccount<List<T>>
+interface IMagicLinkRepository : IIdentifiedRepository<IHashedMagicLink>, IRepositoryRelatedToAccount<IHashedMagicLink>
 
-interface IPasswordRepository<T : IPassword> : IIdentifiedRepository<T>,
-    IRepositoryRelatedToAccount<List<T>>
+interface IPasswordRepository : IIdentifiedRepository<IHashedPassword>, IRepositoryRelatedToAccount<IHashedPassword>
 
-interface ISessionRepository<T : ISession> : IIdentifiedRepository<T>,
-    IRepositoryRelatedToAccount<List<T>>
+interface ISessionRepository : IIdentifiedRepository<IHashedSession>, IRepositoryRelatedToAccount<IHashedSession>
+
+interface IEmailChangeRepository : IIdentifiedRepository<IHashedEmailChange>, IRepositoryRelatedToAccount<IHashedEmailChange>

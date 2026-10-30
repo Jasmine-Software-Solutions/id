@@ -1,6 +1,7 @@
 package app.infrastructure.repositories
 
 import app.infrastructure.entities.ExposedEntity
+import com.jasminesoftwaresolutions.id.domain.models.ICreated
 import com.jasminesoftwaresolutions.id.domain.models.IIdentified
 import com.jasminesoftwaresolutions.id.domain.repositories.IIdentifiedRepository
 import org.jetbrains.exposed.dao.id.UUIDTable
@@ -50,6 +51,24 @@ abstract class ExposedIdentifiedEntityRepository<T, TWrapper>(
         createDependents(entityId, entity)
 
         val new = findById(entityId)!!
+        clone(entity as TWrapper, new as TWrapper)
+
+        return@transaction new
+    }
+
+    override fun create(id: UUID, function: T.() -> Unit): T = transaction {
+        lateinit var entity: T
+
+        table.insert {
+            entity = read(null, it, null)
+            function(entity)
+
+            writeDefaults(id, entity, it)
+        }
+
+        createDependents(id, entity)
+
+        val new = findById(id)!!
         clone(entity as TWrapper, new as TWrapper)
 
         return@transaction new

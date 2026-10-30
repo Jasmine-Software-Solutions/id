@@ -2,6 +2,7 @@ rootProject.name = "id"
 include("domain")
 include("interfaces")
 include("server")
+include("workers")
 
 pluginManagement {
     repositories {

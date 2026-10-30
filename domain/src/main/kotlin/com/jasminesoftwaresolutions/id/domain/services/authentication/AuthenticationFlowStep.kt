@@ -10,10 +10,10 @@ open class AuthenticationFlowStep(
     open fun alternatives(): Set<AuthenticationFlowStep> = setOf()
 }
 
-abstract class AuthenticationFlowStepHandler<TFlow : IAuthenticationFlow, TRequest : Any, TResponse : Any>(
+abstract class AuthenticationFlowStepHandler<TRequest : Any, TResponse : Any>(
     val requestClass: KClass<TRequest>,
     val responseClass: KClass<TResponse>
 ) {
-    abstract fun create(flow: TFlow): TRequest
-    abstract fun accept(flow: TFlow, request: TRequest, response: TResponse): AuthenticationFlowStepResult
+    abstract fun create(flow: IAuthenticationFlow): TRequest
+    abstract fun accept(flow: IAuthenticationFlow, request: TRequest, response: TResponse): AuthenticationFlowStepResult
 }

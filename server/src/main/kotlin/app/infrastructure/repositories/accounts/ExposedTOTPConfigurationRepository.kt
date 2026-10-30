@@ -25,16 +25,15 @@ import kotlin.time.toDuration
 
 class ExposedTOTPConfigurationRepository(
     val encryptionFunction: IEncryptionFunction,
-    val accountRepository: IAccountRepository<IAccount>
-) : ITOTPConfigurationRepository<ITOTPConfiguration> {
+    val accountRepository: IAccountRepository
+) : ITOTPConfigurationRepository {
     override fun findByAccount(id: UUID): ITOTPConfiguration = transaction {
         val row = Table.select { Table.account eq id }.firstOrNull()
             ?: return@transaction create(id)
 
         if (row[Table.enabled])
             return@transaction SetTOTPConfiguration(row, null, null)
-
-        return@transaction TOTPConfiguration(row, null, null)
+        else return@transaction TOTPConfiguration(row, null, null)
     }
 
     private fun create(id: UUID): ITOTPConfiguration = transaction {
@@ -55,7 +54,7 @@ class ExposedTOTPConfigurationRepository(
 
     override fun update(entity: ITOTPConfiguration, function: ITOTPConfiguration.() -> Unit) = transaction {
         val isExposedEntity = entity is TOTPConfiguration
-        val oldWrappedEntity = if (isExposedEntity) entity as TOTPConfiguration else null
+        val oldWrappedEntity = if (isExposedEntity) entity else null
 
         Table.update({ Table.account eq entity.account.id }) {
             val row = oldWrappedEntity?.row

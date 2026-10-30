@@ -2,9 +2,8 @@ import kotlin.io.path.Path
 
 plugins {
     kotlin("jvm")
-    id("gg.jte.gradle") version "3.2.4-jasmine.1-SNAPSHOT"
 
-    id("com.github.johnrengelman.shadow") version "8.0.0"
+    id("com.gradleup.shadow") version "9.0.2"
 }
 
 group = "com.jasminesoftwaresolutions"
@@ -13,16 +12,7 @@ version = "1.0.0-SNAPSHOT"
 repositories {
     mavenCentral()
     mavenLocal()
-
     maven("https://maven.reposilite.com/snapshots")
-
-    maven {
-        url = uri("https://jasmine-software-solutions-435238036697.d.codeartifact.us-east-1.amazonaws.com/maven/jte/")
-        credentials {
-            username = "aws"
-            password = System.getenv("CODEARTIFACT_AUTH_TOKEN")
-        }
-    }
 }
 
 dependencies {
@@ -31,11 +21,6 @@ dependencies {
     testImplementation("org.xerial:sqlite-jdbc:3.49.1.0")
 
     implementation(project(":domain"))
-
-    implementation("gg.jte:jte:3.2.4-jasmine.1-SNAPSHOT")
-    implementation("gg.jte:jte-watcher:3.2.4-jasmine.1-SNAPSHOT")
-
-    implementation("gg.jte:jte-kotlin:3.2.4-jasmine.1-SNAPSHOT")
 
     implementation("io.javalin:javalin:6.6.0")
     implementation("io.javalin:javalin-rendering:6.4.0")
@@ -47,15 +32,8 @@ dependencies {
     testImplementation("com.microsoft.playwright:playwright:1.51.0")
 
     implementation("com.google.code.gson:gson:2.13.2")
-}
 
-jte {
-    sourceDirectory.set(Path("src/main/resources/templates"))
-    targetDirectory.set(Path("build/generated-sources/jte"))
-    contentType.set(gg.jte.ContentType.Html)
-    packageName.set("gg.jte.generated.precompiled")
-
-    generate()
+    implementation("io.opentelemetry.instrumentation:opentelemetry-instrumentation-annotations:2.30.0")
 }
 
 tasks.test {
@@ -73,7 +51,7 @@ tasks.withType<Test> {
 }
 
 kotlin {
-    jvmToolchain(17)
+    jvmToolchain(26)
     compilerOptions {
         javaParameters.set(true)
     }

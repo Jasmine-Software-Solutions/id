@@ -1,29 +1,25 @@
 package com.jasminesoftwaresolutions.id.domain
 
 import com.google.gson.Gson
-import com.jasminesoftwaresolutions.id.domain.models.account.*
-import com.jasminesoftwaresolutions.id.domain.models.authentication.IAuthenticationFlow
+import com.jasminesoftwaresolutions.id.domain.events.IEventDispatcher
 import com.jasminesoftwaresolutions.id.domain.models.authorization.*
-import com.jasminesoftwaresolutions.id.domain.models.client.IClient
-import com.jasminesoftwaresolutions.id.domain.models.client.IDelegatedSession
-import com.jasminesoftwaresolutions.id.domain.models.tenant.IOrganization
-import com.jasminesoftwaresolutions.id.domain.models.tenant.ITeam
-import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenant
-import com.jasminesoftwaresolutions.id.domain.models.tenant.ITenantMembership
 import com.jasminesoftwaresolutions.id.domain.registries.IAuthenticationStepHandlerRegistry
 import com.jasminesoftwaresolutions.id.domain.registries.IAuthenticationStepRegistry
 import com.jasminesoftwaresolutions.id.domain.registries.IScopeRegistry
 import com.jasminesoftwaresolutions.id.domain.repositories.*
-import com.jasminesoftwaresolutions.id.domain.services.IEmailService
 import com.jasminesoftwaresolutions.id.domain.services.IEncryptionFunction
 import com.jasminesoftwaresolutions.id.domain.services.IHashFunction
 import com.jasminesoftwaresolutions.id.domain.services.ISigningFunction
+import com.jasminesoftwaresolutions.id.domain.services.accounts.IEmailChangeService
 import com.jasminesoftwaresolutions.id.domain.services.accounts.IJWTService
 import com.jasminesoftwaresolutions.id.domain.services.accounts.IMagicLinkService
 import com.jasminesoftwaresolutions.id.domain.services.accounts.ISessionService
 import com.jasminesoftwaresolutions.id.domain.services.accounts.ITOTPService
 import com.jasminesoftwaresolutions.id.domain.services.authentication.IAuthenticationService
+import com.jasminesoftwaresolutions.id.domain.services.authorization.IAuthorizationService
+import com.jasminesoftwaresolutions.id.domain.services.authorization.IOIDCClaimsResolver
 import com.jasminesoftwaresolutions.id.domain.services.authorization.ITokenService
+import com.jasminesoftwaresolutions.id.domain.services.security.IRestrictionService
 
 interface IDServer {
     var gson: Gson
@@ -31,39 +27,48 @@ interface IDServer {
     var hashFunction: IHashFunction
     var signingFunction: ISigningFunction
 
-    var authenticationStepRegistry: IAuthenticationStepRegistry<IAuthenticationFlow>
-    var authenticationStepHandlerRegistry: IAuthenticationStepHandlerRegistry<IAuthenticationFlow>
+    var authenticationStepRegistry: IAuthenticationStepRegistry
+    var authenticationStepHandlerRegistry: IAuthenticationStepHandlerRegistry
     var scopeRegistry: IScopeRegistry<IScope>
 
-    var accountRepository: IAccountRepository<IAccount>
-    var passwordRepository: IPasswordRepository<IHashedPassword>
-    var magicLinkRepository: IMagicLinkRepository<IHashedMagicLink>
-    var totpConfigurationRepository: ITOTPConfigurationRepository<ITOTPConfiguration>
-    var sessionRepository: ISessionRepository<IHashedSession>
+    var accountRepository: IAccountRepository
+    var passwordRepository: IPasswordRepository
+    var magicLinkRepository: IMagicLinkRepository
+    var emailChangeRepository: IEmailChangeRepository
+    var totpConfigurationRepository: ITOTPConfigurationRepository
+    var sessionRepository: ISessionRepository
 
-    var authenticationFlowRepository: IAuthenticationFlowRepository<IAuthenticationFlow>
+    var authenticationFlowRepository: IAuthenticationFlowRepository
 
-    var clientRepository: IClientRepository<IClient>
-    var delegatedSessionRepository: IDelegatedSessionRepository<IDelegatedSession>
-    var scopeRepository: IScopeRepository<IRegisteredScope>
+    var clientRepository: IClientRepository
+    var delegatedSessionRepository: IDelegatedSessionRepository
+    var scopeRepository: IScopeRepository
 
-    var roleRepository: IRoleRepository<IRole>
-    var roleAssignmentRepository: IRoleAssignmentRepository<IRoleAssignment>
+    var roleRepository: IRoleRepository
+    var roleAssignmentRepository: IRoleAssignmentRepository
 
-    var tenantRepository: ITenantRepository<ITenant>
-    var tenantMembershipRepository: ITenantMembershipRepository<ITenantMembership>
-    var organizationRepository: IOrganizationRepository<IOrganization>
-    var teamRepository: ITeamRepository<ITeam>
+    var policyRepository: IPolicyRepository
+    var policyAssignmentRepository: IPolicyAssignmentRepository
 
-    var emailService: IEmailService
+    var tenantRepository: ITenantRepository
+    var tenantMembershipRepository: ITenantMembershipRepository
+    var membershipInvitationRepository: IMembershipInvitationRepository
+
+    var eventDispatcher: IEventDispatcher
+    var authorizationService: IAuthorizationService
 
     var jwtService: IJWTService
-    var magicLinkService: IMagicLinkService<IMagicLink>
-    var sessionService: ISessionService<ISession>
-    var totpService: ITOTPService<ISetTOTPConfiguration>
+    var magicLinkService: IMagicLinkService
+    var emailChangeService: IEmailChangeService
+    var sessionService: ISessionService
+    var totpService: ITOTPService
 
-    var authenticationService: IAuthenticationService<IAuthenticationFlow>
-    var tokenService: ITokenService<IDelegatedSessionAccessToken, IDelegatedSessionRefreshToken, IServiceSessionAccessToken>
+    var authenticationService: IAuthenticationService
+    var oidcClaimsResolver: IOIDCClaimsResolver
+    var tokenService: ITokenService<IAccessToken, IRefreshToken, IServiceToken, IIDToken>
+
+    var restrictionRepository: IRestrictionRepository
+    var restrictionService: IRestrictionService
 
     fun start(port: Int)
     fun stop()

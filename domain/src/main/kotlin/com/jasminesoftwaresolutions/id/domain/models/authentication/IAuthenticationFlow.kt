@@ -13,6 +13,11 @@ interface IAuthenticationFlow : IIdentified,
     var account: IAccount?
 
     val steps: IAuthenticationFlowSteps
+
+    var userAgent: String?
+    var ipAddress: String
+
+    var state: String?
 }
 
 interface IAuthenticationFlowSteps {
