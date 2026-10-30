@@ -24,7 +24,7 @@ function submit() {
            page header, which every later step also renders. Prose first is the
            shape the other steps use (`EnterName`). -->
       <p class="text-sm text-slate-500">
-        New to Jasmine? Just enter your email address, and we'll get you started today.
+        New to Jasmine Software? Just enter your email address, and we'll get you started today.
       </p>
       <div>
         <label class="block mb-2 text-sm font-medium text-slate-700">Email address</label>
