@@ -121,6 +121,18 @@ class RestAccountController(
     }
 
     /**
+     * Authenticate from whichever credential the request carries — a session
+     * cookie or a Bearer token — and return the principal context.
+     *
+     * The Bearer path is what lets a product backend proxy a route on the
+     * user's behalf: it holds the user's delegated access token, not their
+     * browser's session cookie, and the token's subject is the same principal
+     * either way, so the grant evaluation that follows is identical.
+     */
+    private fun Context.requireAuth(): PrincipalAuthorizationContext =
+        authorizationService.authenticate(this) ?: throw UnauthorizedResponse()
+
+    /**
      * Authenticate the request and verify the principal may perform [action] on the
      * account identified by [accountId].
      *
@@ -775,7 +787,9 @@ class RestAccountController(
 
     @Get("/api/v1/accounts/me/sso-clients")
     fun listSsoClients(ctx: Context) {
-        val auth = ctx.requireSession()
+        // Bearer as well as cookie: product servers proxy this route with the
+        // user's delegated access token, whose subject is the same principal.
+        val auth = ctx.requireAuth()
 
         // Use Witchwood queryResources to find all clients the account can SSO into.
         val visible = scopedListHelper.filterVisible(
@@ -785,8 +799,10 @@ class RestAccountController(
             resourceFn = { IdResources.client(it.id) },
         )
 
-        // Only return clients that have an initiate_login_uri configured.
-        val eligible = visible.filter { it.initiateLoginUri != null }
+        // Only return clients that can actually be launched: an absent
+        // initiate_login_uri leaves nowhere to send the browser, and a
+        // suspended client must not be offered as a destination.
+        val eligible = visible.filter { it.initiateLoginUri != null && !it.suspended }
 
         ctx.json(eligible.map { client ->
             SsoClientResponse(
