@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package witchwood.resource;
+
+option java_package = "com.jasminesoftwaresolutions.witchwood.proto";
+option java_multiple_files = true;
+
+/**
+ * A compiled resource path — a service name plus a linked list of
+ * ResourceNode segments. The linked-list structure mirrors the Java
+ * {@code CompiledResourcePath} model exactly: a node with no child
+ * terminates the chain.
+ */
+message CompiledResourcePath {
+    string service = 1;
+    ResourceNode root = 2;
+}
+
+message ResourceNode {
+    oneof node {
+        WildcardNode wildcard = 1;
+        TypedResourceNode typed = 2;
+    }
+}
+
+message WildcardNode {
+    bool greedy = 1;
+    ResourceNode child = 2;
+}
+
+message TypedResourceNode {
+    string type = 1;
+    oneof resource_id {
+        bytes definite_id = 2;   // UUID as 16 bytes (big-endian)
+        bool wildcard_id = 3;    // present and true
+    }
+    ResourceNode child = 4;
+}

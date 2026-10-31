@@ -41,7 +41,16 @@ class SnsEventDispatcher(
         }
 
         val body = try {
-            gson.toJson(event)
+            // Stamp the discriminator into the body here rather than trusting the
+            // Gson instance we were given: id-server's Gson adds event_type via a
+            // TypeAdapterFactory, but the workers' workerGson does not, so
+            // worker-published events reached SQS with the type only on the SNS
+            // message attribute. Consumers must be able to read it from the body.
+            val tree = gson.toJsonTree(event).asJsonObject
+            if (!tree.has("event_type")) {
+                tree.addProperty("event_type", event.eventType)
+            }
+            gson.toJson(tree)
         } catch (e: Exception) {
             log.error("Failed to serialize event ${event::class.simpleName}: ${e.message}", e)
             return

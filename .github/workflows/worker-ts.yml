@@ -1,0 +1,46 @@
+name: ID worker (TypeScript)
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "worker-ts/**"
+      - ".github/workflows/worker-ts.yml"
+  pull_request:
+    paths:
+      - "worker-ts/**"
+      - ".github/workflows/worker-ts.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: worker-ts
+    env:
+      # Unit suite only: the Redis/Postgres integration suites need the dev stack.
+      SKIP_INTEGRATION: "1"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: worker-ts/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Bundle
+        run: npm run build

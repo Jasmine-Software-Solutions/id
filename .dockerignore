@@ -50,3 +50,6 @@ Dockerfile
 Dockerfile.*
 .dockerignore
 docker-compose*.yml 
+
+# TypeScript worker build context (built on the host by scripts/bundle.mjs)
+worker-ts/

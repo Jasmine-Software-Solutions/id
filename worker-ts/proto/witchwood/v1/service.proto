@@ -1,0 +1,306 @@
+syntax = "proto3";
+
+package witchwood.v1;
+
+option java_package = "com.jasminesoftwaresolutions.witchwood.proto.v1";
+option java_multiple_files = true;
+
+import "witchwood/resource/resource_path.proto";
+
+// ---------------------------------------------------------------------------
+// Common
+// ---------------------------------------------------------------------------
+
+message ProtoResourceSpec {
+    string service = 1;
+    oneof resource {
+        string wildcard = 2;
+        string principal_id = 3;
+        string policy_id = 4;
+        string role_id = 5;
+    }
+}
+
+message ProtoStatementCondition {
+    string json = 1;
+}
+
+message ProtoTimestampRange {
+    int64 effective = 1;
+    int64 expiration = 2;
+}
+
+// ---------------------------------------------------------------------------
+// Principal
+// ---------------------------------------------------------------------------
+
+message ProtoPrincipal {
+    string id = 1;
+    repeated ProtoPrincipalRoleAssignment roles = 2;
+    repeated ProtoPrincipalPolicyAssignment policies = 3;
+}
+
+message ProtoPrincipalRoleAssignment {
+    string role_id = 1;
+    ProtoTimestampRange window = 2;
+}
+
+message ProtoPrincipalPolicyAssignment {
+    string policy_id = 1;
+}
+
+message ProtoCreatePrincipalRequest {
+    string id = 1;
+    repeated ProtoPrincipalRoleAssignment roles = 2;
+    repeated ProtoPrincipalPolicyAssignment policies = 3;
+}
+
+message ProtoCreatePrincipalResponse {
+    string id = 1;
+}
+
+message ProtoGetPrincipalRequest {
+    string id = 1;
+}
+
+message ProtoGetPrincipalResponse {
+    ProtoPrincipal principal = 1;
+}
+
+message ProtoUpdatePrincipalRequest {
+    string id = 1;
+    repeated ProtoPrincipalRoleAssignment roles = 2;
+    repeated ProtoPrincipalPolicyAssignment policies = 3;
+}
+
+message ProtoUpdatePrincipalResponse {}
+
+message ProtoDeletePrincipalRequest {
+    string id = 1;
+}
+
+message ProtoDeletePrincipalResponse {}
+
+// ---------------------------------------------------------------------------
+// Policy
+// ---------------------------------------------------------------------------
+
+message ProtoPolicy {
+    string id = 1;
+    repeated ProtoPolicyStatement statements = 2;
+}
+
+message ProtoPolicyStatement {
+    int32 id = 1;
+    string effect = 2;
+    repeated string actions = 3;
+    repeated witchwood.resource.CompiledResourcePath resources = 4;
+    ProtoStatementCondition condition = 5;
+}
+
+message ProtoCreatePolicyRequest {
+    string id = 1;
+    repeated ProtoPolicyStatement statements = 2;
+}
+
+message ProtoCreatePolicyResponse {
+    string id = 1;
+}
+
+message ProtoGetPolicyRequest {
+    string id = 1;
+}
+
+message ProtoGetPolicyResponse {
+    ProtoPolicy policy = 1;
+}
+
+message ProtoUpdatePolicyRequest {
+    string id = 1;
+    repeated ProtoPolicyStatement statements = 2;
+}
+
+message ProtoUpdatePolicyResponse {}
+
+message ProtoDeletePolicyRequest {
+    string id = 1;
+}
+
+message ProtoDeletePolicyResponse {}
+
+// ---------------------------------------------------------------------------
+// Role
+// ---------------------------------------------------------------------------
+
+message ProtoRole {
+    string id = 1;
+    repeated string policy_ids = 2;
+}
+
+message ProtoCreateRoleRequest {
+    string id = 1;
+    repeated string policy_ids = 2;
+}
+
+message ProtoCreateRoleResponse {
+    string id = 1;
+}
+
+message ProtoGetRoleRequest {
+    string id = 1;
+}
+
+message ProtoGetRoleResponse {
+    ProtoRole role = 1;
+}
+
+message ProtoUpdateRoleRequest {
+    string id = 1;
+    repeated string policy_ids = 2;
+}
+
+message ProtoUpdateRoleResponse {}
+
+message ProtoDeleteRoleRequest {
+    string id = 1;
+}
+
+message ProtoDeleteRoleResponse {}
+
+// -- Role Policy Assignments (incremental) ---
+
+message ProtoAssignPolicyToRoleRequest {
+    string role_id = 1;
+    string policy_id = 2;
+}
+
+message ProtoAssignPolicyToRoleResponse {}
+
+message ProtoUnassignPolicyFromRoleRequest {
+    string role_id = 1;
+    string policy_id = 2;
+}
+
+message ProtoUnassignPolicyFromRoleResponse {}
+
+// -- Principal Role Assignments (incremental) ---
+
+message ProtoAssignRoleToPrincipalRequest {
+    string principal_id = 1;
+    string role_id = 2;
+    ProtoTimestampRange window = 3;
+}
+
+message ProtoAssignRoleToPrincipalResponse {}
+
+message ProtoUnassignRoleFromPrincipalRequest {
+    string principal_id = 1;
+    string role_id = 2;
+}
+
+message ProtoUnassignRoleFromPrincipalResponse {}
+
+// -- Principal Policy Assignments (incremental) ---
+
+message ProtoAssignPolicyToPrincipalRequest {
+    string principal_id = 1;
+    string policy_id = 2;
+}
+
+message ProtoAssignPolicyToPrincipalResponse {}
+
+message ProtoUnassignPolicyFromPrincipalRequest {
+    string principal_id = 1;
+    string policy_id = 2;
+}
+
+message ProtoUnassignPolicyFromPrincipalResponse {}
+
+// ---------------------------------------------------------------------------
+// Evaluate
+// ---------------------------------------------------------------------------
+
+message ProtoEvaluateRequest {
+    string principal = 1;
+    string action = 2;
+    witchwood.resource.CompiledResourcePath resource = 3;
+    map<string, string> context = 4;
+}
+
+message ProtoEvaluateResponse {
+    bool allowed = 1;
+}
+
+// ---------------------------------------------------------------------------
+// Service & Action Registration
+// ---------------------------------------------------------------------------
+
+message ProtoRegisterServiceRequest {
+    string name = 1;
+}
+
+message ProtoRegisterServiceResponse {
+    string id = 1;
+}
+
+message ProtoDeregisterServiceRequest {
+    string name = 1;
+}
+
+message ProtoDeregisterServiceResponse {}
+
+message ProtoPutActionsRequest {
+    string service = 1;
+    repeated string actions = 2;
+}
+
+message ProtoPutActionsResponse {}
+
+// ---------------------------------------------------------------------------
+// Query
+// ---------------------------------------------------------------------------
+
+message ProtoQueryResourcesRequest {
+    string principal = 1;
+    string action = 2;
+}
+
+message ProtoQueryResourcesResponse {
+    repeated witchwood.resource.CompiledResourcePath resources = 1;
+}
+
+// ---------------------------------------------------------------------------
+// Service definition
+// ---------------------------------------------------------------------------
+
+service Witchwood {
+    rpc CreatePrincipal(ProtoCreatePrincipalRequest) returns (ProtoCreatePrincipalResponse);
+    rpc GetPrincipal(ProtoGetPrincipalRequest) returns (ProtoGetPrincipalResponse);
+    rpc UpdatePrincipal(ProtoUpdatePrincipalRequest) returns (ProtoUpdatePrincipalResponse);
+    rpc DeletePrincipal(ProtoDeletePrincipalRequest) returns (ProtoDeletePrincipalResponse);
+
+    rpc CreatePolicy(ProtoCreatePolicyRequest) returns (ProtoCreatePolicyResponse);
+    rpc GetPolicy(ProtoGetPolicyRequest) returns (ProtoGetPolicyResponse);
+    rpc UpdatePolicy(ProtoUpdatePolicyRequest) returns (ProtoUpdatePolicyResponse);
+    rpc DeletePolicy(ProtoDeletePolicyRequest) returns (ProtoDeletePolicyResponse);
+
+    rpc CreateRole(ProtoCreateRoleRequest) returns (ProtoCreateRoleResponse);
+    rpc GetRole(ProtoGetRoleRequest) returns (ProtoGetRoleResponse);
+    rpc UpdateRole(ProtoUpdateRoleRequest) returns (ProtoUpdateRoleResponse);
+    rpc DeleteRole(ProtoDeleteRoleRequest) returns (ProtoDeleteRoleResponse);
+    rpc AssignPolicyToRole(ProtoAssignPolicyToRoleRequest) returns (ProtoAssignPolicyToRoleResponse);
+    rpc UnassignPolicyFromRole(ProtoUnassignPolicyFromRoleRequest) returns (ProtoUnassignPolicyFromRoleResponse);
+
+    rpc AssignRoleToPrincipal(ProtoAssignRoleToPrincipalRequest) returns (ProtoAssignRoleToPrincipalResponse);
+    rpc UnassignRoleFromPrincipal(ProtoUnassignRoleFromPrincipalRequest) returns (ProtoUnassignRoleFromPrincipalResponse);
+    rpc AssignPolicyToPrincipal(ProtoAssignPolicyToPrincipalRequest) returns (ProtoAssignPolicyToPrincipalResponse);
+    rpc UnassignPolicyFromPrincipal(ProtoUnassignPolicyFromPrincipalRequest) returns (ProtoUnassignPolicyFromPrincipalResponse);
+
+    rpc Evaluate(ProtoEvaluateRequest) returns (ProtoEvaluateResponse);
+
+    rpc RegisterService(ProtoRegisterServiceRequest) returns (ProtoRegisterServiceResponse);
+    rpc DeregisterService(ProtoDeregisterServiceRequest) returns (ProtoDeregisterServiceResponse);
+    rpc PutActions(ProtoPutActionsRequest) returns (ProtoPutActionsResponse);
+
+    rpc QueryResources(ProtoQueryResourcesRequest) returns (ProtoQueryResourcesResponse);
+}

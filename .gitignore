@@ -48,3 +48,8 @@ bin/
 
 ### Mac OS ###
 .DS_Store
+
+### TypeScript ID worker ###
+worker-ts/node_modules/
+worker-ts/dist/
+worker-ts/coverage/
