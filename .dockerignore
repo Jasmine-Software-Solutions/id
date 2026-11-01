@@ -1,0 +1,55 @@
+# Git
+.git
+.gitignore
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Build artifacts (keep shadow JARs for docker COPY)
+build/
+!build/libs/
+!build/libs/*-all.jar
+.gradle/
+jte-classes/
+
+# Logs
+*.log
+logs/
+
+# Environment files (should be mounted or passed as env vars)
+.env
+.env.test
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# Test files
+src/test/
+
+# Documentation
+README.md
+*.md
+
+# Docker files (to avoid recursive copying)
+Dockerfile
+Dockerfile.*
+.dockerignore
+docker-compose*.yml 
+
+# TypeScript worker build context (built on the host by scripts/bundle.mjs)
+worker-ts/

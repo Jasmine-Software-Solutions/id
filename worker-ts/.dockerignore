@@ -1,0 +1,9 @@
+node_modules
+coverage
+test
+src
+scripts
+*.md
+.git
+.env
+.env.*
