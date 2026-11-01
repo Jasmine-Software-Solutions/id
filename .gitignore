@@ -53,3 +53,6 @@ bin/
 worker-ts/node_modules/
 worker-ts/dist/
 worker-ts/coverage/
+
+### Vite dependency cache ###
+frontend/.vite/
