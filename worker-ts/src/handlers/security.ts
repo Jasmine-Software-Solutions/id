@@ -189,7 +189,7 @@ export function securityBatchDefinition(
 }
 
 export const handler = async (event: SQSEvent, context: Context): Promise<SQSBatchResponse> => {
-  initTelemetry("security");
+  await initTelemetry("security");
   try {
     const services = await getSecurityServices();
     return await runBatch(event, context, securityBatchDefinition(services));

@@ -1,9 +1,11 @@
+import { GetParametersCommand } from "@aws-sdk/client-ssm";
 import { logs, SeverityNumber, trace } from "@opentelemetry/api";
 import { NodeSDK } from "@opentelemetry/sdk-node";
 import { BatchSpanProcessor } from "@opentelemetry/sdk-trace";
 import { BatchLogRecordProcessor } from "@opentelemetry/sdk-logs";
-import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-grpc";
+import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { OTLPLogExporter } from "@opentelemetry/exporter-logs-otlp-http";
+import { awsRegion, createSsmClient } from "./aws";
 import { createLogger, setLogSink, type LogLevel, type LogRecord } from "./logging";
 
 const log = createLogger("bootstrap");
@@ -21,11 +23,48 @@ const SEVERITY: Record<LogLevel, number> = {
 };
 
 /**
- * Starts the OTel SDK once per execution environment and mirrors the JSON
- * logger into Loki. CloudWatch remains the baseline: an unreachable collector
- * degrades to stdout only and never fails the invocation.
+ * Loads the Grafana Cloud OTLP Basic-auth header into the standard exporter
+ * environment variable. The SecureString value is the full header line, for
+ * example `Authorization=Basic <base64>`. A failure degrades telemetry only;
+ * CloudWatch logging continues and the invocation is unaffected.
  */
-export function initTelemetry(moduleName: string): void {
+async function loadOtlpHeaders(): Promise<void> {
+  if (process.env.OTEL_EXPORTER_OTLP_HEADERS) return;
+
+  const parameterName = process.env.GRAFANA_CLOUD_BASIC_AUTH_HEADER_PARAMETER?.trim();
+  if (!parameterName) return;
+
+  try {
+    const client = createSsmClient({
+      region: awsRegion(),
+      endpoint: process.env.SSM_ENDPOINT_OVERRIDE,
+    });
+    const response = await client.send(
+      new GetParametersCommand({ Names: [parameterName], WithDecryption: true }),
+    );
+    const value = response.Parameters?.[0]?.Value?.trim();
+    if (value) {
+      process.env.OTEL_EXPORTER_OTLP_HEADERS = value;
+    } else {
+      log.warn("Grafana Cloud auth parameter is empty; telemetry is unauthenticated", {
+        parameter: parameterName,
+      });
+    }
+  } catch (error) {
+    log.warn("Grafana Cloud auth header could not be loaded; telemetry is unauthenticated", {
+      parameter: parameterName,
+      error,
+    });
+  }
+}
+
+/**
+ * Starts the OTel SDK once per execution environment and mirrors the JSON
+ * logger into the OTLP backend. CloudWatch remains the baseline: an
+ * unreachable collector degrades to stdout only and never fails the
+ * invocation.
+ */
+export async function initTelemetry(moduleName: string): Promise<void> {
   if (initialized) return;
   initialized = true;
 
@@ -35,6 +74,8 @@ export function initTelemetry(moduleName: string): void {
   const logsEndpoint = process.env.OTEL_EXPORTER_OTLP_LOGS_ENDPOINT?.trim();
   if (!tracesEndpoint && !logsEndpoint) return;
 
+  await loadOtlpHeaders();
+
   const serviceName = process.env.OTEL_SERVICE_NAME?.trim() || `id-worker-${moduleName}`;
 
   try {
@@ -42,8 +83,11 @@ export function initTelemetry(moduleName: string): void {
     const logRecordProcessors: BatchLogRecordProcessor[] = [];
 
     if (tracesEndpoint) {
+      const baseUrl = tracesEndpoint.replace(/\/+$/, "");
+      // The SDK does not append a path when an explicit url is supplied.
+      const traceUrl = baseUrl.endsWith("/v1/traces") ? baseUrl : `${baseUrl}/v1/traces`;
       spanProcessor = new BatchSpanProcessor({
-        exporter: new OTLPTraceExporter({ url: tracesEndpoint }),
+        exporter: new OTLPTraceExporter({ url: traceUrl }),
       });
       spanProcessors.push(spanProcessor);
     }

@@ -65,7 +65,7 @@ async function resolveResendApiKey(config: EmailConfig): Promise<string> {
 }
 
 export const handler = async (event: SQSEvent, context: Context): Promise<SQSBatchResponse> => {
-  initTelemetry("email");
+  await initTelemetry("email");
   try {
     const services = await getEmailServices();
     return await runBatch(event, context, {

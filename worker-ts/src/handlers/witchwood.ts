@@ -67,7 +67,7 @@ async function resolvePrivateKey(config: WitchwoodConfig): Promise<string> {
 }
 
 export const handler = async (event: SQSEvent, context: Context): Promise<SQSBatchResponse> => {
-  initTelemetry("witchwood");
+  await initTelemetry("witchwood");
   try {
     const services = await getWitchwoodServices();
     return await runBatch(event, context, {
