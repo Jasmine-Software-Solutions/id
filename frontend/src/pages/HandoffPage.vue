@@ -353,14 +353,16 @@ onUnmounted(() => {
         <p v-if="view === 'loading'" class="text-sm text-slate-500">Loading…</p>
 
         <template v-else-if="view === 'signed_out'">
-          <p class="text-sm font-bold text-slate-800">You need to sign in to Jasmine ID</p>
-          <p class="text-sm text-slate-500">This window will update after you sign in.</p>
+          <h3 class="text-lg font-bold text-slate-800">Open on your phone</h3>
+          <p class="text-sm text-slate-500">
+            To open this page on your phone, click the button below and scan the QR code.
+          </p>
           <a
             :href="signInUrl"
             target="_blank"
             rel="noopener"
             class="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-500 transition-colors"
-          >Log in</a>
+          >Show QR</a>
         </template>
 
         <template v-else-if="view === 'awaiting_scan'">

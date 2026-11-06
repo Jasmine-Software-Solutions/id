@@ -64,7 +64,7 @@ would need to be scoped to `(session, client)`.
 | Card state | What it means | What the user does |
 |---|---|---|
 | QR code | Waiting for a scan. The code rotates automatically about every two minutes; the embed can stay open for hours. | Scan with the second device. |
-| Lock + **Log in** | The frame cannot see ID cookies (not signed in, or a cross-site parent). | Sign in through the new window. |
+| Lock + **Open on your phone** / **Show QR** | The frame cannot see ID cookies (not signed in, or a cross-site parent). | Click **Show QR** and sign in through the new window; the card then shows the QR code. |
 | Warning + **No** / **Yes** | A device scanned the code. Every instance shows this. | **Yes** if it was them, **No** otherwise. Either button works from any instance. |
 | Green check + **Change devices** | The second device was signed in. | Optionally drop it again and start over. |
 
@@ -83,9 +83,10 @@ confirmed, at which point ID revokes it.
 ### Cross-site parents
 
 A parent on a different site origin cannot see the ID cookies, so the iframe
-shows the sign-in state and its **Log in** button opens the handoff URL in a new
-window, where the page runs top-level and cookies are first-party. The parent
-does not need to do anything for this.
+shows the **Open on your phone** state and its **Show QR** button opens the
+handoff URL in a new window, where the page runs top-level and cookies are
+first-party; after signing in, that window shows the QR code. The parent does
+not need to do anything for this.
 
 ## The callback
 
