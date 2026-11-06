@@ -10,6 +10,7 @@
     "typecheck": "vue-tsc -b"
   },
   "dependencies": {
+    "qrcode.vue": "^3.11.0",
     "vue": "^3.5.0",
     "vue-router": "^4.4.0"
   },

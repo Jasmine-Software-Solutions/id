@@ -10,6 +10,9 @@ import type {
   TenantInfo, UpdateRolePayload,
   RestrictionResponse, PlaceRestrictionPayload,
   SsoClientInfo, SsoPreferences,
+  CreateHandoffPayload, HandoffResponse, HandoffStatusResponse,
+  HandoffQrResponse, HandoffScanResponse, HandoffScanStatusResponse,
+  HandoffClaimResponse,
 } from './types'
 import { RestrictedError } from './types'
 
@@ -625,6 +628,89 @@ function createRestrictionsClient() {
 }
 
 // ---------------------------------------------------------------------------
+// Cross-device handoff
+// ---------------------------------------------------------------------------
+
+export function createHandoffClient() {
+  return {
+    /**
+     * Create a handoff for the current ID session or attach to the live one.
+     * The first instance's client/redirect/state/scope/nonce are authoritative.
+     */
+    async createOrAttach(payload: CreateHandoffPayload): Promise<HandoffResponse> {
+      return request<HandoffResponse>(`${BASE}/handoffs`, jsonBody(payload))
+    },
+
+    /** Shared status poll, read by every embed instance. */
+    async status(handoffId: string): Promise<HandoffStatusResponse> {
+      return request<HandoffStatusResponse>(
+        `${BASE}/handoffs/${handoffId}`,
+        { cache: 'no-store' },
+      )
+    },
+
+    /** Issue a fresh QR code for this instance while a scan is awaited. */
+    async issueQr(handoffId: string): Promise<HandoffQrResponse> {
+      return request<HandoffQrResponse>(
+        `${BASE}/handoffs/${handoffId}/qr`,
+        { method: 'POST', cache: 'no-store' },
+      )
+    },
+
+    /** Decline the pending scan. */
+    async reject(handoffId: string): Promise<HandoffQrResponse> {
+      return request<HandoffQrResponse>(
+        `${BASE}/handoffs/${handoffId}/reject`,
+        { method: 'POST' },
+      )
+    },
+
+    /** Approve the pending scan. Idempotent once confirmed. */
+    async confirm(handoffId: string): Promise<{ status: string }> {
+      return request<{ status: string }>(
+        `${BASE}/handoffs/${handoffId}/confirm`,
+        { method: 'POST' },
+      )
+    },
+
+    /** Drop the +1 device and return every instance to a fresh QR. */
+    async changeDevices(handoffId: string): Promise<HandoffQrResponse> {
+      return request<HandoffQrResponse>(
+        `${BASE}/handoffs/${handoffId}/change-devices`,
+        { method: 'POST' },
+      )
+    },
+
+    /** Claim a scanned QR code from the new device. No ID session required. */
+    async scan(handoffId: string, token: string): Promise<HandoffScanResponse> {
+      return request<HandoffScanResponse>(
+        `${BASE}/handoffs/scans`,
+        jsonBody({ handoff_id: handoffId, token }),
+      )
+    },
+
+    /** What the scanning device should show. The token travels in a header, not the URL. */
+    async scanStatus(handoffId: string, scanToken: string): Promise<HandoffScanStatusResponse> {
+      return request<HandoffScanStatusResponse>(
+        `${BASE}/handoffs/${handoffId}/scan`,
+        {
+          headers: { 'X-Handoff-Scan-Token': scanToken },
+          cache: 'no-store',
+        },
+      )
+    },
+
+    /** Exchange a confirmed scan for the new session and its authorization code. */
+    async claim(handoffId: string, scanToken: string): Promise<HandoffClaimResponse> {
+      return request<HandoffClaimResponse>(
+        `${BASE}/handoffs/${handoffId}/claim`,
+        jsonBody({ scan_token: scanToken }),
+      )
+    },
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Convenience — single ID client
 // ---------------------------------------------------------------------------
 
@@ -642,5 +728,6 @@ export function createIdClient(auth: AccountClientAuth) {
     tenants: createTenantsClient(),
     clientsAdmin: createClientsAdminClient(),
     restrictions: createRestrictionsClient(),
+    handoffs: createHandoffClient(),
   }
 }

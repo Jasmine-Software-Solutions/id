@@ -19,6 +19,7 @@ import com.jasminesoftwaresolutions.id.domain.services.authorization.ITokenServi
 import com.jasminesoftwaresolutions.id.domain.models.authorization.IdActions
 import com.jasminesoftwaresolutions.id.domain.models.authorization.IdResources
 import com.jasminesoftwaresolutions.id.domain.services.authorization.IAuthorizationService
+import com.jasminesoftwaresolutions.idinterfaces.application.handoff.HandoffExchangeGuard
 import com.jasminesoftwaresolutions.idinterfaces.services.auth.JavalinRequestAuthenticationService
 import com.jasminesoftwaresolutions.idinterfaces.services.auth.PrincipalAuthorizationContext
 import com.jasminesoftwaresolutions.idinterfaces.services.auth.ScopedListHelper
@@ -42,6 +43,7 @@ class RestOAuth2Controller(
     private val scopedListHelper: ScopedListHelper,
     private val oidcClaimsResolver: IOIDCClaimsResolver,
     private val issuerBaseUrl: String,
+    private val handoffExchangeGuard: HandoffExchangeGuard,
 ) {
     private val log = Logger.getLogger(RestOAuth2Controller::class.java.name)
 
@@ -103,7 +105,7 @@ class RestOAuth2Controller(
             val loginUrl = "$issuerBaseUrl/#/login"
             val loginParams = mutableMapOf("return_url" to ctx.fullUrl())
             referrerHint(ctx)?.let { loginParams[REFERRER_HINT_PARAM] = it }
-            val target = buildRedirectUrl(loginUrl, loginParams)
+            val target = OAuth2Code.buildRedirectUrl(loginUrl, loginParams)
             System.out.println("[OAuth2 authorize] redirecting to=" + target)
             ctx.redirect(target)
             return
@@ -156,15 +158,13 @@ class RestOAuth2Controller(
             this.expiresAt = hashedSession.expiresAt
         }
 
-        val codeParam = Base64.getEncoder().encodeToString(
-            "${delegatedSession.id}:$code".toByteArray(Charsets.UTF_8)
-        )
+        val codeParam = OAuth2Code.encode(delegatedSession.id, code)
 
         // Build redirect URL
         val redirectParams = mutableMapOf("code" to codeParam)
         if (state != null) redirectParams["state"] = state
 
-        val redirectUrl = buildRedirectUrl(redirectUri, redirectParams)
+        val redirectUrl = OAuth2Code.buildRedirectUrl(redirectUri, redirectParams)
         ctx.redirect(redirectUrl)
     }
 
@@ -228,18 +228,28 @@ class RestOAuth2Controller(
         if (client.redirectUris.values.none { it.toString() == redirectUri })
             throw BadRequestResponse("Invalid redirect_uri")
 
-        val decoded = Base64.getDecoder().decode(code).toString(Charsets.UTF_8).split(":")
-        if (decoded.size != 2) throw BadRequestResponse("Invalid code")
-
-        val sessionId = runCatching { UUID.fromString(decoded[0]) }.getOrNull()
+        val (sessionId, sessionCode) = OAuth2Code.decode(code)
             ?: throw BadRequestResponse("Invalid code")
-        val sessionCode = decoded[1]
 
         val delegatedSession = delegatedSessionRepository.findById(sessionId)
             ?: throw BadRequestResponse("Invalid code")
 
         if (!delegatedSession.code.verify(sessionCode))
             throw BadRequestResponse("Invalid code")
+
+        // Codes are short-lived. This applies to handoff-issued codes and
+        // closes the same gap for ordinary authorization codes.
+        if (delegatedSession.code.expiresAt <= Instant.now())
+            throw BadRequestResponse("Invalid code")
+
+        // A handoff code gets a second AcceptHandoff check and must have been
+        // issued to the very client exchanging it. Anything uncertain fails the
+        // exchange; it never falls through to the ordinary path.
+        when (handoffExchangeGuard.evaluate(delegatedSession, client, auth)) {
+            HandoffExchangeGuard.Decision.INVALID -> throw BadRequestResponse("Invalid code")
+            HandoffExchangeGuard.Decision.FORBIDDEN -> throw ForbiddenResponse()
+            HandoffExchangeGuard.Decision.ALLOW -> Unit
+        }
 
         log.info("[AUTHZ_CODE] dsId=%s dsExpiresAt=%s sessionExpiresAt=%s sessionId=%s".format(
             delegatedSession.id, delegatedSession.expiresAt,
@@ -554,14 +564,6 @@ class RestOAuth2Controller(
                 .trim()
                 .take(MAX_REFERRER_HINT_LENGTH)
         return clean.takeUnless { it.isEmpty() }
-    }
-
-    private fun buildRedirectUrl(baseUri: String, params: Map<String, String>): String {
-        val queryString = params.entries.joinToString("&") { (k, v) ->
-            "${java.net.URLEncoder.encode(k, "UTF-8")}=${java.net.URLEncoder.encode(v, "UTF-8")}"
-        }
-        val separator = if (baseUri.contains('?')) "&" else "?"
-        return "$baseUri$separator$queryString"
     }
 
     private companion object {

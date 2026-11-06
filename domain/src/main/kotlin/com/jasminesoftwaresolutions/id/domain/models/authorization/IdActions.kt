@@ -86,6 +86,14 @@ object IdActions {
     const val LIFT_RESTRICTION = SERVICE + ":LiftRestriction"
     const val LIST_RESTRICTIONS = SERVICE + ":ListRestrictions"
 
+    // Handoff actions
+    /**
+     * Held by a client that may create and complete a cross-device handoff of
+     * one of its user's ID sessions. Checked when the embed loads, when the
+     * user confirms, and again when the code is exchanged.
+     */
+    const val ACCEPT_HANDOFF = SERVICE + ":AcceptHandoff"
+
     /** All registered actions (for Witchwood bootstrap). */
     val ALL: List<String> = listOf(
         GET_ACCOUNT,
@@ -144,5 +152,6 @@ object IdActions {
         PLACE_RESTRICTION,
         LIFT_RESTRICTION,
         LIST_RESTRICTIONS,
+        ACCEPT_HANDOFF,
     )
 }

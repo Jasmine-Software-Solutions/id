@@ -21,6 +21,7 @@ import org.jetbrains.exposed.sql.statements.InsertStatement
 import org.jetbrains.exposed.sql.statements.UpdateStatement
 import java.net.URI
 import java.time.Instant
+import java.util.*
 
 class ExposedDelegatedSessionRepository(
     val hashFunction: IHashFunction,
@@ -64,6 +65,8 @@ class ExposedDelegatedSessionRepository(
 
         override var nonce: String? by nullableColumn(Table.nonce)
 
+        override var handoffId: UUID? by nullableColumn(Table.handoffId)
+
         override var scopes: Set<IScope> by column(Table.scope, ExposedColumnTransformer(
             fromColumn = { it.split(" ").mapNotNull {
                 scopeRegistry.findById(it) ?: scopeRepository.findById(it)
@@ -102,7 +105,19 @@ class ExposedDelegatedSessionRepository(
         val scope = varchar("scope", 256)
         val nonce = varchar("nonce", 256).nullable()
 
+        /**
+         * The handoff this code was issued for, if any. Deliberately a plain
+         * UUID with no foreign key: the handoff may be deleted before the code
+         * is exchanged, and a missing row must fail the exchange closed rather
+         * than turn a handoff code into a normal one.
+         */
+        val handoffId = uuid("handoff_id").nullable()
+
         val codeHash = text("argon2_code_hash")
         val codeExpiresAt = long("code_expires_at")
+
+        init {
+            index(false, handoffId)
+        }
     }
 }

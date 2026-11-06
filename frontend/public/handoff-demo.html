@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Handoff embed demo</title>
+    <style>
+      body { font-family: system-ui, sans-serif; margin: 2rem; color: #1e293b; }
+      form { display: grid; gap: 0.5rem; max-width: 640px; margin-bottom: 1.5rem; }
+      label { font-size: 0.875rem; font-weight: 600; }
+      input { font: inherit; padding: 0.4rem 0.6rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; }
+      button { justify-self: start; font: inherit; padding: 0.5rem 1rem; border: 0; border-radius: 0.5rem; background: #4f46e5; color: white; cursor: pointer; }
+      iframe { width: 360px; height: 480px; border: 1px solid #e2e8f0; border-radius: 0.75rem; background: white; }
+      p { max-width: 640px; color: #64748b; font-size: 0.875rem; }
+    </style>
+  </head>
+  <body>
+    <h1>Handoff embed demo</h1>
+    <p>
+      A same-origin embed for exercising the handoff page, its frame headers and
+      its cookie behaviour without a client application. It cannot reproduce
+      cross-site cookie blocking — embed the page from another origin for that.
+    </p>
+
+    <form id="form">
+      <label for="client_id">client_id</label>
+      <input id="client_id" name="client_id" required />
+      <label for="redirect_uri">redirect_uri</label>
+      <input id="redirect_uri" name="redirect_uri" required />
+      <label for="state">state</label>
+      <input id="state" name="state" />
+      <label for="scope">scope (optional)</label>
+      <input id="scope" name="scope" />
+      <button type="submit">Update embed</button>
+    </form>
+
+    <iframe id="frame" title="Handoff"></iframe>
+
+    <script>
+      const form = document.getElementById('form')
+      const frame = document.getElementById('frame')
+      const fields = ['client_id', 'redirect_uri', 'state', 'scope']
+
+      // Prefill from the page's own query string, then the last values used.
+      const page = new URLSearchParams(window.location.search)
+      let saved = {}
+      try {
+        saved = JSON.parse(localStorage.getItem('handoff-demo') || '{}')
+      } catch {
+        saved = {}
+      }
+
+      for (const field of fields) {
+        const input = document.getElementById(field)
+        input.value = page.get(field) || saved[field] || ''
+      }
+
+      function update() {
+        const params = new URLSearchParams()
+        for (const field of fields) {
+          const value = document.getElementById(field).value.trim()
+          if (value) params.set(field, value)
+        }
+
+        const values = Object.fromEntries(params)
+        try {
+          localStorage.setItem('handoff-demo', JSON.stringify(values))
+        } catch {
+          // The demo still works without remembering values.
+        }
+
+        frame.src = '/embed/#/handoff?' + params.toString()
+      }
+
+      form.addEventListener('submit', (event) => {
+        event.preventDefault()
+        update()
+      })
+
+      if (page.get('client_id') && page.get('redirect_uri')) update()
+    </script>
+  </body>
+</html>

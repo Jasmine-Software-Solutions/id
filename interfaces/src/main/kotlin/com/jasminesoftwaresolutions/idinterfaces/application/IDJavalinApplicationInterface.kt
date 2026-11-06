@@ -10,6 +10,8 @@ import com.jasminesoftwaresolutions.idinterfaces.application.authorization.RestC
 import com.jasminesoftwaresolutions.idinterfaces.application.authorization.RestOAuth2Controller
 import com.jasminesoftwaresolutions.idinterfaces.application.authorization.RestPolicyController
 import com.jasminesoftwaresolutions.idinterfaces.application.authorization.RestRoleController
+import com.jasminesoftwaresolutions.idinterfaces.application.handoff.HandoffExchangeGuard
+import com.jasminesoftwaresolutions.idinterfaces.application.handoff.RestHandoffController
 import com.jasminesoftwaresolutions.idinterfaces.application.tenant.RestMembershipController
 import com.jasminesoftwaresolutions.idinterfaces.application.tenant.RestMembershipInvitationController
 import com.jasminesoftwaresolutions.idinterfaces.application.tenant.RestTenantController
@@ -59,6 +61,11 @@ open class IDJavalinApplicationInterface(server: IDServer, private val externalB
             server.eventDispatcher,
         )
 
+        val handoffExchangeGuard = HandoffExchangeGuard(
+            server.handoffRepository,
+            server.authorizationService,
+        )
+
         val restOAuth2Controller = RestOAuth2Controller(
             server.clientRepository,
             server.delegatedSessionRepository,
@@ -70,6 +77,18 @@ open class IDJavalinApplicationInterface(server: IDServer, private val externalB
             server.authorizationService,
             scopedListHelper,
             server.oidcClaimsResolver,
+            externalBaseUrl,
+            handoffExchangeGuard,
+        )
+
+        val restHandoffController = RestHandoffController(
+            server.handoffRepository,
+            server.handoffService,
+            server.clientRepository,
+            server.scopeRegistry,
+            server.scopeRepository,
+            authorizationService,
+            server.authorizationService,
             externalBaseUrl,
         )
 
@@ -163,6 +182,7 @@ open class IDJavalinApplicationInterface(server: IDServer, private val externalB
                 restAuthController,
                 restAccountController,
                 restOAuth2Controller,
+                restHandoffController,
                 restClientScopesController,
                 restClientAdminController,
                 restRoleController,

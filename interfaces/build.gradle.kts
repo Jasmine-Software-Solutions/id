@@ -18,6 +18,8 @@ repositories {
 dependencies {
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
+    // Gradle 9 no longer puts the platform launcher on the test runtime classpath.
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     testImplementation("org.xerial:sqlite-jdbc:3.49.1.0")
 
     implementation(project(":domain"))

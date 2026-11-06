@@ -8,6 +8,7 @@ import com.jasminesoftwaresolutions.id.domain.models.account.ISession
 import com.jasminesoftwaresolutions.id.domain.models.authorization.IScope
 import java.net.URI
 import java.time.Instant
+import java.util.*
 
 interface IDelegatedSession : IIdentified, ICreated, IExpires {
     var refreshedAt: Instant?
@@ -18,6 +19,14 @@ interface IDelegatedSession : IIdentified, ICreated, IExpires {
     var redirectUri: URI
     var scopes: Set<IScope>
     var nonce: String?
+
+    /**
+     * The handoff this code was issued for, or null for a normal authorization
+     * code. A plain UUID rather than a foreign key: the handoff row may be gone
+     * by the time the code is exchanged, and a missing row must fail closed
+     * instead of silently behaving like a normal code.
+     */
+    var handoffId: UUID?
 
     val code: IHashedDelegatedSessionCode
 }

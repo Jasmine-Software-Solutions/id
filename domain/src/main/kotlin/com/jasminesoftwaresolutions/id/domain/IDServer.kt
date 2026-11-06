@@ -3,6 +3,7 @@ package com.jasminesoftwaresolutions.id.domain
 import com.google.gson.Gson
 import com.jasminesoftwaresolutions.id.domain.events.IEventDispatcher
 import com.jasminesoftwaresolutions.id.domain.models.authorization.*
+import com.jasminesoftwaresolutions.id.domain.models.handoff.IHandoffQrTokenRepository
 import com.jasminesoftwaresolutions.id.domain.registries.IAuthenticationStepHandlerRegistry
 import com.jasminesoftwaresolutions.id.domain.registries.IAuthenticationStepRegistry
 import com.jasminesoftwaresolutions.id.domain.registries.IScopeRegistry
@@ -16,6 +17,7 @@ import com.jasminesoftwaresolutions.id.domain.services.accounts.IMagicLinkServic
 import com.jasminesoftwaresolutions.id.domain.services.accounts.ISessionService
 import com.jasminesoftwaresolutions.id.domain.services.accounts.ITOTPService
 import com.jasminesoftwaresolutions.id.domain.services.authentication.IAuthenticationService
+import com.jasminesoftwaresolutions.id.domain.services.handoff.IHandoffService
 import com.jasminesoftwaresolutions.id.domain.services.authorization.IAuthorizationService
 import com.jasminesoftwaresolutions.id.domain.services.authorization.IOIDCClaimsResolver
 import com.jasminesoftwaresolutions.id.domain.services.authorization.ITokenService
@@ -44,6 +46,9 @@ interface IDServer {
     var delegatedSessionRepository: IDelegatedSessionRepository
     var scopeRepository: IScopeRepository
 
+    var handoffRepository: IHandoffRepository
+    var handoffQrTokenRepository: IHandoffQrTokenRepository
+
     var roleRepository: IRoleRepository
     var roleAssignmentRepository: IRoleAssignmentRepository
 
@@ -62,6 +67,7 @@ interface IDServer {
     var emailChangeService: IEmailChangeService
     var sessionService: ISessionService
     var totpService: ITOTPService
+    var handoffService: IHandoffService
 
     var authenticationService: IAuthenticationService
     var oidcClaimsResolver: IOIDCClaimsResolver

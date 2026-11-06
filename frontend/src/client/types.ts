@@ -291,3 +291,72 @@ export interface SsoPreferences {
   favorites: string[]
   order: string[]
 }
+
+// ---------------------------------------------------------------------------
+// Cross-device handoff
+// ---------------------------------------------------------------------------
+
+export type HandoffStatus =
+  | 'awaiting_scan'
+  | 'pending_confirmation'
+  | 'confirmed'
+  | 'claimed'
+  | 'superseded'
+  | 'expired'
+
+/** Body of POST /api/v1/handoffs. The first instance's values are authoritative. */
+export interface CreateHandoffPayload {
+  client_id: string
+  redirect_uri: string
+  state?: string
+  scope?: string
+  nonce?: string
+}
+
+/** Response of create-or-attach. */
+export interface HandoffResponse {
+  handoff_id: string
+  status: HandoffStatus
+  expires_at: number
+  qr_url: string | null
+  qr_expires_at: number | null
+}
+
+/** Response of GET /api/v1/handoffs/{id}. */
+export interface HandoffStatusResponse {
+  status: HandoffStatus
+  expires_at: number
+}
+
+/** Response of the per-instance QR issuance/reject/change-devices calls. */
+export interface HandoffQrResponse {
+  status: HandoffStatus
+  expires_at: number
+  qr_url: string
+  qr_expires_at: number
+}
+
+/** Response of POST /api/v1/handoffs/scans. */
+export interface HandoffScanResponse {
+  handoff_id: string
+  scan_token: string
+  expires_at: number
+}
+
+export type HandoffScanStatus =
+  | 'pending'
+  | 'confirmed'
+  | 'rejected'
+  | 'claimed'
+  | 'superseded'
+  | 'expired'
+
+/** Response of GET /api/v1/handoffs/{id}/scan. */
+export interface HandoffScanStatusResponse {
+  status: HandoffScanStatus
+}
+
+/** Response of POST /api/v1/handoffs/{id}/claim. */
+export interface HandoffClaimResponse {
+  redirect_url: string
+}

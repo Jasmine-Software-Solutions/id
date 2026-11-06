@@ -8,6 +8,8 @@ import app.infrastructure.repositories.authorization.ExposedRoleAssignmentReposi
 import app.infrastructure.repositories.authorization.ExposedRoleRepository
 import app.infrastructure.repositories.clients.ExposedClientRepository
 import app.infrastructure.repositories.clients.ExposedDelegatedSessionRepository
+import app.infrastructure.repositories.handoffs.ExposedHandoffQrTokenRepository
+import app.infrastructure.repositories.handoffs.ExposedHandoffRepository
 import app.infrastructure.repositories.scopes.ExposedScopeRepository
 import app.infrastructure.repositories.security.ExposedRestrictionRepository
 import app.infrastructure.repositories.tenants.ExposedMembershipInvitationRepository
@@ -18,6 +20,7 @@ import app.infrastructure.services.Argon2HashFunction
 import app.infrastructure.services.HmacSHA256SigningFunction
 import app.infrastructure.services.SHA256HashFunction
 import app.infrastructure.services.SnsEventDispatcher
+import app.infrastructure.services.StandardHandoffService
 import app.infrastructure.services.StandardRestrictionService
 import app.infrastructure.services.WitchwoodAuthorizationService
 import app.infrastructure.services.accounts.AsymmetricJWTService
@@ -37,6 +40,7 @@ import com.jasminesoftwaresolutions.id.domain.models.account.IAccount
 import com.jasminesoftwaresolutions.id.domain.models.account.IPassword
 import com.jasminesoftwaresolutions.id.domain.models.authorization.IIDToken
 import com.jasminesoftwaresolutions.id.domain.models.authorization.*
+import com.jasminesoftwaresolutions.id.domain.models.handoff.IHandoffQrTokenRepository
 import com.jasminesoftwaresolutions.id.domain.registries.*
 import com.jasminesoftwaresolutions.id.domain.repositories.*
 import com.jasminesoftwaresolutions.id.domain.repositories.IRestrictionRepository
@@ -53,6 +57,7 @@ import com.jasminesoftwaresolutions.id.domain.services.authentication.steps.Ente
 import com.jasminesoftwaresolutions.id.domain.services.authentication.steps.PollMagicLinkAuthenticationFlowStep
 import com.jasminesoftwaresolutions.id.domain.services.authorization.IAuthorizationService
 import com.jasminesoftwaresolutions.id.domain.services.authorization.IOIDCClaimsResolver
+import com.jasminesoftwaresolutions.id.domain.services.handoff.IHandoffService
 import com.jasminesoftwaresolutions.id.domain.services.authorization.ITokenService
 import com.jasminesoftwaresolutions.id.domain.models.authorization.IdActions
 import com.jasminesoftwaresolutions.id.domain.services.authorization.JWTTokenService
@@ -162,6 +167,19 @@ class IDServerImpl : IDServer {
 
     override var delegatedSessionRepository: IDelegatedSessionRepository = ExposedDelegatedSessionRepository(hashFunction, sessionRepository, clientRepository, scopeRepository, scopeRegistry)
 
+    override var handoffRepository: IHandoffRepository = ExposedHandoffRepository(
+        hashFunction,
+        sessionRepository,
+        clientRepository,
+        scopeRepository,
+        scopeRegistry,
+    )
+
+    override var handoffQrTokenRepository: IHandoffQrTokenRepository = ExposedHandoffQrTokenRepository(
+        hashFunction,
+        handoffRepository,
+    )
+
     override var eventDispatcher: IEventDispatcher = SnsEventDispatcher(gson)
 
     override var jwtService: IJWTService = AsymmetricJWTService("RSA", Env.JWT_PUBLIC_KEY!!, Env.JWT_PRIVATE_KEY!!, "https://id.jasmine.software/")
@@ -178,6 +196,15 @@ class IDServerImpl : IDServer {
     )
 
     override var sessionService: ISessionService = StandardSessionService(sessionRepository, 12.hours)
+
+    override var handoffService: IHandoffService = StandardHandoffService(
+        handoffRepository,
+        handoffQrTokenRepository,
+        sessionRepository,
+        sessionService,
+        delegatedSessionRepository,
+        eventDispatcher,
+    )
 
     override var totpService: ITOTPService = GoogleAuthenticatorTOTPService(
         totpConfigurationRepository,

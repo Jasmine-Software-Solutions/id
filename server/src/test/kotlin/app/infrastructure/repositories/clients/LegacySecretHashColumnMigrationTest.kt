@@ -5,6 +5,7 @@ import org.jetbrains.exposed.dao.id.UUIDTable
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.insert
+import org.jetbrains.exposed.sql.transactions.TransactionManager
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.vendors.currentDialect
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -36,7 +37,11 @@ class LegacySecretHashColumnMigrationTest {
     private fun connect(): Database {
         val path = Files.createTempFile("id-clients-migration", ".db")
         path.toFile().deleteOnExit()
-        return Database.connect("jdbc:sqlite:${path.toAbsolutePath()}", driver = "org.sqlite.JDBC")
+        val database = Database.connect("jdbc:sqlite:${path.toAbsolutePath()}", driver = "org.sqlite.JDBC")
+        // Database.connect only installs a default when none exists yet; other
+        // suites in this module have already connected one.
+        TransactionManager.defaultDatabase = database
+        return database
     }
 
     private fun clientColumnNames(): List<String> = transaction {
